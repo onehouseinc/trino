@@ -15,11 +15,33 @@
 
     <properties>
         <air.main.basedir>${project.parent.basedir}</air.main.basedir>
-        <dep.hudi.version>0.14.1</dep.hudi.version>
+        <dep.hudi.version>0.15.0-rc1</dep.hudi.version>
         <dep.hbase.version>2.5.8-hadoop3</dep.hbase.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.apache.hudi</groupId>
+            <artifactId>hudi-io</artifactId>
+            <version>${dep.hudi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hudi</groupId>
+            <artifactId>hudi-common</artifactId>
+            <version>${dep.hudi.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
@@ -313,7 +335,7 @@
 
         <dependency>
             <groupId>org.apache.hudi</groupId>
-            <artifactId>hudi-client-common</artifactId>
+            <artifactId>hudi-hadoop-common</artifactId>
             <version>${dep.hudi.version}</version>
             <scope>test</scope>
             <exclusions>
@@ -326,7 +348,7 @@
 
         <dependency>
             <groupId>org.apache.hudi</groupId>
-            <artifactId>hudi-common</artifactId>
+            <artifactId>hudi-client-common</artifactId>
             <version>${dep.hudi.version}</version>
             <scope>test</scope>
             <exclusions>

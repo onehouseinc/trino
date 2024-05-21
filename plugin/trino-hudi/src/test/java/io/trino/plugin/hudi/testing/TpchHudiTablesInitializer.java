@@ -59,6 +59,7 @@ import org.apache.hudi.config.HoodieArchivalConfig;
 import org.apache.hudi.config.HoodieIndexConfig;
 import org.apache.hudi.config.HoodieWriteConfig;
 import org.apache.hudi.index.HoodieIndex;
+import org.apache.hudi.storage.hadoop.HadoopStorageConfiguration;
 import org.intellij.lang.annotations.Language;
 
 import java.io.IOException;
@@ -219,7 +220,7 @@ public class TpchHudiTablesInitializer
                     .setBootstrapIndexClass(NoOpBootstrapIndex.class.getName())
                     .setPayloadClassName(HoodieAvroPayload.class.getName())
                     .setRecordKeyFields(FIELD_UUID)
-                    .initTable(conf, tablePath.toString());
+                    .initTable(new HadoopStorageConfiguration(conf), tablePath.toString());
         }
         catch (IOException e) {
             throw new RuntimeException("Could not init table " + table.getTableName(), e);
@@ -241,7 +242,7 @@ public class TpchHudiTablesInitializer
                 // reading MDT is broken after removal of Hudi dependencies from compile time
                 .withMetadataConfig(HoodieMetadataConfig.newBuilder().enable(false).build())
                 .build();
-        return new HoodieJavaWriteClient<>(new HoodieJavaEngineContext(conf), cfg);
+        return new HoodieJavaWriteClient<>(new HoodieJavaEngineContext(new HadoopStorageConfiguration(conf)), cfg);
     }
 
     private static RecordConverter createRecordConverter(TpchTable<?> table)
