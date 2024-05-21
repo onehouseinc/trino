@@ -24,17 +24,23 @@ import io.trino.plugin.hudi.HudiFileStatus;
 import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.partition.HiveHudiPartitionInfo;
 import io.trino.plugin.hudi.partition.HudiPartitionInfo;
+import io.trino.plugin.hudi.storage.TrinoStorageConfiguration;
+import org.apache.hudi.common.config.HoodieMetadataConfig;
+import org.apache.hudi.common.engine.HoodieLocalEngineContext;
 import org.apache.hudi.common.model.HoodieBaseFile;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.view.HoodieTableFileSystemView;
+import org.apache.hudi.metadata.HoodieMetadataFileSystemView;
 import org.apache.hudi.storage.StoragePathInfo;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
@@ -58,7 +64,10 @@ public class HudiReadOptimizedDirectoryLister
             List<HiveColumnHandle> partitionColumnHandles,
             List<String> hivePartitionNames)
     {
-        this.fileSystemView = new HoodieTableFileSystemView(metaClient, metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants());
+        this.fileSystemView = new HoodieMetadataFileSystemView(new HoodieLocalEngineContext(new TrinoStorageConfiguration()),
+                metaClient, metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants(),
+                HoodieMetadataConfig.newBuilder().build());
+                //new HoodieTableFileSystemView(metaClient, metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants());
         this.partitionColumns = hiveTable.getPartitionColumns();
         this.allPartitionInfoMap = hivePartitionNames.stream()
                 .collect(Collectors.toMap(
@@ -75,6 +84,8 @@ public class HudiReadOptimizedDirectoryLister
     @Override
     public List<HudiFileStatus> listStatus(HudiPartitionInfo partitionInfo)
     {
+        List<HoodieBaseFile> collect = fileSystemView.getLatestBaseFiles(partitionInfo.getRelativePartitionPath()).toList();
+
         return fileSystemView.getLatestBaseFiles(partitionInfo.getRelativePartitionPath())
                 .map(HudiReadOptimizedDirectoryLister::getStoragePathInfo)
                 .map(fileEntry -> new HudiFileStatus(
