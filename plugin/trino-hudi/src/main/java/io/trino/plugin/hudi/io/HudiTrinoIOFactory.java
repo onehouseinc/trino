@@ -18,12 +18,12 @@ public class HudiTrinoIOFactory extends HoodieIOFactory {
 
     @Override
     public HoodieFileReaderFactory getReaderFactory(HoodieRecord.HoodieRecordType recordType) {
-        return null;
+        return new HudiTrinoFileReaderFactory(storage);
     }
 
     @Override
     public HoodieFileWriterFactory getWriterFactory(HoodieRecord.HoodieRecordType recordType) {
-        return null;
+        throw new UnsupportedOperationException("HudiTrinoIOFactory does not support writers.");
     }
 
     @Override
@@ -33,11 +33,11 @@ public class HudiTrinoIOFactory extends HoodieIOFactory {
 
     @Override
     public HoodieStorage getStorage(StoragePath storagePath) {
-        return null;
+        return storage;
     }
 
     @Override
     public HoodieStorage getStorage(StoragePath path, boolean enableRetry, long maxRetryIntervalMs, int maxRetryNumbers, long initialRetryIntervalMs, String retryExceptions, ConsistencyGuard consistencyGuard) {
-        return null;
+        return storage;
     }
 }

@@ -67,7 +67,7 @@ public class HudiTrinoStorage extends HoodieStorage
     @Override
     public String getScheme() {
         // TODO(yihua): not used in read path
-        return "";
+        return "file";
     }
 
     @Override
