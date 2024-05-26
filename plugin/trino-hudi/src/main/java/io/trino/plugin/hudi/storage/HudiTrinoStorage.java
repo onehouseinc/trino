@@ -198,11 +198,6 @@ public class HudiTrinoStorage extends HoodieStorage
     }
 
     @Override
-    public StoragePath makeQualified(StoragePath path) {
-        throw new UnsupportedOperationException("HudiTrinoStorage does not support makeQualified operation.");
-    }
-
-    @Override
     public Object getFileSystem() {
         return fileSystem;
     }

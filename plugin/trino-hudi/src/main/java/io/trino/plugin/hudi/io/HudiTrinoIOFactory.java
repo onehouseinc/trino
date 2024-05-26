@@ -2,7 +2,9 @@ package io.trino.plugin.hudi.io;
 
 import io.trino.plugin.hudi.storage.HudiTrinoStorage;
 import org.apache.hudi.common.fs.ConsistencyGuard;
+import org.apache.hudi.common.model.HoodieFileFormat;
 import org.apache.hudi.common.model.HoodieRecord;
+import org.apache.hudi.common.util.FileFormatUtils;
 import org.apache.hudi.io.storage.HoodieFileReaderFactory;
 import org.apache.hudi.io.storage.HoodieFileWriterFactory;
 import org.apache.hudi.io.storage.HoodieIOFactory;
@@ -22,6 +24,11 @@ public class HudiTrinoIOFactory extends HoodieIOFactory {
     @Override
     public HoodieFileWriterFactory getWriterFactory(HoodieRecord.HoodieRecordType recordType) {
         return null;
+    }
+
+    @Override
+    public FileFormatUtils getFileFormatUtils(HoodieFileFormat fileFormat) {
+        throw new UnsupportedOperationException("FileFormatUtils not supported in HudiTrinoIOFactory");
     }
 
     @Override
