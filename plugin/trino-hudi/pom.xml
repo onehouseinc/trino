@@ -15,31 +15,16 @@
 
     <properties>
         <air.main.basedir>${project.parent.basedir}</air.main.basedir>
-        <dep.hudi.version>0.15.0-SNAPSHOT</dep.hudi.version>
+        <dep.hudi.version>0.15.0-rc2</dep.hudi.version>
         <dep.hbase.version>2.4.9</dep.hbase.version>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>org.apache.hudi</groupId>
-            <artifactId>hudi-io</artifactId>
-            <version>${dep.hudi.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hudi</groupId>
-            <artifactId>hudi-common</artifactId>
-            <version>${dep.hudi.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
+            <!--Used to test execution in task executor after de-serializing-->
+            <groupId>com.esotericsoftware</groupId>
+            <artifactId>kryo</artifactId>
+            <version>4.0.2</version>
         </dependency>
 
         <dependency>
@@ -141,6 +126,24 @@
         <dependency>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hudi</groupId>
+            <artifactId>hudi-common</artifactId>
+            <version>${dep.hudi.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.hudi</groupId>
+            <artifactId>hudi-io</artifactId>
+            <version>${dep.hudi.version}</version>
         </dependency>
 
         <dependency>
@@ -309,7 +312,7 @@
 
         <dependency>
             <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-common</artifactId>
+            <artifactId>hbase-client</artifactId>
             <version>${dep.hbase.version}</version>
             <scope>test</scope>
             <exclusions>
@@ -322,7 +325,7 @@
 
         <dependency>
             <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase-client</artifactId>
+            <artifactId>hbase-common</artifactId>
             <version>${dep.hbase.version}</version>
             <scope>test</scope>
             <exclusions>
@@ -478,7 +481,7 @@
 
         <dependency>
             <groupId>org.apache.hudi</groupId>
-            <artifactId>hudi-hadoop-common</artifactId>
+            <artifactId>hudi-client-common</artifactId>
             <version>${dep.hudi.version}</version>
             <scope>test</scope>
             <exclusions>
@@ -491,7 +494,7 @@
 
         <dependency>
             <groupId>org.apache.hudi</groupId>
-            <artifactId>hudi-client-common</artifactId>
+            <artifactId>hudi-hadoop-common</artifactId>
             <version>${dep.hudi.version}</version>
             <scope>test</scope>
             <exclusions>
