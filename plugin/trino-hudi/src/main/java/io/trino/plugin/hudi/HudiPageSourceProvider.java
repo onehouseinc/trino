@@ -48,11 +48,13 @@ import io.trino.spi.connector.ConnectorSplit;
 import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.ConnectorTransactionHandle;
 import io.trino.spi.connector.DynamicFilter;
+import io.trino.spi.connector.EmptyPageSource;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.type.Decimals;
 import io.trino.spi.type.TypeSignature;
 import org.apache.hudi.common.model.HoodieBaseFile;
 import org.apache.hudi.common.model.HoodieFileFormat;
+import org.apache.hudi.storage.StoragePath;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.schema.MessageType;
@@ -150,6 +152,14 @@ public class HudiPageSourceProvider
             DynamicFilter dynamicFilter)
     {
         HudiSplit split = (HudiSplit) connectorSplit;
+        String dataFilePath = split.getBaseFile().isPresent()
+                ? split.getBaseFile().get().getPath()
+                : split.getLogFiles().get(0);
+        // Filter out metadata table splits
+        if (dataFilePath.contains(new StoragePath(
+                ((HudiTableHandle) connectorTable).getBasePath()).toUri().getPath() + "/.hoodie/metadata")) {
+            return new EmptyPageSource();
+        }
         if (split.getLogFiles().isEmpty()) {
             HudiBaseFile baseFile = split.getBaseFile().get();
             String path = baseFile.getPath();

@@ -23,7 +23,6 @@ import io.trino.plugin.hive.metastore.Table;
 import io.trino.plugin.hive.util.AsyncQueue;
 import io.trino.plugin.hive.util.ThrottledAsyncQueue;
 import io.trino.plugin.hudi.query.HudiDirectoryLister;
-import io.trino.plugin.hudi.query.HudiReadOptimizedDirectoryLister;
 import io.trino.plugin.hudi.query.HudiSnapshotDirectoryLister;
 import io.trino.plugin.hudi.split.HudiBackgroundSplitLoader;
 import io.trino.plugin.hudi.split.HudiSplitWeightProvider;
@@ -49,6 +48,7 @@ import static io.airlift.concurrent.MoreFutures.toCompletableFuture;
 import static io.trino.plugin.hudi.HudiSessionProperties.getMinimumAssignedSplitWeight;
 import static io.trino.plugin.hudi.HudiSessionProperties.getSplitGeneratorParallelism;
 import static io.trino.plugin.hudi.HudiSessionProperties.getStandardSplitWeightSize;
+import static io.trino.plugin.hudi.HudiSessionProperties.isHudiMetadataTableEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.isSizeBasedSplitWeightsEnabled;
 import static io.trino.plugin.hudi.HudiUtil.buildTableMetaClient;
 import static java.util.stream.Collectors.toList;
@@ -73,6 +73,7 @@ public class HudiSplitSource
             int maxOutstandingSplits,
             List<String> partitions)
     {
+        boolean enableMetadataTable = isHudiMetadataTableEnabled(session);
         HoodieTableMetaClient metaClient = buildTableMetaClient(fileSystemFactory.create(session), tableHandle.getBasePath());
         String latestCommitTime = metaClient.getActiveTimeline()
                 .getCommitsTimeline()
@@ -86,6 +87,7 @@ public class HudiSplitSource
         HudiDirectoryLister hudiDirectoryLister = new HudiSnapshotDirectoryLister(
                 tableHandle,
                 metaClient,
+                enableMetadataTable,
                 metastore,
                 table,
                 partitionColumnHandles,

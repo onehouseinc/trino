@@ -14,6 +14,7 @@ import org.apache.hudi.common.engine.HoodieLocalEngineContext;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieFileGroupId;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.table.view.FileSystemViewManager;
 import org.apache.hudi.common.table.view.HoodieTableFileSystemView;
 import org.apache.hudi.metadata.HoodieMetadataFileSystemView;
 
@@ -35,15 +36,18 @@ public class HudiSnapshotDirectoryLister implements HudiDirectoryLister {
     public HudiSnapshotDirectoryLister(
             HudiTableHandle tableHandle,
             HoodieTableMetaClient metaClient,
+            boolean enableMetadataTable,
             HiveMetastore hiveMetastore,
             Table hiveTable,
             List<HiveColumnHandle> partitionColumnHandles,
             List<String> hivePartitionNames,
             String commitTime)
     {
-        this.fileSystemView = new HoodieMetadataFileSystemView(new HoodieLocalEngineContext(new TrinoStorageConfiguration()),
-                metaClient, metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants(),
-                HoodieMetadataConfig.newBuilder().build());
+        HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder()
+                .enable(enableMetadataTable)
+                .build();
+        this.fileSystemView = FileSystemViewManager.createInMemoryFileSystemView(
+                new HoodieLocalEngineContext(new TrinoStorageConfiguration()), metaClient, metadataConfig);
         //new HoodieTableFileSystemView(metaClient, metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants());
         this.partitionColumns = hiveTable.getPartitionColumns();
         this.allPartitionInfoMap = hivePartitionNames.stream()
