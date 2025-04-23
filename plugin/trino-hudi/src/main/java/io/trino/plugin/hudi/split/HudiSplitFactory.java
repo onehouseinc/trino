@@ -101,6 +101,7 @@ public class HudiSplitFactory
                         partitionKeys,
                         hudiSplitWeightProvider.calculateSplitWeight(bytesRemaining)));
             }
+            return splits.build();
         }
 
         // Base and log files
