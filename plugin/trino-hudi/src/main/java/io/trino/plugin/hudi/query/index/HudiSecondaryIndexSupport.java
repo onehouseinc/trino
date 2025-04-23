@@ -21,7 +21,6 @@ import static io.trino.plugin.hudi.query.index.HudiRecordLevelIndexSupport.extra
 public class HudiSecondaryIndexSupport
         extends HudiBaseIndexSupport
 {
-
     private static final Logger log = Logger.get(HudiSecondaryIndexSupport.class);
 
     public HudiSecondaryIndexSupport(HoodieTableMetaClient metaClient)

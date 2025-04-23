@@ -12,6 +12,9 @@ import java.util.Optional;
  */
 public class IndexSupportFactory
 {
+    // Utility classes should not have a public or default constructor
+    private IndexSupportFactory() {}
+
     public static Map<String, HoodieIndexDefinition> getIndexDefinitions(HoodieTableMetaClient metaClient)
     {
         if (metaClient.getIndexMetadata().isEmpty()) {
@@ -34,10 +37,6 @@ public class IndexSupportFactory
      *     <li>HudiBloomFiltersIndexSupport (TODO: voon)</li>
      *     <li>HudiColumnStatsIndexSupport</li>
      * </ol>
-     *
-     * @param metaClient
-     * @param tupleDomain
-     * @return
      */
     public static Optional<HudiIndexSupport> createIndexDefinition(
             HoodieTableMetaClient metaClient, TupleDomain<String> tupleDomain)

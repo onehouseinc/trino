@@ -6,8 +6,7 @@ import io.trino.spi.type.Type;
 /**
  * Strategy interface for handling different types of synthesized columns
  */
-public interface SynthesizedColumnStrategy {
-
+public interface SynthesizedColumnStrategy
+{
     void appendToBlock(BlockBuilder blockBuilder, Type type);
-
 }

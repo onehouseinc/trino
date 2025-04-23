@@ -2,7 +2,6 @@ package io.trino.plugin.hudi.query.index;
 
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
-import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.Range;
 import io.trino.spi.predicate.TupleDomain;
@@ -12,10 +11,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static io.trino.plugin.hudi.query.index.HudiRecordLevelIndexSupport.extractPredicatesForColumns;
@@ -30,7 +27,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class HudiRecordLevelIndexSupportTest
 {
-
     /**
      * Example unit test case on how to initialize domains and run tests.
      */
@@ -462,8 +458,7 @@ public class HudiRecordLevelIndexSupportTest
         Map<String, Domain> domains = keyValues.entrySet().stream()
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
-                        entry -> createStringDomain(entry.getValue())
-                ));
+                        entry -> createStringDomain(entry.getValue())));
         return TupleDomain.withColumnDomains(domains);
     }
 

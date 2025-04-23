@@ -7,7 +7,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class TupleDomainUtils {
+public class TupleDomainUtils
+{
+    // Utility classes should not have a public or default constructor.
+    private TupleDomainUtils() {}
 
     /**
      * Get all columns that are referenced in the provided tupleDomain predicates.
@@ -34,7 +37,8 @@ public class TupleDomainUtils {
     /**
      * Check if at least one of the provided source field is referenced in the tupleDomain predicates.
      */
-    public static boolean areSomeFieldsReferenced(TupleDomain<String> tupleDomain, List<String> sourceFields) {
+    public static boolean areSomeFieldsReferenced(TupleDomain<String> tupleDomain, List<String> sourceFields)
+    {
         Set<String> referenceColSet = new HashSet<>(TupleDomainUtils.getReferencedColumns(tupleDomain));
         for (String sourceField : sourceFields) {
             if (referenceColSet.contains(sourceField)) {

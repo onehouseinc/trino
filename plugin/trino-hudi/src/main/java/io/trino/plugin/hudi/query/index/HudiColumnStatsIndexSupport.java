@@ -42,7 +42,6 @@ import static java.lang.Float.floatToRawIntBits;
 public class HudiColumnStatsIndexSupport
         extends HudiBaseIndexSupport
 {
-
     private static final Logger log = Logger.get(HudiColumnStatsIndexSupport.class);
 
     public HudiColumnStatsIndexSupport(HoodieTableMetaClient metaClient)
@@ -231,7 +230,7 @@ public class HudiColumnStatsIndexSupport
 
         // indexDefinition is only available after table version EIGHT
         // Optimization to check if constraints involves the use of at least one colstats index
-        Map<String, HoodieIndexDefinition>  indexDefinitions = IndexSupportFactory.getIndexDefinitions(metaClient);
+        Map<String, HoodieIndexDefinition> indexDefinitions = IndexSupportFactory.getIndexDefinitions(metaClient);
         List<String> sourceFields = indexDefinitions.get(HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS)
                 .getSourceFields();
         return TupleDomainUtils.areSomeFieldsReferenced(tupleDomain, sourceFields);

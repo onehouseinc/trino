@@ -49,20 +49,16 @@ import io.trino.spi.connector.ConnectorTransactionHandle;
 import io.trino.spi.connector.DynamicFilter;
 import io.trino.spi.connector.EmptyPageSource;
 import io.trino.spi.predicate.TupleDomain;
-
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
-
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.TableSchemaResolver;
 import org.apache.hudi.common.table.read.HoodieFileGroupReader;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.storage.StoragePath;
-
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.schema.MessageType;
-
 import org.joda.time.DateTimeZone;
 
 import java.io.IOException;
@@ -74,19 +70,10 @@ import java.util.TimeZone;
 import java.util.stream.Collectors;
 
 import static io.trino.memory.context.AggregatedMemoryContext.newSimpleAggregatedMemoryContext;
-import static io.trino.metastore.Partitions.makePartName;
 import static io.trino.parquet.ParquetTypeUtils.getColumnIO;
 import static io.trino.parquet.ParquetTypeUtils.getDescriptors;
 import static io.trino.parquet.predicate.PredicateUtils.buildPredicate;
 import static io.trino.parquet.predicate.PredicateUtils.getFilteredRowGroups;
-import static io.trino.plugin.hive.HiveColumnHandle.FILE_MODIFIED_TIME_COLUMN_NAME;
-import static io.trino.plugin.hive.HiveColumnHandle.FILE_MODIFIED_TIME_TYPE_SIGNATURE;
-import static io.trino.plugin.hive.HiveColumnHandle.FILE_SIZE_COLUMN_NAME;
-import static io.trino.plugin.hive.HiveColumnHandle.FILE_SIZE_TYPE_SIGNATURE;
-import static io.trino.plugin.hive.HiveColumnHandle.PARTITION_COLUMN_NAME;
-import static io.trino.plugin.hive.HiveColumnHandle.PARTITION_TYPE_SIGNATURE;
-import static io.trino.plugin.hive.HiveColumnHandle.PATH_COLUMN_NAME;
-import static io.trino.plugin.hive.HiveColumnHandle.PATH_TYPE;
 import static io.trino.plugin.hive.parquet.ParquetPageSourceFactory.ParquetReaderProvider;
 import static io.trino.plugin.hive.parquet.ParquetPageSourceFactory.createDataSource;
 import static io.trino.plugin.hive.parquet.ParquetPageSourceFactory.createParquetPageSource;
@@ -104,7 +91,6 @@ import static io.trino.plugin.hudi.HudiUtil.convertToFileSlice;
 import static io.trino.plugin.hudi.HudiUtil.prependHudiMetaColumns;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static java.util.stream.Collectors.toUnmodifiableList;
 
 public class HudiPageSourceProvider
         implements ConnectorPageSourceProvider
@@ -161,7 +147,8 @@ public class HudiPageSourceProvider
         Schema dataSchema = null;
         try {
             dataSchema = new TableSchemaResolver(metaClient).getTableAvroSchema(latestCommitTime);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             throw new RuntimeException(e);
         }
         List<HiveColumnHandle> hiveColumns = columns.stream()
@@ -218,8 +205,7 @@ public class HudiPageSourceProvider
                 fileGroupReader,
                 readerContext,
                 hiveColumns,
-                synthesizedColumnHandler
-        );
+                synthesizedColumnHandler);
     }
 
     static ConnectorPageSource createPageSource(
@@ -313,5 +299,4 @@ public class HudiPageSourceProvider
         }
         return new TrinoException(HUDI_CURSOR_ERROR, format("Failed to read Parquet file: %s", dataSourceId), exception);
     }
-
 }

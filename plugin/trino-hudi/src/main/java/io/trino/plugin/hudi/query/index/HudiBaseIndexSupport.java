@@ -12,7 +12,6 @@ import static java.util.Objects.requireNonNull;
 public abstract class HudiBaseIndexSupport
         implements HudiIndexSupport
 {
-
     private final Logger log;
     protected final HoodieTableMetaClient metaClient;
 

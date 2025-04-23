@@ -75,7 +75,9 @@ import static io.trino.plugin.hudi.HudiSessionProperties.isQueryPartitionFilterR
 import static io.trino.plugin.hudi.HudiTableProperties.LOCATION_PROPERTY;
 import static io.trino.plugin.hudi.HudiTableProperties.PARTITIONED_BY_PROPERTY;
 import static io.trino.plugin.hudi.HudiUtil.hudiMetadataExists;
-import static io.trino.spi.StandardErrorCode.*;
+import static io.trino.spi.StandardErrorCode.NOT_SUPPORTED;
+import static io.trino.spi.StandardErrorCode.QUERY_REJECTED;
+import static io.trino.spi.StandardErrorCode.UNSUPPORTED_TABLE_TYPE;
 import static io.trino.spi.connector.SchemaTableName.schemaTableName;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
