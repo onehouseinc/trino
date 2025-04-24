@@ -59,10 +59,14 @@ import org.apache.hudi.storage.StoragePath;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 import org.joda.time.DateTimeZone;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -144,7 +148,7 @@ public class HudiPageSourceProvider
         // TODO: Move this into HudiTableHandle
         HoodieTableMetaClient metaClient = buildTableMetaClient(fileSystemFactory.create(session), hudiTableHandle.getBasePath());
         String latestCommitTime = metaClient.getCommitsTimeline().lastInstant().get().requestedTime();
-        Schema dataSchema = null;
+        Schema dataSchema;
         try {
             dataSchema = new TableSchemaResolver(metaClient).getTableAvroSchema(latestCommitTime);
         }
@@ -230,6 +234,13 @@ public class HudiPageSourceProvider
             FileMetadata fileMetaData = parquetMetadata.getFileMetaData();
             MessageType fileSchema = fileMetaData.getSchema();
 
+            // When not using columnNames, physical indexes are used and there could be cases when the physical index in HiveColumnHandle is different from the fileSchema of the
+            // parquet files. This could happen when schema evolution happened. In such a case, we will need to remap the column indices in the HiveColumnHandles.
+            if (!useColumnNames) {
+                // HiveColumnHandle names are in lower case, case-insensitive
+                columns = remapColumnIndicesToPhysical(fileSchema, columns, false);
+            }
+
             Optional<MessageType> message = getParquetMessageType(columns, useColumnNames, fileSchema);
 
             MessageType requestedSchema = message.orElse(new MessageType(fileSchema.getName(), ImmutableList.of()));
@@ -298,5 +309,55 @@ public class HudiPageSourceProvider
             return new TrinoException(HUDI_BAD_DATA, exception);
         }
         return new TrinoException(HUDI_CURSOR_ERROR, format("Failed to read Parquet file: %s", dataSourceId), exception);
+    }
+
+    /**
+     * Creates a new list of ColumnHandles where the index associated with each handle corresponds to its physical position within the provided fileSchema (MessageType).
+     * This is necessary when a downstream component relies on the handle's index for physical data access, and the logical schema order (potentially reflected in the
+     * original handles) differs from the physical file layout.
+     *
+     * @param fileSchema The MessageType representing the physical schema of the Parquet file.
+     * @param requestedColumns The original list of Trino ColumnHandles as received from the engine.
+     * @param caseSensitive Whether the lookup between Trino column names (from handles) and Parquet field names (from fileSchema) should be case-sensitive.
+     * @return A new list of HiveColumnHandle, preserving the original order, but with each handle containing the correct physical index relative to fileSchema.
+     */
+    public static List<HiveColumnHandle> remapColumnIndicesToPhysical(
+            MessageType fileSchema,
+            List<HiveColumnHandle> requestedColumns,
+            boolean caseSensitive)
+    {
+        // Create a map from column name to its physical index in the fileSchema.
+        Map<String, Integer> physicalIndexMap = new HashMap<>();
+        List<Type> fileFields = fileSchema.getFields();
+        for (int i = 0; i < fileFields.size(); i++) {
+            Type field = fileFields.get(i);
+            String fieldName = field.getName();
+            String mapKey = caseSensitive ? fieldName : fieldName.toLowerCase(Locale.getDefault());
+            physicalIndexMap.put(mapKey, i);
+        }
+
+        // Iterate through the columns requested by Trino IN ORDER.
+        List<HiveColumnHandle> remappedHandles = new ArrayList<>(requestedColumns.size());
+        for (HiveColumnHandle originalHandle : requestedColumns) {
+            String requestedName = originalHandle.getBaseColumnName();
+
+            // Determine the key to use for looking up the physical index
+            String lookupKey = caseSensitive ? requestedName : requestedName.toLowerCase(Locale.getDefault());
+
+            // Find the physical index from the file schema map constructed from fielSchema
+            Integer physicalIndex = physicalIndexMap.get(lookupKey);
+
+            HiveColumnHandle remappedHandle = new HiveColumnHandle(
+                    requestedName,
+                    physicalIndex,
+                    originalHandle.getBaseHiveType(),
+                    originalHandle.getType(),
+                    originalHandle.getHiveColumnProjectionInfo(),
+                    originalHandle.getColumnType(),
+                    originalHandle.getComment());
+            remappedHandles.add(remappedHandle);
+        }
+
+        return remappedHandles;
     }
 }
