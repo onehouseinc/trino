@@ -128,7 +128,7 @@ public class HudiPageSourceProvider
 
         String dataFilePath = hudiBaseFileOpt.isPresent()
                 ? hudiBaseFileOpt.get().getPath()
-                : hudiSplit.getLogFiles().get(0).getPath();
+                : hudiSplit.getLogFiles().getFirst().getPath();
         // Filter out metadata table splits
         if (dataFilePath.contains(new StoragePath(
                 ((HudiTableHandle) connectorTable).getBasePath()).toUri().getPath() + "/.hoodie/metadata")) {
