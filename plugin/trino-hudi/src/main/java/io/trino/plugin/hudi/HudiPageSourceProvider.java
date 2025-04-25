@@ -13,6 +13,7 @@
  */
 package io.trino.plugin.hudi;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import io.trino.filesystem.Location;
@@ -86,6 +87,7 @@ import static io.trino.plugin.hive.parquet.ParquetPageSourceFactory.getParquetTu
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_BAD_DATA;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_CANNOT_OPEN_SPLIT;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_CURSOR_ERROR;
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_FILESYSTEM_ERROR;
 import static io.trino.plugin.hudi.HudiSessionProperties.getParquetSmallFileThreshold;
 import static io.trino.plugin.hudi.HudiSessionProperties.isParquetVectorizedDecodingEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.shouldUseParquetColumnNames;
@@ -153,7 +155,8 @@ public class HudiPageSourceProvider
             dataSchema = new TableSchemaResolver(metaClient).getTableAvroSchema(latestCommitTime);
         }
         catch (Exception e) {
-            throw new RuntimeException(e);
+            // Unable to find table schema
+            throw new TrinoException(HUDI_FILESYSTEM_ERROR, e);
         }
         List<HiveColumnHandle> hiveColumns = columns.stream()
                 .map(HiveColumnHandle.class::cast)
@@ -321,6 +324,7 @@ public class HudiPageSourceProvider
      * @param caseSensitive Whether the lookup between Trino column names (from handles) and Parquet field names (from fileSchema) should be case-sensitive.
      * @return A new list of HiveColumnHandle, preserving the original order, but with each handle containing the correct physical index relative to fileSchema.
      */
+    @VisibleForTesting
     public static List<HiveColumnHandle> remapColumnIndicesToPhysical(
             MessageType fileSchema,
             List<HiveColumnHandle> requestedColumns,

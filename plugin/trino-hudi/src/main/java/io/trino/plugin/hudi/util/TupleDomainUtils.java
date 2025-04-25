@@ -18,6 +18,8 @@ import io.trino.spi.predicate.TupleDomain;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 public class TupleDomainUtils
@@ -67,14 +69,23 @@ public class TupleDomainUtils
     public static boolean areDomainsInOrEqualOnly(TupleDomain<String> tupleDomain, List<String> sourceFields)
     {
         // If no recordKeys or no recordKeyDomains, return empty list
-        if (sourceFields == null || sourceFields.isEmpty() || tupleDomain.isAll()) {
+        if (sourceFields == null || sourceFields.isEmpty() || tupleDomain.isAll() || tupleDomain.isNone()) {
+            return false;
+        }
+
+        Optional<Map<String, Domain>> domainsOpt = tupleDomain.getDomains();
+        // Not really necessary, as tupleDomain.isNone() already checks for this
+        if (domainsOpt.isEmpty()) {
             return false;
         }
 
         boolean areReferencedInOrEqual = true;
         for (String sourceField : sourceFields) {
-            Domain domain = tupleDomain.getDomains().get().get(sourceField);
-            // Check if equals
+            Domain domain = domainsOpt.get().get(sourceField);
+            // For cases where sourceField does not exist in tupleDomain
+            if (domain == null) {
+                return false;
+            }
             areReferencedInOrEqual &= (domain.isSingleValue() || domain.getValues().isDiscreteSet());
         }
         return areReferencedInOrEqual;
