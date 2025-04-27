@@ -176,15 +176,34 @@ public class TestHudiSmokeTest
     {
         // Stopgap to enable MDT
         Session session = withMdtEnabled(getSession());
-        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_RLI_MOR);
-        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_RLI_MOR
-                + " WHERE country='SG' AND price = 101.00");
+        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR);
+        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR
+                + " WHERE price = 101.00");
         // Apply predicate for all fileSlices
         int totalSplits = totalRes.getStatementStats().get().getTotalSplits();
         int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
         assertThat(prunedSplits).isLessThan(totalSplits);
         // With SI file skipping, only 1 split should be returned
         assertThat(prunedSplits).isEqualTo(1);
+    }
+
+    @Test
+    public void testPartitionStatsIndexPartitionPruning()
+    {
+        // Stopgap to enable MDT
+        Session session = withMdtEnabled(getSession());
+//        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_RLI_MOR);
+        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR
+                // Add a constraint that is in colstats
+                + " WHERE ts < 1001 " +
+                // Add a constraint that is in colstats
+                "AND price <= 11 " +
+                // Add a constraint on a column that is not in colstats
+                "AND _hoodie_file_name = 'abc' " +
+                // Add a simple null check constraint
+                "AND id is not null");
+        int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
+        assertThat(prunedSplits).isEqualTo(2);
     }
 
     @Test

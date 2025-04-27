@@ -31,14 +31,12 @@ test("Create table multi filegroup partitioned mor") {
         spark.sql(s"set hoodie.parquet.small.file.limit=0")
         spark.sql(s"set hoodie.metadata.compact.max.delta.commits=1")
         spark.sql(s"set hoodie.metadata.index.column.stats.enable=true")
+        spark.sql(s"set hoodie.metadata.index.column.stats.column.list=_hoodie_commit_time,_hoodie_partition_path,_hoodie_record_key,id,name,price,ts,country")
         // 2 filegroups per partition
-        spark.sql(s"insert into $tableName values(1, 'a1', 10, 1000, 'SG'),(2, 'a2', 10, 1000, 'US')")
-        spark.sql(s"insert into $tableName values(3, 'a3', 10, 1001, 'SG'),(4, 'a3', 10, 1001, 'US')")
+        spark.sql(s"insert into $tableName values(1, 'a1', 11, 1000, 'SG'),(2, 'a2', 12, 1000, 'US')")
+        spark.sql(s"insert into $tableName values(3, 'a3', 11, 1001, 'SG'),(4, 'a3', 12, 1001, 'US')")
         // generate logs through updates
         spark.sql(s"update $tableName set price=price+1")
-        // compact the remaining logfile in MDT
-        spark.sql(s"insert into $tableName values(5, 'a5', 10, 1001, 'MY')")
-        spark.sql(s"alter table $tableName drop partition (country='MY')")
     }
 }
 ```
@@ -46,3 +44,5 @@ test("Create table multi filegroup partitioned mor") {
 # When to use this table?
 - For test cases that require multiple filegroups in a partition
 - For test cases that require filegroups that have a log file
+- For test cases that require column stats index
+- For test cases that require partition stats index

@@ -62,6 +62,11 @@ public class HudiColumnStatsIndexSupport
         super(log, metaClient);
     }
 
+    public HudiColumnStatsIndexSupport(Logger log, HoodieTableMetaClient metaClient)
+    {
+        super(log, metaClient);
+    }
+
     @Override
     public Map<String, List<FileSlice>> lookupCandidateFilesInMetadataTable(
             HoodieTableMetadata metadataTable, Map<String, List<FileSlice>> inputFileSlices,
@@ -116,7 +121,7 @@ public class HudiColumnStatsIndexSupport
         return evaluateStatisticPredicate(regularColumnPredicates, stats, regularColumns);
     }
 
-    private static boolean evaluateStatisticPredicate(
+    protected static boolean evaluateStatisticPredicate(
             TupleDomain<String> regularColumnPredicates,
             List<HoodieMetadataColumnStats> stats,
             List<String> regularColumns)
