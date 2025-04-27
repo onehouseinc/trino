@@ -24,6 +24,7 @@ import io.trino.plugin.hudi.partition.HudiPartitionInfo;
 import io.trino.plugin.hudi.partition.HudiPartitionInfoLoader;
 import io.trino.plugin.hudi.query.HudiDirectoryLister;
 import io.trino.plugin.hudi.query.index.HudiIndexSupport;
+import io.trino.plugin.hudi.query.index.HudiPartitionStatsIndexSupport;
 import io.trino.plugin.hudi.query.index.IndexSupportFactory;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ConnectorSession;
@@ -120,11 +121,23 @@ public class HudiBackgroundSplitLoader
 
     private void indexEnabledSplitGenerator(HudiIndexSupport hudiIndexSupport)
     {
+        // Data Skipping based on column stats
+        HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
+        HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
+        HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
+                engineContext,
+                metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
+        HudiPartitionStatsIndexSupport partitionStatsIndexSupport = new HudiPartitionStatsIndexSupport(metaClient);
+        boolean shouldUseIndex = HudiPartitionStatsIndexSupport.shouldUseIndex(regularPredicates.transformKeys(HiveColumnHandle::getName), metaClient);
+        Optional<List<String>> effectivePartitionsOpt = shouldUseIndex ? partitionStatsIndexSupport.prunePartitions(
+                metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
+
         // For MDT the file listing is already loaded in memory
         // TODO(yihua): refactor split loader/directory lister API for maintainability
         Map<String, List<FileSlice>> partitionFileSliceMap = new HashMap<>();
         Map<String, List<HivePartitionKey>> partitionToPartitionKeyMap = new HashMap<>();
-        for (String partitionName : partitions) {
+        // non-partitioned tables have empty strings
+        for (String partitionName : effectivePartitionsOpt.orElse(partitions)) {
             Optional<HudiPartitionInfo> partitionInfo = hudiDirectoryLister.getPartitionInfo(partitionName);
             partitionInfo.ifPresent(hudiPartitionInfo -> {
                 if (hudiPartitionInfo.doesMatchPredicates() || partitionName.equals(NON_PARTITION)) {
@@ -135,13 +148,6 @@ public class HudiBackgroundSplitLoader
                 }
             });
         }
-        // Data Skipping based on column stats
-        HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
-        HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
-        HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
-                engineContext,
-                metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
-
         TupleDomain<String> regularPredicatesTransformed = regularPredicates.transformKeys(HiveColumnHandle::getName);
         Map<String, List<FileSlice>> prunedFiles = hudiIndexSupport.lookupCandidateFilesInMetadataTable(
                 metadataTable, partitionFileSliceMap, regularPredicatesTransformed);
