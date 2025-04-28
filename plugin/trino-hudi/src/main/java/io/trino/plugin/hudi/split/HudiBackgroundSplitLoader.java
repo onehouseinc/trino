@@ -69,6 +69,7 @@ public class HudiBackgroundSplitLoader
     private final boolean enableMetadataTable;
     private final HoodieTableMetaClient metaClient;
     private final TupleDomain<HiveColumnHandle> regularPredicates;
+    private final Optional<HudiIndexSupport> indexSupportOpt;
 
     public HudiBackgroundSplitLoader(
             ConnectorSession session,
@@ -94,6 +95,7 @@ public class HudiBackgroundSplitLoader
         this.metaClient = requireNonNull(metaClient, "metaClient is null");
         this.regularPredicates = tableHandle.getRegularPredicates();
         this.errorListener = requireNonNull(errorListener, "errorListener is null");
+        this.indexSupportOpt = IndexSupportFactory.createIndexSupport(metaClient, regularPredicates, session);
     }
 
     @Override
@@ -102,9 +104,6 @@ public class HudiBackgroundSplitLoader
         if (enableMetadataTable) {
             // Wrap entire logic so that ANY error will be thrown out and not cause program to get stuck
             try {
-                TupleDomain<String> tupleDomains = regularPredicates.transformKeys(HiveColumnHandle::getName);
-                Optional<HudiIndexSupport> indexSupportOpt = IndexSupportFactory.createIndexDefinition(metaClient, tupleDomains);
-
                 if (indexSupportOpt.isPresent()) {
                     indexEnabledSplitGenerator(indexSupportOpt.get());
                     return;
@@ -127,9 +126,11 @@ public class HudiBackgroundSplitLoader
         HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
                 engineContext,
                 metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
+
+        // Attempt to apply partition pruning using partition stats index
         HudiPartitionStatsIndexSupport partitionStatsIndexSupport = new HudiPartitionStatsIndexSupport(metaClient);
-        boolean shouldUseIndex = HudiPartitionStatsIndexSupport.shouldUseIndex(regularPredicates.transformKeys(HiveColumnHandle::getName), metaClient);
-        Optional<List<String>> effectivePartitionsOpt = shouldUseIndex ? partitionStatsIndexSupport.prunePartitions(
+        boolean canApplyPartitionStatsIndex = partitionStatsIndexSupport.canApply(regularPredicates.transformKeys(HiveColumnHandle::getName));
+        Optional<List<String>> effectivePartitionsOpt = canApplyPartitionStatsIndex ? partitionStatsIndexSupport.prunePartitions(
                 metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
 
         // For MDT the file listing is already loaded in memory

@@ -176,9 +176,9 @@ public class TestHudiSmokeTest
     {
         // Stopgap to enable MDT
         Session session = withMdtEnabled(getSession());
-        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR);
-        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR
-                + " WHERE COUNTRY='SG' AND price = 101.00");
+        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_RLI_MOR);
+        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_RLI_MOR
+                + " WHERE country='SG' AND price = 101.00");
         // Apply predicate for all fileSlices
         int totalSplits = totalRes.getStatementStats().get().getTotalSplits();
         int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
@@ -192,7 +192,6 @@ public class TestHudiSmokeTest
     {
         // Stopgap to enable MDT
         Session session = withMdtEnabled(getSession());
-//        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_RLI_MOR);
         MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR
                 // Add a constraint that is in colstats
                 + " WHERE ts < 1001 " +
@@ -203,7 +202,9 @@ public class TestHudiSmokeTest
                 // Add a simple null check constraint
                 "AND id is not null");
         int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
-        assertThat(prunedSplits).isEqualTo(2);
+        // TODO: Add internal configs to disable col stats so we can are able to test for PSI individually
+        // As of now, only 1 splits will be scanned as a result of PSI + CSI
+        assertThat(prunedSplits).isEqualTo(1);
     }
 
     @Test

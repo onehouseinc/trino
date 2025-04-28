@@ -18,6 +18,7 @@ import io.trino.plugin.hudi.util.TupleDomainUtils;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.avro.model.HoodieMetadataColumnStats;
 import org.apache.hudi.common.model.FileSlice;
+import org.apache.hudi.common.model.HoodieIndexDefinition;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.util.hash.ColumnIndexID;
 import org.apache.hudi.metadata.HoodieTableMetadata;
@@ -44,7 +45,7 @@ public class HudiPartitionStatsIndexSupport
     @Override
     public Map<String, List<FileSlice>> lookupCandidateFilesInMetadataTable(HoodieTableMetadata metadataTable, Map<String, List<FileSlice>> inputFileSlices, TupleDomain<String> regularColumnPredicates)
     {
-        return Map.of();
+        throw new UnsupportedOperationException("This method is not supported by " + getClass().getSimpleName());
     }
 
     public Optional<List<String>> prunePartitions(HoodieTableMetadata metadataTable, TupleDomain<String> regularColumnPredicates)
@@ -84,19 +85,39 @@ public class HudiPartitionStatsIndexSupport
         return Optional.of(prunedPartitions);
     }
 
-    public static boolean isIndexSupportAvailable(HoodieTableMetaClient metaClient)
+    @Override
+    public boolean isIndexSupportAvailable()
     {
-        return metaClient.getTableConfig().getMetadataPartitions().contains(HoodieTableMetadataUtil.PARTITION_NAME_PARTITION_STATS);
+        return metaClient.getTableConfig().getMetadataPartitions()
+                .contains(HoodieTableMetadataUtil.PARTITION_NAME_PARTITION_STATS);
     }
 
-    public static boolean shouldUseIndex(TupleDomain<String> tupleDomain, HoodieTableMetaClient metaClient)
+    @Override
+    public boolean canApply(TupleDomain<String> tupleDomain)
     {
-        if (!isIndexSupportAvailable(metaClient)) {
+        // Important: has the same implementation as col stats superclass, only difference is that log messages are different
+        if (!isIndexSupportAvailable()) {
+            log.debug("Partition Stats Index partition is not enabled in metadata table.");
             return false;
         }
-        List<String> sourceFields = metaClient.getIndexMetadata().get().getIndexDefinitions()
-                .get(HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS).getSourceFields();
 
-        return TupleDomainUtils.areSomeFieldsReferenced(tupleDomain, sourceFields);
+        Map<String, HoodieIndexDefinition> indexDefinitions = getAllIndexDefinitions();
+        HoodieIndexDefinition partitionsStatsIndex = indexDefinitions.get(HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS);
+        if (partitionsStatsIndex == null || partitionsStatsIndex.getSourceFields() == null || partitionsStatsIndex.getSourceFields().isEmpty()) {
+            log.warn("Partition stats index definition is missing or has no source fields defined");
+            return false;
+        }
+
+        // Optimization applied: Only consider applicable if predicates reference indexed columns
+        List<String> sourceFields = partitionsStatsIndex.getSourceFields();
+        boolean applicable = TupleDomainUtils.areSomeFieldsReferenced(tupleDomain, sourceFields);
+
+        if (applicable) {
+            log.debug("Partition Stats Index is available and applicable (predicates reference indexed columns).");
+        }
+        else {
+            log.debug("Partition Stats Index is available, but predicates do not reference any indexed columns.");
+        }
+        return applicable;
     }
 }
