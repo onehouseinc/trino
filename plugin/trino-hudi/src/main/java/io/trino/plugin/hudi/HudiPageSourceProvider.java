@@ -52,6 +52,7 @@ import io.trino.spi.connector.EmptyPageSource;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
+import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.TableSchemaResolver;
 import org.apache.hudi.common.table.read.HoodieFileGroupReader;
@@ -136,9 +137,21 @@ public class HudiPageSourceProvider
                 ? hudiBaseFileOpt.get().getPath()
                 : hudiSplit.getLogFiles().getFirst().getPath();
         // Filter out metadata table splits
+        // TODO: Move this check into a higher calling stack, such that the split is not created at all
         if (dataFilePath.contains(new StoragePath(
                 ((HudiTableHandle) connectorTable).getBasePath()).toUri().getPath() + "/.hoodie/metadata")) {
             return new EmptyPageSource();
+        }
+
+        // Handle MERGE_ON_READ tables to be read in read_optimized mode
+        // IMPORTANT: These tables will have a COPY_ON_WRITE table type due to how `HudiTableTypeUtils#fromInputFormat`
+        // TODO: Move this check into a higher calling stack, such that the split is not created at all
+        if (hudiTableHandle.getTableType().equals(HoodieTableType.COPY_ON_WRITE) && !hudiSplit.getLogFiles().isEmpty()) {
+            if (hudiBaseFileOpt.isEmpty()) {
+                // Handle hasLogFiles=true, hasBaseFile = false
+                // Ignoring log files without base files, no data required to be read
+                return new EmptyPageSource();
+            }
         }
 
         long start = 0;
