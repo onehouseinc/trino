@@ -131,7 +131,7 @@ public class HudiBackgroundSplitLoader
 
         // Attempt to apply partition pruning using partition stats index
         Optional<List<String>> effectivePartitionsOpt = partitionIndexSupportOpt.isPresent() ? partitionIndexSupportOpt.get().prunePartitions(
-                metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
+                partitions, metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
 
         // For MDT the file listing is already loaded in memory
         // TODO(yihua): refactor split loader/directory lister API for maintainability

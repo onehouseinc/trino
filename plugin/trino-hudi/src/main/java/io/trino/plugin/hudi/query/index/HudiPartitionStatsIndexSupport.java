@@ -48,7 +48,10 @@ public class HudiPartitionStatsIndexSupport
         throw new UnsupportedOperationException("This method is not supported by " + getClass().getSimpleName());
     }
 
-    public Optional<List<String>> prunePartitions(HoodieTableMetadata metadataTable, TupleDomain<String> regularColumnPredicates)
+    public Optional<List<String>> prunePartitions(
+            List<String> allPartitions,
+            HoodieTableMetadata metadataTable,
+            TupleDomain<String> regularColumnPredicates)
     {
         // Filter out predicates containing simple null checks (`IS NULL` or `IS NOT NULL`)
         TupleDomain<String> filteredRegularPredicates = regularColumnPredicates.filter((_, domain) -> !hasSimpleNullCheck(domain));
@@ -66,8 +69,6 @@ public class HudiPartitionStatsIndexSupport
                 .map(col -> new ColumnIndexID(col).asBase64EncodedString()).toList();
 
         // Map of partition stats keyed by partition name
-        // If some columns in encodedTargetColumnNames is not available in partition stats index, partition will not be pruned
-        // This is so as we cannot be sure that the constraint is true or not, hence, adopt conservative measure
         Map<String, List<HoodieMetadataColumnStats>> statsByPartitionName = metadataTable.getRecordsByKeyPrefixes(
                         encodedTargetColumnNames,
                         HoodieTableMetadataUtil.PARTITION_NAME_PARTITION_STATS, true)
@@ -77,10 +78,25 @@ public class HudiPartitionStatsIndexSupport
                 .map(f -> f.getData().getColumnStatMetadata().get())
                 .collect(Collectors.groupingBy(HoodieMetadataColumnStats::getFileName));
 
-        List<String> prunedPartitions = statsByPartitionName.entrySet()
-                .stream()
-                .filter(e -> evaluateStatisticPredicate(filteredRegularPredicates, e.getValue(), regularColumns)).map(e -> e.getKey())
-                .toList();
+        // For each partition, determine if it should be kept based on stats availability and predicate evaluation
+        List<String> prunedPartitions = allPartitions.stream()
+                .filter(partition -> {
+                    // Check if stats exist for this partition
+                    List<HoodieMetadataColumnStats> partitionStats = statsByPartitionName.get(partition);
+                    if (partitionStats == null) {
+                        // Partition has no stats in the index, keep it
+                        return true;
+                    }
+                    else {
+                        // Partition has stats, evaluate the predicate against them
+                        // Keep the partition only if the predicate evaluates to true
+                        // Important: If some columns in encodedTargetColumnNames is not available in partition stats, partition will not be pruned iff all available predicate
+                        // evaluates to true. Since we cannot determine if the predicate will evaluate to true or not on the missing stat, adopt conservative measure to true,
+                        // i.e. to not prune
+                        return evaluateStatisticPredicate(filteredRegularPredicates, partitionStats, regularColumns);
+                    }
+                })
+                .collect(Collectors.toList());
 
         return Optional.of(prunedPartitions);
     }
