@@ -81,7 +81,7 @@ public class HudiRecordLevelIndexSupport
             log.warn("Could not construct record keys from predicates. Skipping record index pruning.");
             return inputFileSlices;
         }
-        log.debug("Constructed {} record keys for index lookup.", recordKeys.size());
+        log.debug(String.format("Constructed %d record keys for index lookup.", recordKeys.size()));
 
         // Perform index lookup in metadataTable
         // TODO: document here what this map is keyed by
@@ -97,7 +97,7 @@ public class HudiRecordLevelIndexSupport
                 .flatMap(List::stream)
                 .map(HoodieRecordGlobalLocation::getFileId)
                 .collect(Collectors.toSet());
-        log.debug("Record level index lookup identified {} relevant file IDs.", relevantFileIds.size());
+        log.debug(String.format("Record level index lookup identified %d relevant file IDs.", relevantFileIds.size()));
 
         // Prune fileSlices: Loop through each partition and filter for fileSlices that are in relevantFileIds
         // Note: This may return partitions with empty list of fileSlices

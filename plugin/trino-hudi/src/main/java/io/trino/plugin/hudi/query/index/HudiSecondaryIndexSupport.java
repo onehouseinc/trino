@@ -63,7 +63,7 @@ public class HudiSecondaryIndexSupport
         String indexName = applicableIndexEntry.getKey();
         // `indexedColumns` should only contain one element as secondary indices only support one column
         List<String> indexedColumns = applicableIndexEntry.getValue().getSourceFields();
-        log.debug("Using secondary index '{}' on columns {} for pruning.", indexName, indexedColumns);
+        log.debug(String.format("Using secondary index '%s' on columns %s for pruning.", indexName, indexedColumns));
         TupleDomain<String> indexPredicates = extractPredicatesForColumns(regularColumnPredicates, indexedColumns);
 
         List<String> secondaryKeys = constructRecordKeys(indexPredicates, indexedColumns);
@@ -87,7 +87,7 @@ public class HudiSecondaryIndexSupport
                 .flatMap(List::stream)
                 .map(HoodieRecordGlobalLocation::getFileId)
                 .collect(Collectors.toSet());
-        log.debug("Secondary index lookup identified {} relevant file IDs.", relevantFileIds.size());
+        log.debug(String.format("Secondary index lookup identified %d relevant file IDs.", relevantFileIds.size()));
 
         // Prune fileSlices: Loop through each partition and filter for fileSlices that are in relevantFileIds
         // Note: This may return partitions with empty list of fileSlices
@@ -147,7 +147,7 @@ public class HudiSecondaryIndexSupport
                     boolean usable = TupleDomainUtils.areAllFieldsReferenced(tupleDomain, sourceFields)
                             && TupleDomainUtils.areDomainsInOrEqualOnly(tupleDomain, sourceFields);
                     if (log.isDebugEnabled() && usable) {
-                        log.debug("Secondary index '{}' on fields '{}' is usable for the query.", indexDef.getIndexName(), sourceFields);
+                        log.debug(String.format("Secondary index '%s' on fields '%s' is usable for the query.", indexDef.getIndexName(), sourceFields));
                     }
                     return usable;
                 });

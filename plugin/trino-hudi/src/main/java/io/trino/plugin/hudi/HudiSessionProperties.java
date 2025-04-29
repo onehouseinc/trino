@@ -56,10 +56,10 @@ public class HudiSessionProperties
     private static final String IGNORE_ABSENT_PARTITIONS = "ignore_absent_partitions";
 
     // Internal configuration for debugging and testing
-    private static final String RECORD_LEVEL_INDEX_ENABLED = "record_level_index_enabled";
-    private static final String SECONDARY_INDEX_ENABLED = "secondary_index_enabled";
-    private static final String COLUMN_STATS_INDEX_ENABLED = "column_stats_index_enabled";
-    private static final String PARTITION_STATS_INDEX_ENABLED = "partition_stats_index_enabled";
+    static final String RECORD_LEVEL_INDEX_ENABLED = "record_level_index_enabled";
+    static final String SECONDARY_INDEX_ENABLED = "secondary_index_enabled";
+    static final String COLUMN_STATS_INDEX_ENABLED = "column_stats_index_enabled";
+    static final String PARTITION_STATS_INDEX_ENABLED = "partition_stats_index_enabled";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -256,5 +256,10 @@ public class HudiSessionProperties
     public static boolean isPartitionStatsIndexEnabled(ConnectorSession session)
     {
         return session.getProperty(PARTITION_STATS_INDEX_ENABLED, Boolean.class);
+    }
+
+    public static boolean isNoOpIndexEnabled(ConnectorSession session)
+    {
+        return !isRecordLevelIndexEnabled(session) && !isSecondaryIndexEnabled(session) && !isColumnStatsIndexEnabled(session);
     }
 }

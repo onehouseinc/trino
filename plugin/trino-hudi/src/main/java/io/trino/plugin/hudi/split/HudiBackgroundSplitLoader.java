@@ -70,6 +70,7 @@ public class HudiBackgroundSplitLoader
     private final HoodieTableMetaClient metaClient;
     private final TupleDomain<HiveColumnHandle> regularPredicates;
     private final Optional<HudiIndexSupport> indexSupportOpt;
+    private final Optional<HudiPartitionStatsIndexSupport> partitionIndexSupportOpt;
 
     public HudiBackgroundSplitLoader(
             ConnectorSession session,
@@ -96,6 +97,7 @@ public class HudiBackgroundSplitLoader
         this.regularPredicates = tableHandle.getRegularPredicates();
         this.errorListener = requireNonNull(errorListener, "errorListener is null");
         this.indexSupportOpt = IndexSupportFactory.createIndexSupport(metaClient, regularPredicates, session);
+        this.partitionIndexSupportOpt = IndexSupportFactory.createPartitionStatsIndexSupport(metaClient, regularPredicates, session);
     }
 
     @Override
@@ -128,9 +130,7 @@ public class HudiBackgroundSplitLoader
                 metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
 
         // Attempt to apply partition pruning using partition stats index
-        HudiPartitionStatsIndexSupport partitionStatsIndexSupport = new HudiPartitionStatsIndexSupport(metaClient);
-        boolean canApplyPartitionStatsIndex = partitionStatsIndexSupport.canApply(regularPredicates.transformKeys(HiveColumnHandle::getName));
-        Optional<List<String>> effectivePartitionsOpt = canApplyPartitionStatsIndex ? partitionStatsIndexSupport.prunePartitions(
+        Optional<List<String>> effectivePartitionsOpt = partitionIndexSupportOpt.isPresent() ? partitionIndexSupportOpt.get().prunePartitions(
                 metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
 
         // For MDT the file listing is already loaded in memory
