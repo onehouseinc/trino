@@ -172,7 +172,7 @@ public class HudiColumnStatsIndexSupport
             Optional<HoodieMetadataColumnStats> currentColumnStats = stats
                     .stream().filter(s -> s.getColumnName().equals(regularColumn)).findFirst();
             if (currentColumnStats.isEmpty()) {
-                // Mo stats for column
+                // No stats for column
             }
             else {
                 Domain domain = getDomain(regularColumn, columnPredicate.getType(), currentColumnStats.get());
