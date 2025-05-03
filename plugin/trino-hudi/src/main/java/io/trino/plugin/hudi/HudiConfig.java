@@ -18,6 +18,7 @@ import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigDescription;
 import io.airlift.configuration.DefunctConfig;
 import io.airlift.units.DataSize;
+import io.airlift.units.Duration;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
@@ -28,6 +29,7 @@ import java.util.List;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static io.airlift.units.DataSize.Unit.MEGABYTE;
 import static java.util.Locale.ENGLISH;
+import static java.util.concurrent.TimeUnit.SECONDS;
 
 @DefunctConfig({
         "hudi.min-partition-batch-size",
@@ -48,6 +50,7 @@ public class HudiConfig
     private long perTransactionMetastoreCacheMaximumSize = 2000;
     private boolean queryPartitionFilterRequired;
     private boolean ignoreAbsentPartitions;
+    private Duration dynamicFilteringWaitTimeout = new Duration(0, SECONDS);
 
     // Internal configuration for debugging and testing
     private boolean isRecordLevelIndexEnabled = true;
@@ -286,5 +289,11 @@ public class HudiConfig
     public boolean isPartitionStatsIndexEnabled()
     {
         return isPartitionStatsIndexEnabled;
+    }
+
+    @NotNull
+    public Duration getDynamicFilteringWaitTimeout()
+    {
+        return dynamicFilteringWaitTimeout;
     }
 }
