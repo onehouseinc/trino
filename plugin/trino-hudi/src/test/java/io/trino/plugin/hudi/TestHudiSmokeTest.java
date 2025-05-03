@@ -29,6 +29,7 @@ import io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer;
 import io.trino.spi.SplitWeight;
 import io.trino.spi.connector.ConnectorPageSource;
 import io.trino.spi.connector.ConnectorSession;
+import io.trino.spi.connector.DynamicFilter;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.security.ConnectorIdentity;
 import io.trino.spi.type.Type;
@@ -477,6 +478,19 @@ public class TestHudiSmokeTest
     }
 
     @Test
+    public void dynamicFilteringFix()
+    {
+        Session session = withMdtDisabled(getSession());
+        MaterializedResult totalRes = getQueryRunner().execute(session,
+                "EXPLAIN ANALYZE SELECT count(DISTINCT t1.id) FROM "
+                        + HUDI_MULTI_FG_PT_MOR + " t1 " +
+                        "INNER JOIN " + HUDI_MULTI_FG_PT_MOR + " t2 ON t1.id = t2.id " +
+                        "WHERE t2.price <= 102");
+        // TODO: Add string matching verification on ScanFilter operator/node
+        System.out.println(totalRes);
+    }
+
+    @Test
     public void testPartitionFilterRequiredFilterIncluded()
     {
         Session session = withPartitionFilterRequired(getSession());
@@ -542,7 +556,7 @@ public class TestHudiSmokeTest
                 new LocalInputFile(parquetFile),
                 new FileFormatDataSourceStats(),
                 new ParquetReaderOptions(),
-                DateTimeZone.UTC)) {
+                DateTimeZone.UTC, DynamicFilter.EMPTY)) {
             MaterializedResult result = materializeSourceDataStream(session, pageSource, List.of(columnType)).toTestTypes();
             assertThat(result.getMaterializedRows())
                     .containsOnly(new MaterializedRow(List.of(expected)));
