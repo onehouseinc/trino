@@ -47,6 +47,8 @@ import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static io.trino.metastore.HiveType.HIVE_TIMESTAMP;
 import static io.trino.plugin.hive.HiveColumnHandle.ColumnType.REGULAR;
@@ -478,16 +480,32 @@ public class TestHudiSmokeTest
     }
 
     @Test
-    public void dynamicFilteringFix()
+    public void testDynamicFilterPredicatePushdown()
     {
+        final String tableIdentifier = "hudi:tests.hudi_multi_fg_pt_mor";
         Session session = withMdtDisabled(getSession());
-        MaterializedResult totalRes = getQueryRunner().execute(session,
-                "EXPLAIN ANALYZE SELECT count(DISTINCT t1.id) FROM "
+        MaterializedResult explainRes = getQueryRunner().execute(session,
+                "EXPLAIN ANALYZE SELECT t1.* FROM "
                         + HUDI_MULTI_FG_PT_MOR + " t1 " +
                         "INNER JOIN " + HUDI_MULTI_FG_PT_MOR + " t2 ON t1.id = t2.id " +
                         "WHERE t2.price <= 102");
-        // TODO: Add string matching verification on ScanFilter operator/node
-        System.out.println(totalRes);
+
+        Pattern scanFilterInputRowsPattern = getScanFilterInputRowsPattern(tableIdentifier);
+        Matcher matcher = scanFilterInputRowsPattern.matcher(explainRes.toString());
+
+        assertThat(matcher.find())
+                .withFailMessage("Could not find 'ScanFilter' for table '%s' with 'dynamicFilters' and 'Input: X rows' stats in EXPLAIN output.\nOutput was:\n%s",
+                        tableIdentifier, explainRes.toString())
+                .isTrue();
+
+        // matcher#group() must be invoked after matcher#find()
+        String rowsInputString = matcher.group(1);
+        long actualInputRows = Long.parseLong(rowsInputString);
+        long expectedInputRowsAfterFix = 2;
+
+        assertThat(actualInputRows)
+                .describedAs("Number of rows input to the ScanFilter for the probe side table (%s) should reflect effective dynamic filtering", tableIdentifier)
+                .isEqualTo(expectedInputRowsAfterFix);
     }
 
     @Test
@@ -561,6 +579,23 @@ public class TestHudiSmokeTest
             assertThat(result.getMaterializedRows())
                     .containsOnly(new MaterializedRow(List.of(expected)));
         }
+    }
+
+    private static Pattern getScanFilterInputRowsPattern(String tableIdentifier)
+    {
+        // Regex to find the ScanFilter for the specific table that received a dynamic filter and extract the 'Input: X rows' value associated with it.
+        // This pattern looks for the ScanFilter line, ensures 'dynamicFilters' is mentioned, then non-greedily captures lines until it finds the
+        // 'Input: X rows' line indented underneath.
+        // It captures the number of rows too.
+        // Match the ScanFilter line for the specific table, ensuring dynamicFilters is present
+        // Match subsequent lines non-greedily until the target line is found
+        // Match the 'Input: X rows' line, ensuring it's indented relative to ScanFilter
+        return Pattern.compile(
+                // Match the ScanFilter line for the specific table, ensuring dynamicFilters is present
+                "ScanFilter\\[table = " + Pattern.quote(tableIdentifier) + ".*dynamicFilters = \\{.*?\\}.*?\\]" +
+                        ".*?" + // Match subsequent lines non-greedily until the target line is found
+                        "\\n\\s+Input:\\s+(\\d+)\\s+rows", // Match the 'Input: X rows' line, ensuring it's indented relative to ScanFilter
+                Pattern.DOTALL);
     }
 
     private static Session withPartitionFilterRequired(Session session)

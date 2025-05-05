@@ -50,7 +50,7 @@ public class HudiConfig
     private long perTransactionMetastoreCacheMaximumSize = 2000;
     private boolean queryPartitionFilterRequired;
     private boolean ignoreAbsentPartitions;
-    private Duration dynamicFilteringWaitTimeout = new Duration(0, SECONDS);
+    private Duration dynamicFilteringWaitTimeout = new Duration(1, SECONDS);
 
     // Internal configuration for debugging and testing
     private boolean isRecordLevelIndexEnabled = true;
@@ -289,6 +289,14 @@ public class HudiConfig
     public boolean isPartitionStatsIndexEnabled()
     {
         return isPartitionStatsIndexEnabled;
+    }
+
+    @Config("hudi.dynamic-filtering-wait-timeout")
+    @ConfigDescription("Maximum timeout to wait for dynamic filtering to collect complete its collection in SECONDS")
+    public HudiConfig setDynamicFilteringWaitTimeout(long dynamicFilteringWaitTimeout)
+    {
+        this.dynamicFilteringWaitTimeout = new Duration(dynamicFilteringWaitTimeout, SECONDS);
+        return this;
     }
 
     @NotNull
