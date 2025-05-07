@@ -22,6 +22,7 @@ import io.trino.spi.type.BigintType;
 import io.trino.spi.type.TimestampWithTimeZoneType;
 import io.trino.spi.type.VarcharType;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,22 +44,24 @@ public class SynthesizedColumnHandler
 {
     private final Map<String, SynthesizedColumnStrategy> strategies;
     private final SplitMetadata splitMetadata;
+    private final ZoneId zoneId;
 
-    public static SynthesizedColumnHandler create(HudiSplit hudiSplit)
+    public static SynthesizedColumnHandler create(HudiSplit hudiSplit, ZoneId zoneId)
     {
-        return new SynthesizedColumnHandler(hudiSplit);
+        return new SynthesizedColumnHandler(hudiSplit, zoneId);
     }
 
     /**
      * Constructs a SynthesizedColumnHandler with the given partition keys.
      */
-    public SynthesizedColumnHandler(HudiSplit hudiSplit)
+    public SynthesizedColumnHandler(HudiSplit hudiSplit, ZoneId zoneId)
     {
         this.splitMetadata = SplitMetadata.of(hudiSplit);
         ImmutableMap.Builder<String, SynthesizedColumnStrategy> builder = ImmutableMap.builder();
         initSynthesizedColStrategies(builder);
         initPartitionKeyStrategies(builder, hudiSplit);
         strategies = builder.buildOrThrow();
+        this.zoneId = zoneId;
     }
 
     /**
@@ -91,7 +94,7 @@ public class SynthesizedColumnHandler
     {
         for (HivePartitionKey partitionKey : hudiSplit.getPartitionKeys()) {
             builder.put(partitionKey.name(), (blockBuilder, type) ->
-                    HudiAvroSerializer.appendTo(type, partitionKey.value(), blockBuilder));
+                    HudiAvroSerializer.appendTo(type, partitionKey.value(), blockBuilder, zoneId));
         }
     }
 

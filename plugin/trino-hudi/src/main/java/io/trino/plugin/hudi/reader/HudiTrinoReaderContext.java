@@ -17,6 +17,7 @@ import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hudi.util.HudiAvroSerializer;
 import io.trino.plugin.hudi.util.SynthesizedColumnHandler;
 import io.trino.spi.connector.ConnectorPageSource;
+import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.SourcePage;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -52,13 +53,14 @@ public class HudiTrinoReaderContext
     List<HiveColumnHandle> columnHandles;
 
     public HudiTrinoReaderContext(
+            ConnectorSession session,
             ConnectorPageSource pageSource,
             List<HiveColumnHandle> dataHandles,
             List<HiveColumnHandle> columnHandles,
             SynthesizedColumnHandler synthesizedColumnHandler)
     {
         this.pageSource = pageSource;
-        this.avroSerializer = new HudiAvroSerializer(columnHandles, synthesizedColumnHandler);
+        this.avroSerializer = new HudiAvroSerializer(columnHandles, synthesizedColumnHandler, session);
         this.dataHandles = dataHandles;
         this.columnHandles = columnHandles;
         this.colToPosMap = new HashMap<>();
