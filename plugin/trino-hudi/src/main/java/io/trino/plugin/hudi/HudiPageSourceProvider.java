@@ -197,9 +197,10 @@ public class HudiPageSourceProvider
                         .withVectorizedDecodingEnabled(isParquetVectorizedDecodingEnabled(session)),
                 timeZone, dynamicFilter);
 
-        SynthesizedColumnHandler synthesizedColumnHandler = SynthesizedColumnHandler.create(hudiSplit);
+        SynthesizedColumnHandler synthesizedColumnHandler = SynthesizedColumnHandler.create(hudiSplit, session.getTimeZoneKey().getZoneId());
 
         HudiTrinoReaderContext readerContext = new HudiTrinoReaderContext(
+                session,
                 dataPageSource,
                 hiveColumns.stream()
                         .filter(columnHandle -> !columnHandle.isHidden())
@@ -224,6 +225,7 @@ public class HudiPageSourceProvider
                         false);
 
         return new HudiPageSource(
+                session,
                 dataPageSource,
                 fileGroupReader,
                 readerContext,
