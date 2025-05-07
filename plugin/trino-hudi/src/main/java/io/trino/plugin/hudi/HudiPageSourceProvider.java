@@ -147,7 +147,7 @@ public class HudiPageSourceProvider
         }
 
         // Handle MERGE_ON_READ tables to be read in read_optimized mode
-        // IMPORTANT: These tables will have a COPY_ON_WRITE table type due to how `HudiTableTypeUtils#fromInputFormat`
+        // IMPORTANT: These tables will have a COPY_ON_WRITE table type due to how `HudiTableTypeUtils#fromInputFormat` interprets metastore configs
         // TODO: Move this check into a higher calling stack, such that the split is not created at all
         if (hudiTableHandle.getTableType().equals(HoodieTableType.COPY_ON_WRITE) && !hudiSplit.getLogFiles().isEmpty()) {
             if (hudiBaseFileOpt.isEmpty()) {
