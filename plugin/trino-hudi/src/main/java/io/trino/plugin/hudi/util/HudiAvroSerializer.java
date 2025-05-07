@@ -290,8 +290,8 @@ public class HudiAvroSerializer
             }
             else if (javaType == LongTimestamp.class) {
                 if (value instanceof SqlTimestamp sqlTimestamp) {
-                    // From tests, sqlTimestamp is a UTC epoch that is converted from ZoneId.SystemDefault
-                    // IMPORTANT: Even when session's zoneId can be different from ZoneId.SystemDefault, Trino will use ZoneId.SystemDefault to calculate the false UTC
+                    // From tests, sqlTimestamp is a UTC epoch that is converted from ZoneId#systemDefault()
+                    // IMPORTANT: Even when session's zoneId != ZoneId#systemDefault(), ZoneId#systemDefault() is used calculate/produce the false UTC.
                     // The current sqlTimestamp is calculated as such:
                     // 1. The true UTC timestamp that is stored in file is assumed to be in the local timezone
                     // 2. Trino will them attempt to convert this to a false UTC by subtracting the timezone's offset (factoring offset rules like DST)

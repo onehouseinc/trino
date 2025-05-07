@@ -49,6 +49,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.io.Resources.getResource;
 import static io.trino.hive.formats.HiveClassNames.HUDI_PARQUET_INPUT_FORMAT;
+import static io.trino.hive.formats.HiveClassNames.HUDI_PARQUET_REALTIME_INPUT_FORMAT;
 import static io.trino.hive.formats.HiveClassNames.MAPRED_PARQUET_OUTPUT_FORMAT_CLASS;
 import static io.trino.hive.formats.HiveClassNames.PARQUET_HIVE_SERDE_CLASS;
 import static io.trino.metastore.HiveType.HIVE_BINARY;
@@ -103,6 +104,7 @@ public class ResourceHudiTablesInitializer
         for (TestingTable table : TestingTable.values()) {
             String tableName = table.getTableName();
             Location tablePath = baseLocation.appendPath(tableName);
+            // Always create ro table by default
             createTable(
                     queryRunner,
                     schemaName,
@@ -110,7 +112,20 @@ public class ResourceHudiTablesInitializer
                     tableName,
                     table.getDataColumns(),
                     table.getPartitionColumns(),
-                    table.getPartitions());
+                    table.getPartitions(),
+                    false);
+
+            if (table.isCreateRtTable()) {
+                createTable(
+                        queryRunner,
+                        schemaName,
+                        tablePath,
+                        table.getRtTableName(),
+                        table.getDataColumns(),
+                        table.getPartitionColumns(),
+                        table.getPartitions(),
+                        true);
+            }
         }
     }
 
@@ -121,11 +136,17 @@ public class ResourceHudiTablesInitializer
             String tableName,
             List<Column> dataColumns,
             List<Column> partitionColumns,
-            Map<String, String> partitions)
+            Map<String, String> partitions,
+            boolean isRtTable)
     {
-        StorageFormat storageFormat = StorageFormat.create(
+        StorageFormat roStorageFormat = StorageFormat.create(
                 PARQUET_HIVE_SERDE_CLASS,
                 HUDI_PARQUET_INPUT_FORMAT,
+                MAPRED_PARQUET_OUTPUT_FORMAT_CLASS);
+
+        StorageFormat rtStorageFormat = StorageFormat.create(
+                PARQUET_HIVE_SERDE_CLASS,
+                HUDI_PARQUET_REALTIME_INPUT_FORMAT,
                 MAPRED_PARQUET_OUTPUT_FORMAT_CLASS);
 
         Table table = Table.builder()
@@ -137,7 +158,7 @@ public class ResourceHudiTablesInitializer
                 .setPartitionColumns(partitionColumns)
                 .setParameters(ImmutableMap.of("serialization.format", "1", "EXTERNAL", "TRUE"))
                 .withStorage(storageBuilder -> storageBuilder
-                        .setStorageFormat(storageFormat)
+                        .setStorageFormat(isRtTable ? rtStorageFormat : roStorageFormat)
                         .setLocation(tablePath.toString()))
                 .build();
         HiveMetastore metastore = ((HudiConnector) queryRunner.getCoordinator().getConnector("hudi")).getInjector()
@@ -152,7 +173,7 @@ public class ResourceHudiTablesInitializer
                     .setTableName(tableName)
                     .setValues(extractPartitionValues(partitionName))
                     .withStorage(storageBuilder -> storageBuilder
-                            .setStorageFormat(storageFormat)
+                            .setStorageFormat(isRtTable ? rtStorageFormat : roStorageFormat)
                             .setLocation(tablePath.appendPath(partitionPath).toString()))
                     .setColumns(dataColumns)
                     .build();
@@ -193,13 +214,13 @@ public class ResourceHudiTablesInitializer
     public enum TestingTable
     {
         HUDI_NON_PART_COW(nonPartitionRegularColumns()),
-        HUDI_COW_PT_TBL(multiPartitionRegularColumns(), multiPartitionColumns(), multiPartitions()),
-        STOCK_TICKS_COW(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions()),
-        STOCK_TICKS_MOR(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions()),
-        HUDI_STOCK_TICKS_COW(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions()),
-        HUDI_STOCK_TICKS_MOR(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions()),
-        HUDI_MULTI_FG_PT_MOR(hudiMultiFgRegularColumns(), hudiMultiFgPartitionsColumn(), hudiMultiFgPartitions()),
-        HUDI_COMPREHENSIVE_TYPES_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions())
+        HUDI_COW_PT_TBL(multiPartitionRegularColumns(), multiPartitionColumns(), multiPartitions(), true),
+        STOCK_TICKS_COW(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions(), true),
+        STOCK_TICKS_MOR(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions(), true),
+        HUDI_STOCK_TICKS_COW(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions(), true),
+        HUDI_STOCK_TICKS_MOR(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions(), true),
+        HUDI_MULTI_FG_PT_MOR(hudiMultiFgRegularColumns(), hudiMultiFgPartitionsColumn(), hudiMultiFgPartitions(), true),
+        HUDI_COMPREHENSIVE_TYPES_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
         /**/;
 
         private static final List<Column> HUDI_META_COLUMNS = ImmutableList.of(
@@ -212,25 +233,38 @@ public class ResourceHudiTablesInitializer
         private final List<Column> regularColumns;
         private final List<Column> partitionColumns;
         private final Map<String, String> partitions;
+        private final boolean isCreateRtTable;
 
         TestingTable(
                 List<Column> regularColumns,
                 List<Column> partitionColumns,
-                Map<String, String> partitions)
+                Map<String, String> partitions,
+                boolean isCreateRtTable)
         {
             this.regularColumns = regularColumns;
             this.partitionColumns = partitionColumns;
             this.partitions = partitions;
+            this.isCreateRtTable = isCreateRtTable;
         }
 
         TestingTable(List<Column> regularColumns)
         {
-            this(regularColumns, ImmutableList.of(), ImmutableMap.of());
+            this(regularColumns, ImmutableList.of(), ImmutableMap.of(), true);
         }
 
         public String getTableName()
         {
             return name().toLowerCase(Locale.ROOT);
+        }
+
+        public String getRtTableName()
+        {
+            return name().toLowerCase(Locale.ROOT) + "_rt";
+        }
+
+        public String getRoTableName()
+        {
+            return getRtTableName();
         }
 
         public List<Column> getDataColumns()
@@ -248,6 +282,11 @@ public class ResourceHudiTablesInitializer
         public Map<String, String> getPartitions()
         {
             return partitions;
+        }
+
+        public boolean isCreateRtTable()
+        {
+            return isCreateRtTable;
         }
 
         private static List<Column> nonPartitionRegularColumns()

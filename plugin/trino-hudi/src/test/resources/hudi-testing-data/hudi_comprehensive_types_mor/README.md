@@ -65,6 +65,10 @@ test("Create MOR table with comprehensive types") {
                | )
                | PARTITIONED BY (part_col)
         """.stripMargin)
+
+        // To not trigger compaction scheduling, and compaction
+        spark.sql(s"set hoodie.compact.inline.max.delta.commits=9999")
+        spark.sql(s"set hoodie.compact.inline=false")
         
         // Directly write to new parquet file
         spark.sql(s"set hoodie.parquet.small.file.limit=0")

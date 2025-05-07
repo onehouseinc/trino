@@ -41,6 +41,8 @@ import io.trino.testing.TestingConnectorSession;
 import org.intellij.lang.annotations.Language;
 import org.joda.time.DateTimeZone;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.File;
 import java.time.LocalDateTime;
@@ -512,8 +514,9 @@ public class TestHudiSmokeTest
                 .isEqualTo(expectedInputRowsAfterFix);
     }
 
-    @Test
-    public void testComprehensiveTypes()
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void testComprehensiveTypes(boolean isRtTable)
     {
         Session session = withMdtEnabled(getSession());
         // Not using #assertQuery() as it uses H2QueryRunner, which restricts the types which can be defined, particularly MAP types
@@ -610,9 +613,11 @@ public class TestHudiSmokeTest
         // "Zip" results up for convenient lookup
         Map<String, ImmutableList<String>> mapping = listsToMap(columnsToTest, expectedRowValues);
 
+        final String sourceTable = isRtTable ? HUDI_COMPREHENSIVE_TYPES_MOR.getRtTableName() : HUDI_COMPREHENSIVE_TYPES_MOR.getTableName();
+
         // Test each column individually so that errors thrown are more specific/useful
         for (String column : mapping.keySet()) {
-            @Language("SQL") String actualQuery = "SELECT " + column + " FROM " + HUDI_COMPREHENSIVE_TYPES_MOR;
+            @Language("SQL") String actualQuery = "SELECT " + column + " FROM " + HUDI_COMPREHENSIVE_TYPES_MOR.getTableName();
             // Use UNION ALL so that de-dupes will not happen
             @Language("SQL") String expectedQuery = mapping.get(column).stream().map(l -> "SELECT " + l).collect(Collectors.joining(" UNION ALL "));
 
