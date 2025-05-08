@@ -214,12 +214,12 @@ public class ResourceHudiTablesInitializer
     public enum TestingTable
     {
         HUDI_NON_PART_COW(nonPartitionRegularColumns()),
-        HUDI_COW_PT_TBL(multiPartitionRegularColumns(), multiPartitionColumns(), multiPartitions(), true),
-        STOCK_TICKS_COW(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions(), true),
-        STOCK_TICKS_MOR(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions(), true),
-        HUDI_STOCK_TICKS_COW(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions(), true),
-        HUDI_STOCK_TICKS_MOR(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions(), true),
-        HUDI_MULTI_FG_PT_MOR(hudiMultiFgRegularColumns(), hudiMultiFgPartitionsColumn(), hudiMultiFgPartitions(), true),
+        HUDI_COW_PT_TBL(multiPartitionRegularColumns(), multiPartitionColumns(), multiPartitions(), false),
+        STOCK_TICKS_COW(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions(), false),
+        STOCK_TICKS_MOR(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions(), false),
+        HUDI_STOCK_TICKS_COW(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions(), false),
+        HUDI_STOCK_TICKS_MOR(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions(), false),
+        HUDI_MULTI_FG_PT_MOR(hudiMultiFgRegularColumns(), hudiMultiFgPartitionsColumn(), hudiMultiFgPartitions(), false),
         HUDI_COMPREHENSIVE_TYPES_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
         /**/;
 
@@ -249,7 +249,7 @@ public class ResourceHudiTablesInitializer
 
         TestingTable(List<Column> regularColumns)
         {
-            this(regularColumns, ImmutableList.of(), ImmutableMap.of(), true);
+            this(regularColumns, ImmutableList.of(), ImmutableMap.of(), false);
         }
 
         public String getTableName()
