@@ -20,7 +20,6 @@ import io.trino.plugin.hudi.util.SynthesizedColumnHandler;
 import io.trino.spi.Page;
 import io.trino.spi.PageBuilder;
 import io.trino.spi.connector.ConnectorPageSource;
-import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.SourcePage;
 import io.trino.spi.metrics.Metrics;
 import org.apache.avro.generic.IndexedRecord;
@@ -45,7 +44,6 @@ public class HudiPageSource
     List<HiveColumnHandle> columnHandles;
 
     public HudiPageSource(
-            ConnectorSession session,
             ConnectorPageSource pageSource,
             HoodieFileGroupReader<IndexedRecord> fileGroupReader,
             HudiTrinoReaderContext readerContext,
@@ -58,7 +56,7 @@ public class HudiPageSource
         this.readerContext = readerContext;
         this.columnHandles = columnHandles;
         this.pageBuilder = new PageBuilder(columnHandles.stream().map(HiveColumnHandle::getType).toList());
-        this.avroSerializer = new HudiAvroSerializer(columnHandles, synthesizedColumnHandler, session);
+        this.avroSerializer = new HudiAvroSerializer(columnHandles, synthesizedColumnHandler);
     }
 
     @Override

@@ -22,7 +22,6 @@ import io.trino.spi.type.BigintType;
 import io.trino.spi.type.TimestampWithTimeZoneType;
 import io.trino.spi.type.VarcharType;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -44,24 +43,22 @@ public class SynthesizedColumnHandler
 {
     private final Map<String, SynthesizedColumnStrategy> strategies;
     private final SplitMetadata splitMetadata;
-    private final ZoneId zoneId;
 
-    public static SynthesizedColumnHandler create(HudiSplit hudiSplit, ZoneId zoneId)
+    public static SynthesizedColumnHandler create(HudiSplit hudiSplit)
     {
-        return new SynthesizedColumnHandler(hudiSplit, zoneId);
+        return new SynthesizedColumnHandler(hudiSplit);
     }
 
     /**
      * Constructs a SynthesizedColumnHandler with the given partition keys.
      */
-    public SynthesizedColumnHandler(HudiSplit hudiSplit, ZoneId zoneId)
+    public SynthesizedColumnHandler(HudiSplit hudiSplit)
     {
         this.splitMetadata = SplitMetadata.of(hudiSplit);
         ImmutableMap.Builder<String, SynthesizedColumnStrategy> builder = ImmutableMap.builder();
         initSynthesizedColStrategies(builder);
         initPartitionKeyStrategies(builder, hudiSplit);
         strategies = builder.buildOrThrow();
-        this.zoneId = zoneId;
     }
 
     /**
@@ -69,17 +66,17 @@ public class SynthesizedColumnHandler
      */
     private void initSynthesizedColStrategies(ImmutableMap.Builder<String, SynthesizedColumnStrategy> builder)
     {
-        builder.put(PARTITION_COLUMN_NAME, (blockBuilder, type) ->
+        builder.put(PARTITION_COLUMN_NAME, (blockBuilder, _) ->
                 VarcharType.VARCHAR.writeSlice(blockBuilder,
                         utf8Slice(toPartitionName(splitMetadata.getPartitionKeyVals()))));
 
-        builder.put(PATH_COLUMN_NAME, (blockBuilder, type) ->
+        builder.put(PATH_COLUMN_NAME, (blockBuilder, _) ->
                 VarcharType.VARCHAR.writeSlice(blockBuilder, utf8Slice(splitMetadata.getFilePath())));
 
-        builder.put(FILE_SIZE_COLUMN_NAME, (blockBuilder, type) ->
+        builder.put(FILE_SIZE_COLUMN_NAME, (blockBuilder, _) ->
                 BigintType.BIGINT.writeLong(blockBuilder, splitMetadata.getFileSize()));
 
-        builder.put(FILE_MODIFIED_TIME_COLUMN_NAME, (blockBuilder, type) -> {
+        builder.put(FILE_MODIFIED_TIME_COLUMN_NAME, (blockBuilder, _) -> {
             long packedTimestamp = packDateTimeWithZone(
                     splitMetadata.getFileModificationTime(), UTC_KEY);
             TimestampWithTimeZoneType.TIMESTAMP_TZ_MILLIS.writeLong(blockBuilder, packedTimestamp);
@@ -94,7 +91,7 @@ public class SynthesizedColumnHandler
     {
         for (HivePartitionKey partitionKey : hudiSplit.getPartitionKeys()) {
             builder.put(partitionKey.name(), (blockBuilder, type) ->
-                    HudiAvroSerializer.appendTo(type, partitionKey.value(), blockBuilder, zoneId));
+                    HudiAvroSerializer.appendTo(type, partitionKey.value(), blockBuilder));
         }
     }
 
