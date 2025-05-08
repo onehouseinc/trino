@@ -23,7 +23,6 @@ import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.block.Fixed12BlockBuilder;
 import io.trino.spi.block.MapBlockBuilder;
 import io.trino.spi.block.RowBlockBuilder;
-import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.SourcePage;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.CharType;
@@ -39,7 +38,6 @@ import io.trino.spi.type.SqlDate;
 import io.trino.spi.type.SqlDecimal;
 import io.trino.spi.type.SqlTimestamp;
 import io.trino.spi.type.SqlVarbinary;
-import io.trino.spi.type.TimeZoneKey;
 import io.trino.spi.type.Type;
 import io.trino.spi.type.VarbinaryType;
 import io.trino.spi.type.VarcharType;
@@ -90,7 +88,6 @@ import static java.lang.Math.floorMod;
 import static java.lang.Math.toIntExact;
 import static java.lang.String.format;
 import static java.time.ZoneOffset.UTC;
-import static org.apache.hudi.common.model.HoodieRecord.HOODIE_META_COLUMNS;
 
 public class HudiAvroSerializer
 {
@@ -113,20 +110,8 @@ public class HudiAvroSerializer
     private final List<HiveColumnHandle> columnHandles;
     private final List<Type> columnTypes;
     private final Schema schema;
-    private final ZoneId zoneId;
 
-    public HudiAvroSerializer(List<HiveColumnHandle> columnHandles)
-    {
-        this.columnHandles = columnHandles;
-        this.columnTypes = columnHandles.stream().map(HiveColumnHandle::getType).toList();
-        // Fetches projected schema
-        this.schema = constructSchema(columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getName).toList(),
-                columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getHiveType).toList());
-        this.synthesizedColumnHandler = null;
-        this.zoneId = ZoneId.systemDefault();
-    }
-
-    public HudiAvroSerializer(List<HiveColumnHandle> columnHandles, SynthesizedColumnHandler synthesizedColumnHandler, ConnectorSession session)
+    public HudiAvroSerializer(List<HiveColumnHandle> columnHandles, SynthesizedColumnHandler synthesizedColumnHandler)
     {
         this.columnHandles = columnHandles;
         this.columnTypes = columnHandles.stream().map(HiveColumnHandle::getType).toList();
@@ -134,8 +119,6 @@ public class HudiAvroSerializer
         this.schema = constructSchema(columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getName).toList(),
                 columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getHiveType).toList());
         this.synthesizedColumnHandler = synthesizedColumnHandler;
-        TimeZoneKey sessionTimeZoneKey = session.getTimeZoneKey();
-        this.zoneId = sessionTimeZoneKey.getZoneId();
     }
 
     public IndexedRecord serialize(SourcePage sourcePage, int position)
@@ -153,25 +136,6 @@ public class HudiAvroSerializer
         return columnTypes.get(channel).getObjectValue(null, sourcePage.getBlock(channel), position);
     }
 
-    public void buildRecordInPage(PageBuilder pageBuilder, IndexedRecord record,
-            Map<Integer, String> partitionValueMap, boolean skipMetaColumns)
-    {
-        pageBuilder.declarePosition();
-        int startChannel = skipMetaColumns ? HOODIE_META_COLUMNS.size() : 0;
-        int blockSeq = 0;
-        int nonPartitionChannel = startChannel;
-        for (int channel = startChannel; channel < columnTypes.size() + partitionValueMap.size(); channel++, blockSeq++) {
-            BlockBuilder output = pageBuilder.getBlockBuilder(blockSeq);
-            if (partitionValueMap.containsKey(channel)) {
-                appendTo(VarcharType.VARCHAR, partitionValueMap.get(channel), output, zoneId);
-            }
-            else {
-                appendTo(columnTypes.get(nonPartitionChannel), record.get(nonPartitionChannel), output, zoneId);
-                nonPartitionChannel++;
-            }
-        }
-    }
-
     public void buildRecordInPage(PageBuilder pageBuilder, IndexedRecord record)
     {
         pageBuilder.declarePosition();
@@ -185,12 +149,12 @@ public class HudiAvroSerializer
             else {
                 // Record may not be projected, get index from it
                 int fieldPosInSchema = record.getSchema().getField(columnHandle.getName()).pos();
-                appendTo(columnTypes.get(channel), record.get(fieldPosInSchema), output, zoneId);
+                appendTo(columnTypes.get(channel), record.get(fieldPosInSchema), output);
             }
         }
     }
 
-    public static void appendTo(Type type, Object value, BlockBuilder output, ZoneId zoneId)
+    public static void appendTo(Type type, Object value, BlockBuilder output)
     {
         if (value == null) {
             output.appendNull();
@@ -344,16 +308,16 @@ public class HudiAvroSerializer
                 type.writeObject(output, fromEpochMillisAndFraction(floorDiv(epochMicros, MICROSECONDS_PER_MILLISECOND), picosOfMillis, UTC_KEY));
             }
             else if (type instanceof ArrayType arrayType) {
-                writeArray((ArrayBlockBuilder) output, (List<?>) value, arrayType, zoneId);
+                writeArray((ArrayBlockBuilder) output, (List<?>) value, arrayType);
             }
             else if (type instanceof RowType rowType) {
                 if (value instanceof List<?> list) {
                     // value is read from parquet
-                    writeRow((RowBlockBuilder) output, rowType, list, zoneId);
+                    writeRow((RowBlockBuilder) output, rowType, list);
                 }
                 else if (value instanceof GenericRecord record) {
                     // value is read from log
-                    writeRow((RowBlockBuilder) output, rowType, record, zoneId);
+                    writeRow((RowBlockBuilder) output, rowType, record);
                 }
                 else {
                     throw new TrinoException(GENERIC_INTERNAL_ERROR,
@@ -361,7 +325,7 @@ public class HudiAvroSerializer
                 }
             }
             else if (type instanceof MapType mapType) {
-                writeMap((MapBlockBuilder) output, mapType, (Map<?, ?>) value, zoneId);
+                writeMap((MapBlockBuilder) output, mapType, (Map<?, ?>) value);
             }
             else {
                 throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Unhandled type for %s: %s", javaType.getSimpleName(), type));
@@ -459,46 +423,46 @@ public class HudiAvroSerializer
         }
     }
 
-    private static void writeArray(ArrayBlockBuilder output, List<?> value, ArrayType arrayType, ZoneId zoneId)
+    private static void writeArray(ArrayBlockBuilder output, List<?> value, ArrayType arrayType)
     {
         Type elementType = arrayType.getElementType();
         output.buildEntry(elementBuilder -> {
             for (Object element : value) {
-                appendTo(elementType, element, elementBuilder, zoneId);
+                appendTo(elementType, element, elementBuilder);
             }
         });
     }
 
-    private static void writeRow(RowBlockBuilder output, RowType rowType, GenericRecord record, ZoneId zoneId)
+    private static void writeRow(RowBlockBuilder output, RowType rowType, GenericRecord record)
     {
         List<RowType.Field> fields = rowType.getFields();
         output.buildEntry(fieldBuilders -> {
             for (int index = 0; index < fields.size(); index++) {
                 RowType.Field field = fields.get(index);
-                appendTo(field.getType(), record.get(field.getName().orElse("field" + index)), fieldBuilders.get(index), zoneId);
+                appendTo(field.getType(), record.get(field.getName().orElse("field" + index)), fieldBuilders.get(index));
             }
         });
     }
 
-    private static void writeRow(RowBlockBuilder output, RowType rowType, List<?> list, ZoneId zoneId)
+    private static void writeRow(RowBlockBuilder output, RowType rowType, List<?> list)
     {
         List<RowType.Field> fields = rowType.getFields();
         output.buildEntry(fieldBuilders -> {
             for (int index = 0; index < fields.size(); index++) {
                 RowType.Field field = fields.get(index);
-                appendTo(field.getType(), list.get(index), fieldBuilders.get(index), zoneId);
+                appendTo(field.getType(), list.get(index), fieldBuilders.get(index));
             }
         });
     }
 
-    private static void writeMap(MapBlockBuilder output, MapType mapType, Map<?, ?> value, ZoneId zoneId)
+    private static void writeMap(MapBlockBuilder output, MapType mapType, Map<?, ?> value)
     {
         Type keyType = mapType.getKeyType();
         Type valueType = mapType.getValueType();
         output.buildEntry((keyBuilder, valueBuilder) -> {
             for (Map.Entry<?, ?> entry : value.entrySet()) {
-                appendTo(keyType, entry.getKey(), keyBuilder, zoneId);
-                appendTo(valueType, entry.getValue(), valueBuilder, zoneId);
+                appendTo(keyType, entry.getKey(), keyBuilder);
+                appendTo(valueType, entry.getValue(), valueBuilder);
             }
         });
     }

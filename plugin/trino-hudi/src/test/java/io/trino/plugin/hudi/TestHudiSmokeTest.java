@@ -557,7 +557,8 @@ public class TestHudiSmokeTest
                         isRtTable ? "DOUBLE '110.123'" : "DOUBLE '10.123'",
                         isRtTable ? "DOUBLE '120.456'" : "DOUBLE '20.456'",
                         "CAST(NULL AS DOUBLE)"),
-                ImmutableList.of("DECIMAL '123.45'", "DECIMAL '234.56'", "CAST(NULL AS DECIMAL(10,2))"), // col_decimal
+                // col_decimal
+                ImmutableList.of("DECIMAL '123.45'", "DECIMAL '234.56'", "CAST(NULL AS DECIMAL(10,2))"),
                 // col_string
                 ImmutableList.of(
                         "'string val 1'",

@@ -60,7 +60,7 @@ public class HudiTrinoReaderContext
             SynthesizedColumnHandler synthesizedColumnHandler)
     {
         this.pageSource = pageSource;
-        this.avroSerializer = new HudiAvroSerializer(columnHandles, synthesizedColumnHandler, session);
+        this.avroSerializer = new HudiAvroSerializer(columnHandles, synthesizedColumnHandler);
         this.dataHandles = dataHandles;
         this.columnHandles = columnHandles;
         this.colToPosMap = new HashMap<>();
@@ -109,9 +109,7 @@ public class HudiTrinoReaderContext
                     currentPosition = 0;
 
                     // If no more pages are available
-                    if (currentPage == null) {
-                        return false;
-                    }
+                    return currentPage != null;
                 }
 
                 return true;
