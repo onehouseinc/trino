@@ -488,7 +488,7 @@ public class TestHudiSmokeTest
     @Test
     public void testDynamicFilterPredicatePushdown()
     {
-        final String tableIdentifier = "hudi:tests.hudi_multi_fg_pt_mor";
+        final String tableIdentifier = "hudi:tests." + HUDI_MULTI_FG_PT_MOR.getTableName();
         Session session = withMdtDisabled(getSession());
         MaterializedResult explainRes = getQueryRunner().execute(session,
                 "EXPLAIN ANALYZE SELECT t1.* FROM "
@@ -520,7 +520,7 @@ public class TestHudiSmokeTest
     {
         Session session = withMdtEnabled(getSession());
         // Not using #assertQuery() as it uses H2QueryRunner, which restricts the types which can be defined, particularly MAP types
-        // Use getQueryRunner(), which uses TrinoQueryRunner instead
+        // Use #getQueryRunner(), which uses TrinoQueryRunner instead
 
         // Define the columns that are being tested:
         ImmutableList<String> columnsToTest = ImmutableList.of(
@@ -531,37 +531,68 @@ public class TestHudiSmokeTest
 
         // Define expected output
         ImmutableList<ImmutableList<String>> expectedRowValues = ImmutableList.of(
-                ImmutableList.of("'uuid1'", "'uuid2'", "'uuid3'"), // uuid STRING
-                ImmutableList.of("BIGINT '1001'", "BIGINT '1006'", "BIGINT '1101'"), // precombine_field LONG -> BIGINT
-                ImmutableList.of("true", "false", "CAST(NULL AS BOOLEAN)"), // col_boolean BOOLEAN
-                ImmutableList.of("TINYINT '1'", "TINYINT '2'", "CAST(NULL AS TINYINT)"), // col_tinyint TINYINT
-                ImmutableList.of("SMALLINT '100'", "SMALLINT '200'", "CAST(NULL AS SMALLINT)"), // col_smallint SMALLINT
-                ImmutableList.of("INTEGER '1000'", "INTEGER '2000'", "CAST(NULL AS INTEGER)"), // col_int
-                ImmutableList.of("BIGINT '100000'", "BIGINT '200000'", "CAST(NULL AS BIGINT)"), // col_bigint BIGINT
-                ImmutableList.of("REAL '1.1'", "REAL '2.2'", "CAST(NULL AS REAL)"), // col_float
-                ImmutableList.of("DOUBLE '110.123'", "REAL '120.456'", "CAST(NULL AS DOUBLE)"), // col_double
+                // uuid STRING
+                ImmutableList.of("'uuid1'", "'uuid2'", "'uuid3'"),
+                // precombine_field LONG -> BIGINT
+                ImmutableList.of(
+                        // Updates were performed (RT table holds the updated value)
+                        isRtTable ? "BIGINT '1001'" : "BIGINT '1000'",
+                        isRtTable ? "BIGINT '1006'" : "BIGINT '1005'",
+                        isRtTable ? "BIGINT '1101'" : "BIGINT '1100'"),
+                // col_boolean BOOLEAN
+                ImmutableList.of("true", "false", "CAST(NULL AS BOOLEAN)"),
+                // col_tinyint TINYINT
+                ImmutableList.of("TINYINT '1'", "TINYINT '2'", "CAST(NULL AS TINYINT)"),
+                // col_smallint SMALLINT
+                ImmutableList.of("SMALLINT '100'", "SMALLINT '200'", "CAST(NULL AS SMALLINT)"),
+                // col_int
+                ImmutableList.of("INTEGER '1000'", "INTEGER '2000'", "CAST(NULL AS INTEGER)"),
+                // col_bigint BIGINT
+                ImmutableList.of("BIGINT '100000'", "BIGINT '200000'", "CAST(NULL AS BIGINT)"),
+                // col_float
+                ImmutableList.of("REAL '1.1'", "REAL '2.2'", "CAST(NULL AS REAL)"),
+                // col_double
+                ImmutableList.of(
+                        // Updates were performed on partition A values (RT table holds the updated value)
+                        isRtTable ? "DOUBLE '110.123'" : "DOUBLE '10.123'",
+                        isRtTable ? "DOUBLE '120.456'" : "DOUBLE '20.456'",
+                        "CAST(NULL AS DOUBLE)"),
                 ImmutableList.of("DECIMAL '123.45'", "DECIMAL '234.56'", "CAST(NULL AS DECIMAL(10,2))"), // col_decimal
-                ImmutableList.of("'string val 1'", "'string val 2'", "'updated string'"), // col_string
-                ImmutableList.of("CAST('varchar val 1' AS VARCHAR(50))", "CAST('varchar val 2' AS VARCHAR(50))", "CAST(NULL AS VARCHAR(50))"), // col_varchar
-                ImmutableList.of("CAST('charval1' AS CHAR(10))", "CAST('charval2' AS CHAR(10))", "CAST(NULL AS CHAR(10))"), // col_char
-                // UTF-8 bytes of "binary1", "binary2", null
-                ImmutableList.of("X'62696e61727931'", "X'62696e61727932'", "CAST(NULL AS VARBINARY)"), // col_binary BINARY -> VARBINARY
-                ImmutableList.of("DATE '2025-01-15'", "DATE '2025-02-20'", "CAST(NULL AS DATE)"), // col_date
-                ImmutableList.of("TIMESTAMP '2025-01-15 11:30:00.000'", "TIMESTAMP '2025-02-20 12:45:00.000'", "CAST(NULL AS TIMESTAMP)"), // col_timestamp TIMESTAMP
-                ImmutableList.of("ARRAY[1, 2, 3]", "ARRAY[4, 5]", "CAST(NULL AS ARRAY<INTEGER>)"), // col_array_int ARRAY<INT>
-                ImmutableList.of("ARRAY['a', 'b', 'c']", "ARRAY['d', 'e', 'f']", "CAST(NULL AS ARRAY<VARCHAR>)"), // col_array_string ARRAY<STRING>
+                // col_string
+                ImmutableList.of(
+                        "'string val 1'",
+                        "'string val 2'",
+                        // Updates were performed on partition B values (RT table holds the updated value)
+                        isRtTable ? "'updated string'" : "NULL"),
+                // col_varchar
+                ImmutableList.of("CAST('varchar val 1' AS VARCHAR(50))", "CAST('varchar val 2' AS VARCHAR(50))", "CAST(NULL AS VARCHAR(50))"),
+                // col_char
+                ImmutableList.of("CAST('charval1' AS CHAR(10))", "CAST('charval2' AS CHAR(10))", "CAST(NULL AS CHAR(10))"),
+                // col_binary BINARY -> VARBINARY: UTF-8 bytes of "binary1", "binary2", null
+                ImmutableList.of("X'62696e61727931'", "X'62696e61727932'", "CAST(NULL AS VARBINARY)"),
+                // col_date
+                ImmutableList.of("DATE '2025-01-15'", "DATE '2025-02-20'", "CAST(NULL AS DATE)"),
+                // col_timestamp TIMESTAMP
+                ImmutableList.of("TIMESTAMP '2025-01-15 11:30:00.000'", "TIMESTAMP '2025-02-20 12:45:00.000'", "CAST(NULL AS TIMESTAMP)"),
+                // col_array_int ARRAY<INT>
+                ImmutableList.of("ARRAY[1, 2, 3]", "ARRAY[4, 5]", "CAST(NULL AS ARRAY<INTEGER>)"),
+                // col_array_string ARRAY<STRING>
+                ImmutableList.of("ARRAY['a', 'b', 'c']", "ARRAY['d', 'e', 'f']", "CAST(NULL AS ARRAY<VARCHAR>)"),
                 // col_map_string_int MAP<STRING, INT>
                 ImmutableList.of("MAP(ARRAY['key1', 'key2'], ARRAY[10, 20])", "MAP(ARRAY['key3'], ARRAY[30])", "CAST(NULL AS MAP(VARCHAR, INTEGER))"),
                 // col_struct
-                ImmutableList.of("CAST(ROW('struct_str1', 55, false) AS ROW(f1 VARCHAR, f2 INTEGER, f3 BOOLEAN))",
+                ImmutableList.of(
+                        "CAST(ROW('struct_str1', 55, false) AS ROW(f1 VARCHAR, f2 INTEGER, f3 BOOLEAN))",
                         "CAST(ROW('struct_str2', 66, true) AS ROW(f1 VARCHAR, f2 INTEGER, f3 BOOLEAN))",
                         "CAST(NULL AS ROW(f1 VARCHAR, f2 INTEGER, f3 BOOLEAN))"),
                 // col_array_struct
-                ImmutableList.of("ARRAY[CAST(ROW(1.1E0, ARRAY['n1','n2']) AS ROW(nested_f1 DOUBLE, nested_f2 ARRAY<VARCHAR>)), CAST(ROW(2.2E0, ARRAY['n3']) AS ROW(nested_f1 DOUBLE, nested_f2 ARRAY<VARCHAR>))]",
+                ImmutableList.of(
+                        "ARRAY[CAST(ROW(1.1E0, ARRAY['n1','n2']) AS ROW(nested_f1 DOUBLE, nested_f2 ARRAY<VARCHAR>)), CAST(ROW(2.2E0, ARRAY['n3']) AS ROW(nested_f1 DOUBLE, nested_f2 ARRAY<VARCHAR>))]",
                         "CAST(NULL AS ARRAY<ROW(nested_f1 DOUBLE, nested_f2 ARRAY<VARCHAR>)>)",
                         "ARRAY[CAST(ROW(3.3E0, ARRAY['n4']) AS ROW(nested_f1 DOUBLE, nested_f2 ARRAY<VARCHAR>))]"),
                 // col_map_string_struct
-                ImmutableList.of("MAP(ARRAY['mapkey1'], ARRAY[CAST(ROW(DATE '2024-11-01', DECIMAL '9.80') AS ROW(nested_f3 DATE, nested_f4 DECIMAL(5,2)))])",
+                ImmutableList.of(
+                        "MAP(ARRAY['mapkey1'], ARRAY[CAST(ROW(DATE '2024-11-01', DECIMAL '9.80') AS ROW(nested_f3 DATE, nested_f4 DECIMAL(5,2)))])",
                         "MAP(ARRAY['mapkey2'], ARRAY[CAST(ROW(DATE '2024-12-10', DECIMAL '7.60') AS ROW(nested_f3 DATE, nested_f4 DECIMAL(5,2)))])",
                         "CAST(NULL AS MAP<VARCHAR, ROW(nested_f3 DATE, nested_f4 DECIMAL(5,2))>)"),
                 // col_array_struct_with_map
@@ -613,13 +644,14 @@ public class TestHudiSmokeTest
         // "Zip" results up for convenient lookup
         Map<String, ImmutableList<String>> mapping = listsToMap(columnsToTest, expectedRowValues);
 
+        // Determine which table to use base on test parameters
         final String sourceTable = isRtTable ? HUDI_COMPREHENSIVE_TYPES_MOR.getRtTableName() : HUDI_COMPREHENSIVE_TYPES_MOR.getTableName();
 
         // Test each column individually so that errors thrown are more specific/useful
         for (String column : mapping.keySet()) {
-            @Language("SQL") String actualQuery = "SELECT " + column + " FROM " + HUDI_COMPREHENSIVE_TYPES_MOR.getTableName();
             // Use UNION ALL so that de-dupes will not happen
             @Language("SQL") String expectedQuery = mapping.get(column).stream().map(l -> "SELECT " + l).collect(Collectors.joining(" UNION ALL "));
+            @Language("SQL") String actualQuery = "SELECT " + column + " FROM " + sourceTable;
 
             MaterializedResult actualResults = getQueryRunner().execute(session, actualQuery);
             MaterializedResult expectedResults = getQueryRunner().execute(session, expectedQuery);
@@ -627,7 +659,27 @@ public class TestHudiSmokeTest
                     .hasSameSizeAs(expectedResults.getMaterializedRows())
                     .containsAll(expectedResults.getMaterializedRows());
         }
-        // TODO: Add one more test to test ALL columns, maybe a select *
+
+        // Perform same test on all columns together
+        int numRows = expectedRowValues.getFirst().size();
+        @Language("SQL") String expectedQuery = IntStream.range(0, numRows)
+                .mapToObj(rowIndex -> {
+                    // For each row, collect the corresponding values for all columns in the defined order
+                    String rowValuesString = columnsToTest.stream()
+                            .map(columnName -> {
+                                List<String> columnData = mapping.get(columnName);
+                                return columnData.get(rowIndex);
+                            })
+                            .collect(Collectors.joining(", ")); // Joins column values: "val1, val2, val3"
+                    return "SELECT " + rowValuesString; // Forms: "SELECT val1, val2, val3"
+                })
+                .collect(Collectors.joining(" UNION ALL "));
+        @Language("SQL") String actualQuery = "SELECT " + String.join(", ", columnsToTest) + " FROM " + sourceTable;
+        MaterializedResult actualResults = getQueryRunner().execute(session, actualQuery);
+        MaterializedResult expectedResults = getQueryRunner().execute(session, expectedQuery);
+        assertThat(actualResults.getMaterializedRows())
+                .hasSameSizeAs(expectedResults.getMaterializedRows())
+                .containsAll(expectedResults.getMaterializedRows());
     }
 
     @Test
