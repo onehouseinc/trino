@@ -2,7 +2,7 @@
 
 Structure of table:
 - MOR table with MDT enabled
-- Revision: e4d01dd791e6e41617bd4d9f1df22a792315d4c2
+- Revision: 444cac26cb1077fd2b7deefc7b3713bacb270f9c
 
 ```scala
 test("Create MOR table with comprehensive types") {
