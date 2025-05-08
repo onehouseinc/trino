@@ -27,6 +27,7 @@ import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.SourcePage;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.CharType;
+import io.trino.spi.type.DateType;
 import io.trino.spi.type.DecimalType;
 import io.trino.spi.type.Decimals;
 import io.trino.spi.type.Int128;
@@ -67,6 +68,7 @@ import static io.trino.plugin.hudi.HudiUtil.constructSchema;
 import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.DateType.DATE;
+import static io.trino.spi.type.Decimals.encodeShortScaledValue;
 import static io.trino.spi.type.Decimals.writeBigDecimal;
 import static io.trino.spi.type.Decimals.writeShortDecimal;
 import static io.trino.spi.type.IntegerType.INTEGER;
@@ -105,6 +107,7 @@ public class HudiAvroSerializer
             1, // 9 digits after the dot
     };
 
+    private static final AvroDecimalConverter DECIMAL_CONVERTER = new AvroDecimalConverter();
     private final SynthesizedColumnHandler synthesizedColumnHandler;
 
     private final List<HiveColumnHandle> columnHandles;
@@ -118,7 +121,7 @@ public class HudiAvroSerializer
         this.columnTypes = columnHandles.stream().map(HiveColumnHandle::getType).toList();
         // Fetches projected schema
         this.schema = constructSchema(columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getName).toList(),
-                columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getHiveType).toList(), false);
+                columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getHiveType).toList());
         this.synthesizedColumnHandler = null;
         this.zoneId = ZoneId.systemDefault();
     }
@@ -129,7 +132,7 @@ public class HudiAvroSerializer
         this.columnTypes = columnHandles.stream().map(HiveColumnHandle::getType).toList();
         // Fetches projected schema
         this.schema = constructSchema(columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getName).toList(),
-                columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getHiveType).toList(), false);
+                columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getHiveType).toList());
         this.synthesizedColumnHandler = synthesizedColumnHandler;
         TimeZoneKey sessionTimeZoneKey = session.getTimeZoneKey();
         this.zoneId = sessionTimeZoneKey.getZoneId();
@@ -187,25 +190,6 @@ public class HudiAvroSerializer
         }
     }
 
-    public void buildRecordInPage(PageBuilder pageBuilder, SourcePage sourcePage, int position,
-            Map<Integer, String> partitionValueMap, boolean skipMetaColumns)
-    {
-        pageBuilder.declarePosition();
-        int startChannel = skipMetaColumns ? HOODIE_META_COLUMNS.size() : 0;
-        int blockSeq = 0;
-        int nonPartitionChannel = startChannel;
-        for (int channel = startChannel; channel < columnTypes.size() + partitionValueMap.size(); channel++, blockSeq++) {
-            BlockBuilder output = pageBuilder.getBlockBuilder(blockSeq);
-            if (partitionValueMap.containsKey(channel)) {
-                appendTo(VarcharType.VARCHAR, partitionValueMap.get(channel), output, zoneId);
-            }
-            else {
-                appendTo(columnTypes.get(nonPartitionChannel), getValue(sourcePage, nonPartitionChannel, position), output, zoneId);
-                nonPartitionChannel++;
-            }
-        }
-    }
-
     public static void appendTo(Type type, Object value, BlockBuilder output, ZoneId zoneId)
     {
         if (value == null) {
@@ -247,7 +231,7 @@ public class HudiAvroSerializer
                     else {
                         // Handle cases where 'value' is not a Number
                         throw new TrinoException(GENERIC_INTERNAL_ERROR,
-                                format("Unhandled value type for REAL: %s type for %s: %s", value.getClass().getName(), javaType.getSimpleName(), type));
+                                format("Unhandled type for %s: %s | value type: %s", javaType.getSimpleName(), type, value.getClass().getName()));
                     }
                 }
                 else if (type instanceof DecimalType decimalType) {
@@ -259,15 +243,27 @@ public class HudiAvroSerializer
                             writeBigDecimal(decimalType, output, sqlDecimal.toBigDecimal());
                         }
                     }
+                    else if (value instanceof GenericData.Fixed fixed) {
+                        verify(decimalType.isShort(), "The type should be short decimal");
+                        BigDecimal decimal = DECIMAL_CONVERTER.convert(decimalType.getPrecision(), decimalType.getScale(), fixed.bytes());
+                        type.writeLong(output, encodeShortScaledValue(decimal, decimalType.getScale()));
+                    }
                     else {
                         throw new TrinoException(GENERIC_INTERNAL_ERROR,
-                                format("Cannot process value of type %s for DecimalType %s. Expected SqlDecimal",
-                                        value.getClass().getName(),
-                                        type.getTypeSignature()));
+                                format("Unhandled type for %s: %s | value type: %s", javaType.getSimpleName(), type, value.getClass().getName()));
                     }
                 }
                 else if (type.equals(DATE)) {
-                    type.writeLong(output, ((SqlDate) value).getDays());
+                    if (value instanceof SqlDate sqlDate) {
+                        type.writeLong(output, sqlDate.getDays());
+                    }
+                    else if (value instanceof Integer days) {
+                        ((DateType) type).writeInt(output, days);
+                    }
+                    else {
+                        throw new TrinoException(GENERIC_INTERNAL_ERROR,
+                                format("Unhandled type for %s: %s | value type: %s", javaType.getSimpleName(), type, value.getClass().getName()));
+                    }
                 }
                 else if (type.equals(TIMESTAMP_MICROS)) {
                     type.writeLong(output, toTrinoTimestamp(((Utf8) value).toString()));
@@ -290,6 +286,7 @@ public class HudiAvroSerializer
             }
             else if (javaType == LongTimestamp.class) {
                 if (value instanceof SqlTimestamp sqlTimestamp) {
+                    // value is read from parquet
                     // From tests, sqlTimestamp is a UTC epoch that is converted from ZoneId#systemDefault()
                     // IMPORTANT: Even when session's zoneId != ZoneId#systemDefault(), ZoneId#systemDefault() is used calculate/produce the false UTC.
                     // The current sqlTimestamp is calculated as such:
@@ -330,8 +327,14 @@ public class HudiAvroSerializer
 
                     ((Fixed12BlockBuilder) output).writeFixed12(trueUtcEpochMicros, truePicosOfMicros);
                 }
+                else if (value instanceof Long epochMicros) {
+                    // value is read from log
+                    // epochMicros is in micros, no nanos or picos component
+                    ((Fixed12BlockBuilder) output).writeFixed12(epochMicros, 0);
+                }
                 else {
-                    throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Unhandled type for %s: %s", javaType.getSimpleName(), type));
+                    throw new TrinoException(GENERIC_INTERNAL_ERROR,
+                            format("Unhandled type for %s: %s | value type: %s", javaType.getSimpleName(), type, value.getClass().getName()));
                 }
             }
             else if (javaType == LongTimestampWithTimeZone.class) {
@@ -344,12 +347,17 @@ public class HudiAvroSerializer
                 writeArray((ArrayBlockBuilder) output, (List<?>) value, arrayType, zoneId);
             }
             else if (type instanceof RowType rowType) {
-                // value is usually an instance of UnmodifiableRandomAccessList
-                if (value instanceof List list) {
+                if (value instanceof List<?> list) {
+                    // value is read from parquet
                     writeRow((RowBlockBuilder) output, rowType, list, zoneId);
                 }
+                else if (value instanceof GenericRecord record) {
+                    // value is read from log
+                    writeRow((RowBlockBuilder) output, rowType, record, zoneId);
+                }
                 else {
-                    throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Unhandled type for %s: %s", javaType.getSimpleName(), type));
+                    throw new TrinoException(GENERIC_INTERNAL_ERROR,
+                            format("Unhandled type for %s: %s | value type: %s", javaType.getSimpleName(), type, value.getClass().getName()));
                 }
             }
             else if (type instanceof MapType mapType) {
@@ -406,10 +414,10 @@ public class HudiAvroSerializer
             }
             else {
                 throw new TrinoException(GENERIC_INTERNAL_ERROR,
-                        format("Unhandled value type for REAL: %s type for %s: %s", value.getClass().getName(), type.getJavaType(), type));
+                        format("Unhandled type for %s: %s | value type: %s", type.getJavaType().getSimpleName(), type, value.getClass().getName()));
             }
         }
-        else if (type instanceof CharType charType) {
+        else if (type instanceof CharType) {
             String stringValue;
             if (value instanceof Utf8) {
                 stringValue = ((Utf8) value).toString();
@@ -421,13 +429,13 @@ public class HudiAvroSerializer
                 // Fallback: convert any other object to its string representation
                 stringValue = value.toString();
             }
-            // IMPORTANT: Char types are padded with trailing "space" characters to make up for length if the contents are lesser than defined length.
-            verify(stringValue.length() == charType.getLength(), "Char type should have a size of " + charType.getLength());
+            // IMPORTANT: Char types may be padded with trailing "space" characters to make up for length if the contents are lesser than defined length.
             // Need to trim out trailing spaces as Slice representing Char should not have trailing spaces
             type.writeSlice(output, utf8Slice(stringValue.trim()));
         }
         else {
-            throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Unhandled type for Slice type %s with value %s", type.getTypeSignature(), value.getClass().getName()));
+            throw new TrinoException(GENERIC_INTERNAL_ERROR,
+                    format("Unhandled type for %s: %s | value type: %s", type.getJavaType().getSimpleName(), type, value.getClass().getName()));
         }
     }
 
@@ -440,9 +448,7 @@ public class HudiAvroSerializer
             }
             else {
                 throw new TrinoException(GENERIC_INTERNAL_ERROR,
-                        format("Cannot process value of type %s for DecimalType %s. Expected SqlDecimal",
-                                value.getClass().getName(),
-                                type.getTypeSignature()));
+                        format("Unhandled type for %s: %s | value type: %s", type.getJavaType().getSimpleName(), type, value.getClass().getName()));
             }
 
             Object trinoNativeDecimalValue = Decimals.encodeScaledValue(valueAsBigDecimal, decimalType.getScale());
@@ -501,10 +507,10 @@ public class HudiAvroSerializer
     {
         private static final Conversions.DecimalConversion AVRO_DECIMAL_CONVERSION = new Conversions.DecimalConversion();
 
-        BigDecimal convert(int precision, int scale, Object value)
+        BigDecimal convert(int precision, int scale, byte[] bytes)
         {
             Schema schema = new Schema.Parser().parse(format("{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":%d,\"scale\":%d}", precision, scale));
-            return AVRO_DECIMAL_CONVERSION.fromBytes((ByteBuffer) value, schema, schema.getLogicalType());
+            return AVRO_DECIMAL_CONVERSION.fromBytes(ByteBuffer.wrap(bytes), schema, schema.getLogicalType());
         }
     }
 }
