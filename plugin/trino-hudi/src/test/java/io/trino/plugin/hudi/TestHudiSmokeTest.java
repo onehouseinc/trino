@@ -680,6 +680,25 @@ public class TestHudiSmokeTest
         assertThat(actualResults.getMaterializedRows())
                 .hasSameSizeAs(expectedResults.getMaterializedRows())
                 .containsAll(expectedResults.getMaterializedRows());
+
+        // Perform test on selecting nested field
+        String columnToTest = "col_map_string_struct";
+        // 1. Extract all values from the map into an array. Since each map has one entry, this array will have one ROW (or be NULL if the map is NULL).
+        // 2. Access the first (and only) ROW object from this array. (Using 1-based indexing for arrays, which Trino and Presto uses)
+        // 3. Access the 'nested_f4' field from that ROW object.
+        @Language("SQL") String nestedFieldQuery = "SELECT (map_values(" + columnToTest + "))[1].nested_f4 AS extracted_nested_f4 FROM " + sourceTable;
+        @Language("SQL") String expectedNestedFieldQuery = "WITH " + sourceTable + " AS ( "
+                + mapping.get(columnToTest).stream()
+                .map(l -> "SELECT " + l + " AS " + columnToTest)
+                .collect(Collectors.joining(" UNION ALL "))
+                + ") " +
+                nestedFieldQuery;
+        @Language("SQL") String actualNestedFieldQuery = nestedFieldQuery;
+        MaterializedResult expectedNestedResult = getQueryRunner().execute(session, expectedNestedFieldQuery);
+        MaterializedResult actualNestedResult = getQueryRunner().execute(session, actualNestedFieldQuery);
+        assertThat(actualNestedResult.getMaterializedRows())
+                .hasSameSizeAs(expectedNestedResult.getMaterializedRows())
+                .containsAll(expectedNestedResult.getMaterializedRows());
     }
 
     @Test
