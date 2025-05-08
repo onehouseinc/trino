@@ -173,10 +173,20 @@ public final class HudiUtil
         SchemaBuilder.RecordBuilder<Schema> schemaBuilder = SchemaBuilder.record("baseRecord");
         SchemaBuilder.FieldAssembler<Schema> fieldBuilder = schemaBuilder.fields();
         for (String columnName : columnNames) {
-            Schema fieldSchema = dataSchema.getField(columnName).schema();
+            Schema originalFieldSchema = dataSchema.getField(columnName).schema();
+            Schema typeForNewField;
+
+            // Check if the original field schema is already nullable (i.e., a UNION containing NULL)
+            if (originalFieldSchema.isNullable()) {
+                typeForNewField = originalFieldSchema;
+            }
+            else {
+                typeForNewField = Schema.createUnion(Schema.create(Schema.Type.NULL), originalFieldSchema);
+            }
+
             fieldBuilder = fieldBuilder
                     .name(columnName)
-                    .type(fieldSchema)
+                    .type(typeForNewField)
                     .withDefault(null);
         }
         return fieldBuilder.endRecord();
