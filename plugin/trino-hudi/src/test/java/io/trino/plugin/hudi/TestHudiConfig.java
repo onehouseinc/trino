@@ -16,6 +16,7 @@ package io.trino.plugin.hudi;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.airlift.units.DataSize;
+import io.airlift.units.Duration;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -48,7 +49,7 @@ public class TestHudiConfig
                 .setSecondaryIndexEnabled(true)
                 .setColumnStatsIndexEnabled(true)
                 .setPartitionStatsIndexEnabled(true)
-                .setDynamicFilteringWaitTimeout(1));
+                .setDynamicFilteringWaitTimeout(Duration.valueOf("1s")));
     }
 
     @Test
@@ -72,7 +73,7 @@ public class TestHudiConfig
                 .put("hudi.index.secondary-index-enabled", "false")
                 .put("hudi.index.column-stats-index-enabled", "false")
                 .put("hudi.index.partition-stats-index-enabled", "false")
-                .put("hudi.dynamic-filtering-wait-timeout", "2")
+                .put("hudi.dynamic-filtering.wait-timeout", "2s")
                 .buildOrThrow();
 
         HudiConfig expected = new HudiConfig()
@@ -93,7 +94,7 @@ public class TestHudiConfig
                 .setSecondaryIndexEnabled(false)
                 .setColumnStatsIndexEnabled(false)
                 .setPartitionStatsIndexEnabled(false)
-                .setDynamicFilteringWaitTimeout(2);
+                .setDynamicFilteringWaitTimeout(Duration.valueOf("2s"));
 
         assertFullMapping(properties, expected);
     }

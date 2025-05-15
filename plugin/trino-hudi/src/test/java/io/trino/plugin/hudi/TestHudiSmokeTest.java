@@ -26,6 +26,7 @@ import io.trino.plugin.hive.HiveTimestampPrecision;
 import io.trino.plugin.hive.parquet.ParquetReaderConfig;
 import io.trino.plugin.hudi.file.HudiBaseFile;
 import io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer;
+import io.trino.plugin.hudi.testing.SessionPropertyConfigurator;
 import io.trino.spi.SplitWeight;
 import io.trino.spi.connector.ConnectorPageSource;
 import io.trino.spi.connector.ConnectorSession;
@@ -54,12 +55,6 @@ import static io.trino.metastore.HiveType.HIVE_TIMESTAMP;
 import static io.trino.plugin.hive.HiveColumnHandle.ColumnType.REGULAR;
 import static io.trino.plugin.hive.HiveColumnHandle.createBaseColumn;
 import static io.trino.plugin.hudi.HudiPageSourceProvider.createPageSource;
-import static io.trino.plugin.hudi.HudiSessionProperties.COLUMN_STATS_INDEX_ENABLED;
-import static io.trino.plugin.hudi.HudiSessionProperties.METADATA_TABLE_ENABLED;
-import static io.trino.plugin.hudi.HudiSessionProperties.PARTITION_STATS_INDEX_ENABLED;
-import static io.trino.plugin.hudi.HudiSessionProperties.QUERY_PARTITION_FILTER_REQUIRED;
-import static io.trino.plugin.hudi.HudiSessionProperties.RECORD_LEVEL_INDEX_ENABLED;
-import static io.trino.plugin.hudi.HudiSessionProperties.SECONDARY_INDEX_ENABLED;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_PT_TBL;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_FG_PT_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
@@ -136,7 +131,9 @@ public class TestHudiSmokeTest
     public void testPartitionPruningReadMultiFgPartitionedMORTableVer8()
     {
         // Test for partition pruning without MDT (i.e. w/o partition pruning using partition stats index)
-        Session session = withMdtDisabled(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withMdtEnabled(false)
+                .build();
         MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR);
         MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR + " WHERE country='SG'");
         int totalSplits = totalRes.getStatementStats().get().getTotalSplits();
@@ -149,7 +146,13 @@ public class TestHudiSmokeTest
     @Test
     public void testColStatsFileSkipping()
     {
-        Session session = withColStatsIndexEnabled(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withMdtEnabled(true)
+                .withColStatsIndexEnabled(true)
+                .withRecordLevelIndexEnabled(false)
+                .withSecondaryIndexEnabled(false)
+                .withPartitionStatsIndexEnabled(false)
+                .build();
         MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR);
         MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR
                 + " WHERE country='SG' AND name='a1'");
@@ -163,7 +166,13 @@ public class TestHudiSmokeTest
     @Test
     public void testRecordLevelFileSkipping()
     {
-        Session session = withRecordLevelIndexEnabled(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withMdtEnabled(true)
+                .withColStatsIndexEnabled(false)
+                .withRecordLevelIndexEnabled(true)
+                .withSecondaryIndexEnabled(false)
+                .withPartitionStatsIndexEnabled(false)
+                .build();
         MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR);
         MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR
                 + " WHERE country='SG' AND id IN (1, 3) AND name = 'a1'");
@@ -177,7 +186,13 @@ public class TestHudiSmokeTest
     @Test
     public void testSecondaryIndexFileSkipping()
     {
-        Session session = withSecondaryIndexEnabled(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withMdtEnabled(true)
+                .withColStatsIndexEnabled(false)
+                .withRecordLevelIndexEnabled(false)
+                .withSecondaryIndexEnabled(true)
+                .withPartitionStatsIndexEnabled(false)
+                .build();
         MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR);
         MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR
                 + " WHERE country='SG' AND price = 101.00");
@@ -191,7 +206,13 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionStatsIndexPartitionPruning()
     {
-        Session session = withPartitionStatsIndexEnabled(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withMdtEnabled(true)
+                .withColStatsIndexEnabled(false)
+                .withRecordLevelIndexEnabled(false)
+                .withSecondaryIndexEnabled(false)
+                .withPartitionStatsIndexEnabled(true)
+                .build();
         MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR
                 // Add a constraint that is in colstats
                 + " WHERE ts < 1001 " +
@@ -324,7 +345,9 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequired()
     {
-        Session session = withPartitionFilterRequired(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withPartitionFilterRequired(true)
+                .build();
 
         assertQueryFails(
                 session,
@@ -335,7 +358,9 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredPredicateOnNonPartitionColumn()
     {
-        Session session = withPartitionFilterRequired(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withPartitionFilterRequired(true)
+                .build();
 
         assertQueryFails(
                 session,
@@ -346,7 +371,9 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredNestedQueryWithInnerPartitionPredicate()
     {
-        Session session = withPartitionFilterRequired(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withPartitionFilterRequired(true)
+                .build();
 
         assertQuery(session, "SELECT name FROM (SELECT * FROM " + HUDI_COW_PT_TBL + " WHERE dt = '2021-12-09') WHERE id = 1", "VALUES 'a1'");
     }
@@ -354,7 +381,9 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredNestedQueryWithOuterPartitionPredicate()
     {
-        Session session = withPartitionFilterRequired(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withPartitionFilterRequired(true)
+                .build();
 
         assertQuery(session, "SELECT name FROM (SELECT * FROM " + HUDI_COW_PT_TBL + " WHERE id = 1) WHERE dt = '2021-12-09'", "VALUES 'a1'");
     }
@@ -362,7 +391,9 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredNestedWithIsNotNullFilter()
     {
-        Session session = withPartitionFilterRequired(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withPartitionFilterRequired(true)
+                .build();
 
         assertQuery(session, "SELECT name FROM " + HUDI_COW_PT_TBL + " WHERE dt IS NOT null", "VALUES 'a1', 'a2'");
     }
@@ -370,7 +401,9 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredFilterRemovedByPlanner()
     {
-        Session session = withPartitionFilterRequired(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withPartitionFilterRequired(true)
+                .build();
 
         assertQueryFails(
                 session,
@@ -381,7 +414,10 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredOnJoin()
     {
-        Session session = withPartitionFilterRequired(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withPartitionFilterRequired(true)
+                .build();
+
         @Language("RegExp") String errorMessage = "Filter required on tests." + HUDI_COW_PT_TBL.getTableName() + " for at least one of the partition columns: dt, hh";
 
         // ON with partition column
@@ -435,7 +471,9 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredOnJoinBothTablePartitioned()
     {
-        Session session = withPartitionFilterRequired(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withPartitionFilterRequired(true)
+                .build();
 
         // ON with partition column
         assertQueryFails(
@@ -472,7 +510,9 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredWithLike()
     {
-        Session session = withPartitionFilterRequired(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withPartitionFilterRequired(true)
+                .build();
         assertQueryFails(
                 session,
                 "SELECT name FROM " + HUDI_COW_PT_TBL + " WHERE name LIKE '%1'",
@@ -480,19 +520,20 @@ public class TestHudiSmokeTest
     }
 
     @Test
-    public void testDynamicFilterPredicatePushdown()
+    public void testDynamicFilterEnabledPredicatePushdown()
     {
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withMdtEnabled(false)
+                .build();
         final String tableIdentifier = "hudi:tests.hudi_multi_fg_pt_mor";
-        Session session = withMdtDisabled(getSession());
-        MaterializedResult explainRes = getQueryRunner().execute(session,
-                "EXPLAIN ANALYZE SELECT t1.* FROM "
-                        + HUDI_MULTI_FG_PT_MOR + " t1 " +
-                        "INNER JOIN " + HUDI_MULTI_FG_PT_MOR + " t2 ON t1.id = t2.id " +
-                        "WHERE t2.price <= 102");
+        @Language("SQL") String query = "SELECT t1.id, t1.name, t1.price, t1.ts FROM " +
+                HUDI_MULTI_FG_PT_MOR + " t1 " +
+                "INNER JOIN " + HUDI_MULTI_FG_PT_MOR + " t2 ON t1.id = t2.id " +
+                "WHERE t2.price <= 102";
 
+        MaterializedResult explainRes = getQueryRunner().execute(session, "EXPLAIN ANALYZE " + query);
         Pattern scanFilterInputRowsPattern = getScanFilterInputRowsPattern(tableIdentifier);
         Matcher matcher = scanFilterInputRowsPattern.matcher(explainRes.toString());
-
         assertThat(matcher.find())
                 .withFailMessage("Could not find 'ScanFilter' for table '%s' with 'dynamicFilters' and 'Input: X rows' stats in EXPLAIN output.\nOutput was:\n%s",
                         tableIdentifier, explainRes.toString())
@@ -501,17 +542,124 @@ public class TestHudiSmokeTest
         // matcher#group() must be invoked after matcher#find()
         String rowsInputString = matcher.group(1);
         long actualInputRows = Long.parseLong(rowsInputString);
-        long expectedInputRowsAfterFix = 2;
-
+        long expectedInputRowsAfterFiltering = 2;
         assertThat(actualInputRows)
                 .describedAs("Number of rows input to the ScanFilter for the probe side table (%s) should reflect effective dynamic filtering", tableIdentifier)
-                .isEqualTo(expectedInputRowsAfterFix);
+                .isEqualTo(expectedInputRowsAfterFiltering);
+
+        // Exercise query and check output
+        assertQuery(query, "SELECT * FROM VALUES (1, 'a1', 100.0, 1000), (3, 'a3', 101.0, 1001)");
+    }
+
+    @Test
+    public void testDynamicFilterDisabledPredicatePushdown()
+    {
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withMdtEnabled(false)
+                .withDynamicFilterTimeout("0s")
+                .build();
+        final String tableIdentifier = "hudi:tests.hudi_multi_fg_pt_mor";
+        @Language("SQL") String query = "SELECT t1.id, t1.name, t1.price, t1.ts FROM " +
+                HUDI_MULTI_FG_PT_MOR + " t1 " +
+                "INNER JOIN " + HUDI_MULTI_FG_PT_MOR + " t2 ON t1.id = t2.id " +
+                "WHERE t2.price <= 102";
+
+        MaterializedResult explainRes = getQueryRunner().execute(session, "EXPLAIN ANALYZE " + query);
+        Pattern scanFilterInputRowsPattern = getScanFilterInputRowsPattern(tableIdentifier);
+        Matcher matcher = scanFilterInputRowsPattern.matcher(explainRes.toString());
+        assertThat(matcher.find())
+                .withFailMessage("Could not find 'ScanFilter' for table '%s' with 'dynamicFilters' and 'Input: X rows' stats in EXPLAIN output.\nOutput was:\n%s",
+                        tableIdentifier, explainRes.toString())
+                .isTrue();
+
+        // matcher#group() must be invoked after matcher#find()
+        String rowsInputString = matcher.group(1);
+        long actualInputRows = Long.parseLong(rowsInputString);
+        // No dynamic filtering performed, all rows read
+        long expectedInputRowsAfterFiltering = 4;
+        assertThat(actualInputRows)
+                .describedAs("Number of rows input to the ScanFilter for the probe side table (%s) should NOT reflect effective dynamic filtering", tableIdentifier)
+                .isEqualTo(expectedInputRowsAfterFiltering);
+
+        // Exercise query and check output
+        assertQuery(query, "SELECT * FROM VALUES (1, 'a1', 100.0, 1000), (3, 'a3', 101.0, 1001)");
+    }
+
+    @Test
+    public void testDynamicFilterEnabled__withPartitionPruningUsingDynamicFilter()
+    {
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withMdtEnabled(false)
+                .build();
+        final String tableIdentifier = "hudi:tests.hudi_multi_fg_pt_mor";
+        // Query is joined-on recordKey and partitionField
+        @Language("SQL") String query = "SELECT t1.id, t1.name, t1.price, t1.ts, t1.country FROM " +
+                HUDI_MULTI_FG_PT_MOR + " t1 " +
+                "INNER JOIN " + HUDI_MULTI_FG_PT_MOR + " t2 ON t1.country = t2.country " +
+                "WHERE t2.price <= 102";
+
+        MaterializedResult explainRes = getQueryRunner().execute(session, "EXPLAIN ANALYZE " + query);
+        Pattern scanFilterInputRowsPattern = getScanFilterInputRowsPattern(tableIdentifier);
+        Matcher matcher = scanFilterInputRowsPattern.matcher(explainRes.toString());
+        assertThat(matcher.find())
+                .withFailMessage("Could not find 'ScanFilter' for table '%s' with 'dynamicFilters' and 'Input: X rows' stats in EXPLAIN output.\nOutput was:\n%s",
+                        tableIdentifier, explainRes.toString())
+                .isTrue();
+
+        // matcher#group() must be invoked after matcher#find()
+        String rowsInputString = matcher.group(1);
+        long actualInputRows = Long.parseLong(rowsInputString);
+        long expectedInputRowsAfterFiltering = 2;
+        assertThat(actualInputRows)
+                .describedAs("Number of rows input to the ScanFilter for the probe side table (%s) should reflect effective dynamic filtering", tableIdentifier)
+                .isEqualTo(expectedInputRowsAfterFiltering);
+
+        // Exercise query and check output
+        assertQuery(query, "SELECT * FROM VALUES (1, 'a1', 100.0, 1000, 'SG'), (3, 'a3', 101.0, 1001, 'SG'), (1, 'a1', 100.0, 1000, 'SG'), (3, 'a3', 101.0, 1001, 'SG')");
+    }
+
+    @Test
+    public void testDynamicFilterDisabled__withPartitionPruningUsingDynamicFilter()
+    {
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withMdtEnabled(false)
+                .withDynamicFilterTimeout("0s")
+                .build();
+        final String tableIdentifier = "hudi:tests.hudi_multi_fg_pt_mor";
+        // Query is joined-on recordKey and partitionField
+        @Language("SQL") String query = "SELECT t1.id, t1.name, t1.price, t1.ts, t1.country FROM " +
+                HUDI_MULTI_FG_PT_MOR + " t1 " +
+                "INNER JOIN " + HUDI_MULTI_FG_PT_MOR + " t2 ON t1.country = t2.country " +
+                "WHERE t2.price <= 102";
+
+        MaterializedResult explainRes = getQueryRunner().execute(session, "EXPLAIN ANALYZE " + query);
+        Pattern scanFilterInputRowsPattern = getScanFilterInputRowsPattern(tableIdentifier);
+        Matcher matcher = scanFilterInputRowsPattern.matcher(explainRes.toString());
+        assertThat(matcher.find())
+                .withFailMessage("Could not find 'ScanFilter' for table '%s' with 'dynamicFilters' and 'Input: X rows' stats in EXPLAIN output.\nOutput was:\n%s",
+                        tableIdentifier, explainRes.toString())
+                .isTrue();
+
+        // matcher#group() must be invoked after matcher#find()
+        String rowsInputString = matcher.group(1);
+        long actualInputRows = Long.parseLong(rowsInputString);
+        long expectedInputRowsAfterFiltering = 4;
+        assertThat(actualInputRows)
+                .describedAs("Number of rows input to the ScanFilter for the probe side table (%s) should NOT reflect effective dynamic filtering", tableIdentifier)
+                .isEqualTo(expectedInputRowsAfterFiltering);
+
+        // Exercise query and check output
+        System.out.println(getQueryRunner().execute(session, query));
+        // Cartesian product of result is produced since we are joining by partition column
+        assertQuery(query, "SELECT * FROM VALUES (1, 'a1', 100.0, 1000, 'SG'), (3, 'a3', 101.0, 1001, 'SG'), (1, 'a1', 100.0, 1000, 'SG'), (3, 'a3', 101.0, 1001, 'SG')");
     }
 
     @Test
     public void testPartitionFilterRequiredFilterIncluded()
     {
-        Session session = withPartitionFilterRequired(getSession());
+        Session session = SessionPropertyConfigurator.from(getSession())
+                .withPartitionFilterRequired(true)
+                .build();
         assertQuery(session, "SELECT name FROM " + HUDI_COW_PT_TBL + " WHERE hh = '10'", "VALUES 'a1'");
         assertQuery(session, "SELECT count(*) FROM " + HUDI_COW_PT_TBL + " WHERE hh < '12'", "VALUES 2");
         assertQuery(session, "SELECT count(*) FROM " + HUDI_COW_PT_TBL + " WHERE Hh < '11'", "VALUES 1");
@@ -574,7 +722,7 @@ public class TestHudiSmokeTest
                 new LocalInputFile(parquetFile),
                 new FileFormatDataSourceStats(),
                 new ParquetReaderOptions(),
-                DateTimeZone.UTC, DynamicFilter.EMPTY)) {
+                DateTimeZone.UTC, DynamicFilter.EMPTY, true)) {
             MaterializedResult result = materializeSourceDataStream(session, pageSource, List.of(columnType)).toTestTypes();
             assertThat(result.getMaterializedRows())
                     .containsOnly(new MaterializedRow(List.of(expected)));
@@ -584,83 +732,12 @@ public class TestHudiSmokeTest
     private static Pattern getScanFilterInputRowsPattern(String tableIdentifier)
     {
         // Regex to find the ScanFilter for the specific table that received a dynamic filter and extract the 'Input: X rows' value associated with it.
-        // This pattern looks for the ScanFilter line, ensures 'dynamicFilters' is mentioned, then non-greedily captures lines until it finds the
-        // 'Input: X rows' line indented underneath.
-        // It captures the number of rows too.
-        // Match the ScanFilter line for the specific table, ensuring dynamicFilters is present
-        // Match subsequent lines non-greedily until the target line is found
-        // Match the 'Input: X rows' line, ensuring it's indented relative to ScanFilter
         return Pattern.compile(
                 // Match the ScanFilter line for the specific table, ensuring dynamicFilters is present
                 "ScanFilter\\[table = " + Pattern.quote(tableIdentifier) + ".*dynamicFilters = \\{.*?\\}.*?\\]" +
                         ".*?" + // Match subsequent lines non-greedily until the target line is found
                         "\\n\\s+Input:\\s+(\\d+)\\s+rows", // Match the 'Input: X rows' line, ensuring it's indented relative to ScanFilter
                 Pattern.DOTALL);
-    }
-
-    private static Session withPartitionFilterRequired(Session session)
-    {
-        return Session.builder(session)
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), QUERY_PARTITION_FILTER_REQUIRED, "true")
-                .build();
-    }
-
-    private static Session withMdtEnabled(Session session)
-    {
-        return Session.builder(session)
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), METADATA_TABLE_ENABLED, "true")
-                .build();
-    }
-
-    private static Session withMdtDisabled(Session session)
-    {
-        return Session.builder(session)
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), METADATA_TABLE_ENABLED, "false")
-                .build();
-    }
-
-    private static Session withColStatsIndexEnabled(Session session)
-    {
-        return Session.builder(session)
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), METADATA_TABLE_ENABLED, "true")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), RECORD_LEVEL_INDEX_ENABLED, "false")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), SECONDARY_INDEX_ENABLED, "false")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), COLUMN_STATS_INDEX_ENABLED, "true")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), PARTITION_STATS_INDEX_ENABLED, "false")
-                .build();
-    }
-
-    private static Session withRecordLevelIndexEnabled(Session session)
-    {
-        return Session.builder(session)
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), METADATA_TABLE_ENABLED, "true")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), RECORD_LEVEL_INDEX_ENABLED, "true")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), SECONDARY_INDEX_ENABLED, "false")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), COLUMN_STATS_INDEX_ENABLED, "false")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), PARTITION_STATS_INDEX_ENABLED, "false")
-                .build();
-    }
-
-    private static Session withSecondaryIndexEnabled(Session session)
-    {
-        return Session.builder(session)
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), METADATA_TABLE_ENABLED, "true")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), RECORD_LEVEL_INDEX_ENABLED, "false")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), SECONDARY_INDEX_ENABLED, "true")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), COLUMN_STATS_INDEX_ENABLED, "false")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), PARTITION_STATS_INDEX_ENABLED, "false")
-                .build();
-    }
-
-    private static Session withPartitionStatsIndexEnabled(Session session)
-    {
-        return Session.builder(session)
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), METADATA_TABLE_ENABLED, "true")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), RECORD_LEVEL_INDEX_ENABLED, "false")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), SECONDARY_INDEX_ENABLED, "false")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), COLUMN_STATS_INDEX_ENABLED, "false")
-                .setCatalogSessionProperty(session.getCatalog().orElseThrow(), PARTITION_STATS_INDEX_ENABLED, "true")
-                .build();
     }
 
     private TrinoInputFile toInputFile(String path)

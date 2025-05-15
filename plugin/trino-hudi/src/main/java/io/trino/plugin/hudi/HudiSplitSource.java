@@ -43,6 +43,7 @@ import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
@@ -144,17 +145,22 @@ public class HudiSplitSource
         long timeLeft = dynamicFilteringWaitTimeoutMillis - dynamicFilterWaitStopwatch.elapsed(MILLISECONDS);
         if (dynamicFilter.isAwaitable() && timeLeft > 0) {
             return dynamicFilter.isBlocked()
-                    .thenApply(ignored -> EMPTY_BATCH)
+                    .thenApply(_ -> EMPTY_BATCH)
                     .completeOnTimeout(EMPTY_BATCH, timeLeft, MILLISECONDS);
         }
 
-        boolean noMoreSplits = isFinished();
         TupleDomain<HiveColumnHandle> dynamicFilterPredicate =
                 dynamicFilter.getCurrentPredicate().transformKeys(HiveColumnHandle.class::cast);
 
         if (dynamicFilterPredicate.isNone()) {
             close();
             return completedFuture(new ConnectorSplitBatch(ImmutableList.of(), true));
+        }
+
+        boolean noMoreSplits = isFinished();
+        Throwable throwable = trinoException.get();
+        if (throwable != null) {
+            return CompletableFuture.failedFuture(throwable);
         }
 
         return toCompletableFuture(Futures.transform(
@@ -199,29 +205,37 @@ public class HudiSplitSource
             return false;
         }
 
-        Map<HiveColumnHandle, Domain> domains = dynamicFilterPredicate.getDomains().orElseThrow();
-
-        // Match each partition key against its domain in the dynamic filter
-        for (HivePartitionKey partitionKey : split.getPartitionKeys()) {
-            for (Map.Entry<HiveColumnHandle, Domain> entry : domains.entrySet()) {
+        // Pre-process the filter predicate to get a map of relevant partition domains keyed by partition column name
+        Map<String, Map.Entry<HiveColumnHandle, Domain>> filterPartitionDomains = new HashMap<>();
+        if (dynamicFilterPredicate.getDomains().isPresent()) {
+            for (Map.Entry<HiveColumnHandle, Domain> entry : dynamicFilterPredicate.getDomains().get().entrySet()) {
                 HiveColumnHandle column = entry.getKey();
-                if (!column.isPartitionKey() || !column.getName().equals(partitionKey.name())) {
-                    continue;
+                if (column.isPartitionKey()) {
+                    filterPartitionDomains.put(column.getName(), entry);
                 }
+            }
+        }
 
-                Domain domain = entry.getValue();
-                NullableValue value = HiveUtil.getPrefilledColumnValue(
-                        column,
-                        partitionKey,
-                        null,  // path
-                        OptionalInt.empty(), // bucketNumber
-                        0,    // fileSize
-                        0,    // fileModifiedTime
-                        ""); // partitionName
+        // Match each partition key from the split against the pre-processed filter domains
+        for (HivePartitionKey splitPartitionKey : split.getPartitionKeys()) {
+            Map.Entry<HiveColumnHandle, Domain> filterInfo = filterPartitionDomains.get(splitPartitionKey.name());
 
-                if (!domain.includesNullableValue(value.getValue())) {
-                    return false;
-                }
+            if (filterInfo == null) {
+                // filterInfo is null, the partition key is not constrained by the filter
+                continue;
+            }
+
+            HiveColumnHandle filterColumnHandle = filterInfo.getKey();
+            Domain filterDomain = filterInfo.getValue();
+
+            NullableValue value = HiveUtil.getPrefilledColumnValue(
+                    filterColumnHandle,
+                    splitPartitionKey,
+                    null, OptionalInt.empty(), 0, 0, "");
+
+            // Split does not match this filter condition
+            if (!filterDomain.includesNullableValue(value.getValue())) {
+                return false;
             }
         }
         return true;
