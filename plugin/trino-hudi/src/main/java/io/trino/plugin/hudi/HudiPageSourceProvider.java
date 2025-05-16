@@ -199,7 +199,6 @@ public class HudiPageSourceProvider
         SynthesizedColumnHandler synthesizedColumnHandler = SynthesizedColumnHandler.create(hudiSplit);
 
         HudiTrinoReaderContext readerContext = new HudiTrinoReaderContext(
-                session,
                 dataPageSource,
                 hiveColumns.stream()
                         .filter(columnHandle -> !columnHandle.isHidden())
