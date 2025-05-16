@@ -16,6 +16,7 @@ package io.trino.plugin.hudi;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
+import io.airlift.log.Logger;
 import io.trino.filesystem.Location;
 import io.trino.filesystem.TrinoFileSystem;
 import io.trino.filesystem.TrinoFileSystemFactory;
@@ -102,11 +103,13 @@ import static java.util.Objects.requireNonNull;
 public class HudiPageSourceProvider
         implements ConnectorPageSourceProvider
 {
+    private static final Logger log = Logger.get(HudiPageSourceProvider.class);
+    private static final int DOMAIN_COMPACTION_THRESHOLD = 1000;
+
     private final TrinoFileSystemFactory fileSystemFactory;
     private final FileFormatDataSourceStats dataSourceStats;
     private final ParquetReaderOptions options;
     private final DateTimeZone timeZone;
-    private static final int DOMAIN_COMPACTION_THRESHOLD = 1000;
 
     @Inject
     public HudiPageSourceProvider(
@@ -144,7 +147,7 @@ public class HudiPageSourceProvider
         }
 
         // Handle MERGE_ON_READ tables to be read in read_optimized mode
-        // IMPORTANT: These tables will have a COPY_ON_WRITE table type due to how `HudiTableTypeUtils#fromInputFormat`
+        // IMPORTANT: These tables will have a COPY_ON_WRITE table type due to how `HudiTableTypeUtils#fromInputFormat` interprets metastore configs
         // TODO: Move this check into a higher calling stack, such that the split is not created at all
         if (hudiTableHandle.getTableType().equals(HoodieTableType.COPY_ON_WRITE) && !hudiSplit.getLogFiles().isEmpty()) {
             if (hudiBaseFileOpt.isEmpty()) {
@@ -180,8 +183,7 @@ public class HudiPageSourceProvider
                 .collect(Collectors.toList());
         List<HiveColumnHandle> columnHandles = prependHudiMetaColumns(regularColumns);
 
-        Schema requestedSchema = constructSchema(columnHandles.stream().map(HiveColumnHandle::getName).toList(),
-                columnHandles.stream().map(HiveColumnHandle::getHiveType).toList(), false);
+        Schema requestedSchema = constructSchema(dataSchema, columnHandles.stream().map(HiveColumnHandle::getName).toList());
 
         TrinoFileSystem fileSystem = fileSystemFactory.create(session);
         ConnectorPageSource dataPageSource = createPageSource(
@@ -192,7 +194,7 @@ public class HudiPageSourceProvider
                 dataSourceStats,
                 options.withSmallFileThreshold(getParquetSmallFileThreshold(session))
                         .withVectorizedDecodingEnabled(isParquetVectorizedDecodingEnabled(session)),
-                timeZone);
+                timeZone, dynamicFilter);
 
         SynthesizedColumnHandler synthesizedColumnHandler = SynthesizedColumnHandler.create(hudiSplit);
 
@@ -235,7 +237,8 @@ public class HudiPageSourceProvider
             TrinoInputFile inputFile,
             FileFormatDataSourceStats dataSourceStats,
             ParquetReaderOptions options,
-            DateTimeZone timeZone)
+            DateTimeZone timeZone,
+            DynamicFilter dynamicFilter)
     {
         ParquetDataSource dataSource = null;
         boolean useColumnNames = shouldUseParquetColumnNames(session);
@@ -263,9 +266,20 @@ public class HudiPageSourceProvider
             MessageColumnIO messageColumn = getColumnIO(fileSchema, requestedSchema);
 
             Map<List<String>, ColumnDescriptor> descriptorsByPath = getDescriptors(fileSchema, requestedSchema);
+
+            // Combine static and dynamic predicates
+            TupleDomain<HiveColumnHandle> staticPredicate = hudiSplit.getPredicate();
+            TupleDomain<HiveColumnHandle> dynamicPredicate = dynamicFilter.getCurrentPredicate()
+                    .transformKeys(HiveColumnHandle.class::cast);
+            TupleDomain<HiveColumnHandle> combinedPredicate = staticPredicate.intersect(dynamicPredicate);
+
+            if (!combinedPredicate.isAll()) {
+                log.debug("Combined predicate for Parquet read (Split: %s): %s", hudiSplit, combinedPredicate);
+            }
+
             TupleDomain<ColumnDescriptor> parquetTupleDomain = options.isIgnoreStatistics()
                     ? TupleDomain.all()
-                    : getParquetTupleDomain(descriptorsByPath, hudiSplit.getPredicate(), fileSchema, useColumnNames);
+                    : getParquetTupleDomain(descriptorsByPath, combinedPredicate, fileSchema, useColumnNames);
 
             TupleDomainParquetPredicate parquetPredicate = buildPredicate(requestedSchema, parquetTupleDomain, descriptorsByPath, timeZone);
 
