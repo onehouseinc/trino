@@ -147,7 +147,7 @@ public class HudiPageSourceProvider
         }
 
         // Handle MERGE_ON_READ tables to be read in read_optimized mode
-        // IMPORTANT: These tables will have a COPY_ON_WRITE table type due to how `HudiTableTypeUtils#fromInputFormat` interprets metastore configs
+        // IMPORTANT: These tables will have a COPY_ON_WRITE table, see: `HudiTableTypeUtils#fromInputFormat`
         // TODO: Move this check into a higher calling stack, such that the split is not created at all
         if (hudiTableHandle.getTableType().equals(HoodieTableType.COPY_ON_WRITE) && !hudiSplit.getLogFiles().isEmpty()) {
             if (hudiBaseFileOpt.isEmpty()) {
@@ -186,6 +186,8 @@ public class HudiPageSourceProvider
         Schema requestedSchema = constructSchema(dataSchema, columnHandles.stream().map(HiveColumnHandle::getName).toList());
 
         TrinoFileSystem fileSystem = fileSystemFactory.create(session);
+        // Only enable predicate pushdown for COW tables
+        boolean enablePredicatePushDown = ((HudiTableHandle) connectorTable).getTableType().equals(HoodieTableType.COPY_ON_WRITE);
         ConnectorPageSource dataPageSource = createPageSource(
                 session,
                 columnHandles,
@@ -194,7 +196,7 @@ public class HudiPageSourceProvider
                 dataSourceStats,
                 options.withSmallFileThreshold(getParquetSmallFileThreshold(session))
                         .withVectorizedDecodingEnabled(isParquetVectorizedDecodingEnabled(session)),
-                timeZone, dynamicFilter);
+                timeZone, dynamicFilter, enablePredicatePushDown);
 
         SynthesizedColumnHandler synthesizedColumnHandler = SynthesizedColumnHandler.create(hudiSplit);
 
@@ -238,7 +240,8 @@ public class HudiPageSourceProvider
             FileFormatDataSourceStats dataSourceStats,
             ParquetReaderOptions options,
             DateTimeZone timeZone,
-            DynamicFilter dynamicFilter)
+            DynamicFilter dynamicFilter,
+            boolean enablePredicatePushDown)
     {
         ParquetDataSource dataSource = null;
         boolean useColumnNames = shouldUseParquetColumnNames(session);
@@ -267,19 +270,9 @@ public class HudiPageSourceProvider
 
             Map<List<String>, ColumnDescriptor> descriptorsByPath = getDescriptors(fileSchema, requestedSchema);
 
-            // Combine static and dynamic predicates
-            TupleDomain<HiveColumnHandle> staticPredicate = hudiSplit.getPredicate();
-            TupleDomain<HiveColumnHandle> dynamicPredicate = dynamicFilter.getCurrentPredicate()
-                    .transformKeys(HiveColumnHandle.class::cast);
-            TupleDomain<HiveColumnHandle> combinedPredicate = staticPredicate.intersect(dynamicPredicate);
-
-            if (!combinedPredicate.isAll()) {
-                log.debug("Combined predicate for Parquet read (Split: %s): %s", hudiSplit, combinedPredicate);
-            }
-
-            TupleDomain<ColumnDescriptor> parquetTupleDomain = options.isIgnoreStatistics()
+            TupleDomain<ColumnDescriptor> parquetTupleDomain = options.isIgnoreStatistics() || !enablePredicatePushDown
                     ? TupleDomain.all()
-                    : getParquetTupleDomain(descriptorsByPath, combinedPredicate, fileSchema, useColumnNames);
+                    : getParquetTupleDomain(descriptorsByPath, getCombinedPredicate(hudiSplit, dynamicFilter), fileSchema, useColumnNames);
 
             TupleDomainParquetPredicate parquetPredicate = buildPredicate(requestedSchema, parquetTupleDomain, descriptorsByPath, timeZone);
 
@@ -390,5 +383,19 @@ public class HudiPageSourceProvider
         }
 
         return remappedHandles;
+    }
+
+    private static TupleDomain<HiveColumnHandle> getCombinedPredicate(HudiSplit hudiSplit, DynamicFilter dynamicFilter)
+    {
+        // Combine static and dynamic predicates
+        TupleDomain<HiveColumnHandle> staticPredicate = hudiSplit.getPredicate();
+        TupleDomain<HiveColumnHandle> dynamicPredicate = dynamicFilter.getCurrentPredicate()
+                .transformKeys(HiveColumnHandle.class::cast);
+        TupleDomain<HiveColumnHandle> combinedPredicate = staticPredicate.intersect(dynamicPredicate);
+
+        if (!combinedPredicate.isAll()) {
+            log.debug("Combined predicate for Parquet read (Split: %s): %s", hudiSplit, combinedPredicate);
+        }
+        return combinedPredicate;
     }
 }

@@ -56,7 +56,7 @@ public class HudiSessionProperties
     private static final String SPLIT_GENERATOR_PARALLELISM = "split_generator_parallelism";
     static final String QUERY_PARTITION_FILTER_REQUIRED = "query_partition_filter_required";
     private static final String IGNORE_ABSENT_PARTITIONS = "ignore_absent_partitions";
-    private static final String DYNAMIC_FILTERING_WAIT_TIMEOUT = "dynamic_filtering_wait_timeout";
+    static final String DYNAMIC_FILTERING_WAIT_TIMEOUT = "dynamic_filtering_wait_timeout";
 
     // Internal configuration for debugging and testing
     static final String RECORD_LEVEL_INDEX_ENABLED = "record_level_index_enabled";

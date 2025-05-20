@@ -291,11 +291,11 @@ public class HudiConfig
         return isPartitionStatsIndexEnabled;
     }
 
-    @Config("hudi.dynamic-filtering-wait-timeout")
-    @ConfigDescription("Maximum timeout to wait for dynamic filtering to collect complete its collection in SECONDS")
-    public HudiConfig setDynamicFilteringWaitTimeout(long dynamicFilteringWaitTimeout)
+    @Config("hudi.dynamic-filtering.wait-timeout")
+    @ConfigDescription("Maximum timeout to wait for dynamic filtering, e.g. 1000ms, 20s, 2m, 1h")
+    public HudiConfig setDynamicFilteringWaitTimeout(Duration dynamicFilteringWaitTimeout)
     {
-        this.dynamicFilteringWaitTimeout = new Duration(dynamicFilteringWaitTimeout, SECONDS);
+        this.dynamicFilteringWaitTimeout = dynamicFilteringWaitTimeout;
         return this;
     }
 
