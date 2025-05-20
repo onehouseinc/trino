@@ -264,7 +264,8 @@ public class ResourceHudiTablesInitializer
 
         public String getRoTableName()
         {
-            return getRtTableName();
+            // ro tables do not have suffix
+            return getTableName();
         }
 
         public List<Column> getDataColumns()
