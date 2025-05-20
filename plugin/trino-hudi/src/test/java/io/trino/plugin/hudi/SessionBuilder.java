@@ -11,7 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.trino.plugin.hudi.testing;
+package io.trino.plugin.hudi;
 
 import io.trino.Session;
 
@@ -24,12 +24,12 @@ import static io.trino.plugin.hudi.HudiSessionProperties.RECORD_LEVEL_INDEX_ENAB
 import static io.trino.plugin.hudi.HudiSessionProperties.SECONDARY_INDEX_ENABLED;
 import static java.util.Objects.requireNonNull;
 
-public class SessionPropertyConfigurator
+public class SessionBuilder
 {
     private final Session.SessionBuilder sessionBuilder;
     private final String catalogName;
 
-    private SessionPropertyConfigurator(Session session)
+    private SessionBuilder(Session session)
     {
         requireNonNull(session, "Initial session cannot be null");
         this.sessionBuilder = Session.builder(session);
@@ -43,12 +43,12 @@ public class SessionPropertyConfigurator
      * @param session The base session to build upon.
      * @return A new instance of SessionPropertyConfigurator.
      */
-    public static SessionPropertyConfigurator from(Session session)
+    public static SessionBuilder from(Session session)
     {
-        return new SessionPropertyConfigurator(session);
+        return new SessionBuilder(session);
     }
 
-    private SessionPropertyConfigurator setProperty(String propertyName, String propertyValue)
+    private SessionBuilder setProperty(String propertyName, String propertyValue)
     {
         this.sessionBuilder.setCatalogSessionProperty(catalogName, propertyName, propertyValue);
         return this;
@@ -64,37 +64,37 @@ public class SessionPropertyConfigurator
         return this.sessionBuilder.build();
     }
 
-    public SessionPropertyConfigurator withPartitionFilterRequired(boolean required)
+    public SessionBuilder withPartitionFilterRequired(boolean required)
     {
         return setProperty(QUERY_PARTITION_FILTER_REQUIRED, String.valueOf(required));
     }
 
-    public SessionPropertyConfigurator withMdtEnabled(boolean enabled)
+    public SessionBuilder withMdtEnabled(boolean enabled)
     {
         return setProperty(METADATA_TABLE_ENABLED, String.valueOf(enabled));
     }
 
-    public SessionPropertyConfigurator withDynamicFilterTimeout(String durationProp)
+    public SessionBuilder withDynamicFilterTimeout(String durationProp)
     {
         return setProperty(DYNAMIC_FILTERING_WAIT_TIMEOUT, durationProp);
     }
 
-    public SessionPropertyConfigurator withColStatsIndexEnabled(boolean enabled)
+    public SessionBuilder withColStatsIndexEnabled(boolean enabled)
     {
         return setProperty(COLUMN_STATS_INDEX_ENABLED, String.valueOf(enabled));
     }
 
-    public SessionPropertyConfigurator withRecordLevelIndexEnabled(boolean enabled)
+    public SessionBuilder withRecordLevelIndexEnabled(boolean enabled)
     {
         return setProperty(RECORD_LEVEL_INDEX_ENABLED, String.valueOf(enabled));
     }
 
-    public SessionPropertyConfigurator withSecondaryIndexEnabled(boolean enabled)
+    public SessionBuilder withSecondaryIndexEnabled(boolean enabled)
     {
         return setProperty(SECONDARY_INDEX_ENABLED, String.valueOf(enabled));
     }
 
-    public SessionPropertyConfigurator withPartitionStatsIndexEnabled(boolean enabled)
+    public SessionBuilder withPartitionStatsIndexEnabled(boolean enabled)
     {
         return setProperty(PARTITION_STATS_INDEX_ENABLED, String.valueOf(enabled));
     }

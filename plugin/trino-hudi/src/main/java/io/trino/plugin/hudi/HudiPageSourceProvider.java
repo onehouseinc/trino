@@ -271,19 +271,9 @@ public class HudiPageSourceProvider
 
             Map<List<String>, ColumnDescriptor> descriptorsByPath = getDescriptors(fileSchema, requestedSchema);
 
-            // Combine static and dynamic predicates
-            TupleDomain<HiveColumnHandle> staticPredicate = hudiSplit.getPredicate();
-            TupleDomain<HiveColumnHandle> dynamicPredicate = dynamicFilter.getCurrentPredicate()
-                    .transformKeys(HiveColumnHandle.class::cast);
-            TupleDomain<HiveColumnHandle> combinedPredicate = staticPredicate.intersect(dynamicPredicate);
-
-            if (!combinedPredicate.isAll()) {
-                log.debug("Combined predicate for Parquet read (Split: %s): %s", hudiSplit, combinedPredicate);
-            }
-
             TupleDomain<ColumnDescriptor> parquetTupleDomain = options.isIgnoreStatistics() || !enablePredicatePushDown
                     ? TupleDomain.all()
-                    : getParquetTupleDomain(descriptorsByPath, combinedPredicate, fileSchema, useColumnNames);
+                    : getParquetTupleDomain(descriptorsByPath, getCombinedPredicate(hudiSplit, dynamicFilter), fileSchema, useColumnNames);
 
             TupleDomainParquetPredicate parquetPredicate = buildPredicate(requestedSchema, parquetTupleDomain, descriptorsByPath, timeZone);
 
@@ -394,5 +384,19 @@ public class HudiPageSourceProvider
         }
 
         return remappedHandles;
+    }
+
+    private static TupleDomain<HiveColumnHandle> getCombinedPredicate(HudiSplit hudiSplit, DynamicFilter dynamicFilter)
+    {
+        // Combine static and dynamic predicates
+        TupleDomain<HiveColumnHandle> staticPredicate = hudiSplit.getPredicate();
+        TupleDomain<HiveColumnHandle> dynamicPredicate = dynamicFilter.getCurrentPredicate()
+                .transformKeys(HiveColumnHandle.class::cast);
+        TupleDomain<HiveColumnHandle> combinedPredicate = staticPredicate.intersect(dynamicPredicate);
+
+        if (!combinedPredicate.isAll()) {
+            log.debug("Combined predicate for Parquet read (Split: %s): %s", hudiSplit, combinedPredicate);
+        }
+        return combinedPredicate;
     }
 }

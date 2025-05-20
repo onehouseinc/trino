@@ -142,8 +142,11 @@ public class HudiSplitSource
     @Override
     public CompletableFuture<ConnectorSplitBatch> getNextBatch(int maxSize)
     {
+        // If dynamic filtering is enabled and we haven't timed out, wait for the build side to provide the dynamic filter.
         long timeLeft = dynamicFilteringWaitTimeoutMillis - dynamicFilterWaitStopwatch.elapsed(MILLISECONDS);
         if (dynamicFilter.isAwaitable() && timeLeft > 0) {
+            // If the filter is not ready, return an empty batch. The query engine will call getNextBatch() again.
+            // As long as isFinished() is false, effectively polling until the filter is ready or timeout occurs.
             return dynamicFilter.isBlocked()
                     .thenApply(_ -> EMPTY_BATCH)
                     .completeOnTimeout(EMPTY_BATCH, timeLeft, MILLISECONDS);

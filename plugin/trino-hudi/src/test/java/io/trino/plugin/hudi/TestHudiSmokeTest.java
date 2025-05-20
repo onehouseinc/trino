@@ -26,7 +26,6 @@ import io.trino.plugin.hive.HiveTimestampPrecision;
 import io.trino.plugin.hive.parquet.ParquetReaderConfig;
 import io.trino.plugin.hudi.file.HudiBaseFile;
 import io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer;
-import io.trino.plugin.hudi.testing.SessionPropertyConfigurator;
 import io.trino.spi.SplitWeight;
 import io.trino.spi.connector.ConnectorPageSource;
 import io.trino.spi.connector.ConnectorSession;
@@ -131,7 +130,7 @@ public class TestHudiSmokeTest
     public void testPartitionPruningReadMultiFgPartitionedMORTableVer8()
     {
         // Test for partition pruning without MDT (i.e. w/o partition pruning using partition stats index)
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(false)
                 .build();
         MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_FG_PT_MOR);
@@ -146,7 +145,7 @@ public class TestHudiSmokeTest
     @Test
     public void testColStatsFileSkipping()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(true)
                 .withColStatsIndexEnabled(true)
                 .withRecordLevelIndexEnabled(false)
@@ -166,7 +165,7 @@ public class TestHudiSmokeTest
     @Test
     public void testRecordLevelFileSkipping()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(true)
                 .withColStatsIndexEnabled(false)
                 .withRecordLevelIndexEnabled(true)
@@ -186,7 +185,7 @@ public class TestHudiSmokeTest
     @Test
     public void testSecondaryIndexFileSkipping()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(true)
                 .withColStatsIndexEnabled(false)
                 .withRecordLevelIndexEnabled(false)
@@ -206,7 +205,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionStatsIndexPartitionPruning()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(true)
                 .withColStatsIndexEnabled(false)
                 .withRecordLevelIndexEnabled(false)
@@ -345,7 +344,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequired()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withPartitionFilterRequired(true)
                 .build();
 
@@ -358,7 +357,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredPredicateOnNonPartitionColumn()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withPartitionFilterRequired(true)
                 .build();
 
@@ -371,7 +370,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredNestedQueryWithInnerPartitionPredicate()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withPartitionFilterRequired(true)
                 .build();
 
@@ -381,7 +380,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredNestedQueryWithOuterPartitionPredicate()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withPartitionFilterRequired(true)
                 .build();
 
@@ -391,7 +390,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredNestedWithIsNotNullFilter()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withPartitionFilterRequired(true)
                 .build();
 
@@ -401,7 +400,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredFilterRemovedByPlanner()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withPartitionFilterRequired(true)
                 .build();
 
@@ -414,7 +413,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredOnJoin()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withPartitionFilterRequired(true)
                 .build();
 
@@ -471,7 +470,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredOnJoinBothTablePartitioned()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withPartitionFilterRequired(true)
                 .build();
 
@@ -510,7 +509,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredWithLike()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withPartitionFilterRequired(true)
                 .build();
         assertQueryFails(
@@ -522,7 +521,7 @@ public class TestHudiSmokeTest
     @Test
     public void testDynamicFilterEnabledPredicatePushdown()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(false)
                 .build();
         final String tableIdentifier = "hudi:tests.hudi_multi_fg_pt_mor";
@@ -554,7 +553,7 @@ public class TestHudiSmokeTest
     @Test
     public void testDynamicFilterDisabledPredicatePushdown()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(false)
                 .withDynamicFilterTimeout("0s")
                 .build();
@@ -586,9 +585,9 @@ public class TestHudiSmokeTest
     }
 
     @Test
-    public void testDynamicFilterEnabled__withPartitionPruningUsingDynamicFilter()
+    public void testDynamicFilterEnabled_withPartitionPruningUsingDynamicFilter()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(false)
                 .build();
         final String tableIdentifier = "hudi:tests.hudi_multi_fg_pt_mor";
@@ -619,9 +618,9 @@ public class TestHudiSmokeTest
     }
 
     @Test
-    public void testDynamicFilterDisabled__withPartitionPruningUsingDynamicFilter()
+    public void testDynamicFilterDisabled_withPartitionPruningUsingDynamicFilter()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(false)
                 .withDynamicFilterTimeout("0s")
                 .build();
@@ -657,7 +656,7 @@ public class TestHudiSmokeTest
     @Test
     public void testPartitionFilterRequiredFilterIncluded()
     {
-        Session session = SessionPropertyConfigurator.from(getSession())
+        Session session = SessionBuilder.from(getSession())
                 .withPartitionFilterRequired(true)
                 .build();
         assertQuery(session, "SELECT name FROM " + HUDI_COW_PT_TBL + " WHERE hh = '10'", "VALUES 'a1'");

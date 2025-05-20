@@ -292,7 +292,7 @@ public class HudiConfig
     }
 
     @Config("hudi.dynamic-filtering.wait-timeout")
-    @ConfigDescription("Maximum timeout to wait for dynamic filtering")
+    @ConfigDescription("Maximum timeout to wait for dynamic filtering, e.g. 1000ms, 20s, 2m, 1h")
     public HudiConfig setDynamicFilteringWaitTimeout(Duration dynamicFilteringWaitTimeout)
     {
         this.dynamicFilteringWaitTimeout = dynamicFilteringWaitTimeout;
