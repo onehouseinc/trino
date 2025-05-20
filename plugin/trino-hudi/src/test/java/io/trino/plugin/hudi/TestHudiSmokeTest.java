@@ -569,13 +569,14 @@ public class TestHudiSmokeTest
         MaterializedResult explainRes = getQueryRunner().execute(session, "EXPLAIN ANALYZE " + query);
         Pattern scanFilterInputRowsPattern = getScanFilterInputRowsPattern(tableIdentifier);
         Matcher matcher = scanFilterInputRowsPattern.matcher(explainRes.toString());
-        long expectedInputRowsAfterFix = 2;
+        assertThat(matcher.find())
+                .withFailMessage("Could not find 'ScanFilter' for table '%s' with 'dynamicFilters' and 'Input: X rows' stats in EXPLAIN output.\nOutput was:\n%s",
+                        tableIdentifier, explainRes.toString())
+                .isTrue();
 
-        assertThat(actualInputRows)
-                .describedAs("Number of rows input to the ScanFilter for the probe side table (%s) should reflect effective dynamic filtering", tableIdentifier)
-                .isEqualTo(expectedInputRowsAfterFix);
-    }
-    
+        // matcher#group() must be invoked after matcher#find()
+        String rowsInputString = matcher.group(1);
+        long actualInputRows = Long.parseLong(rowsInputString);
         // No dynamic filtering performed, all rows read
         long expectedInputRowsAfterFiltering = 4;
         assertThat(actualInputRows)
