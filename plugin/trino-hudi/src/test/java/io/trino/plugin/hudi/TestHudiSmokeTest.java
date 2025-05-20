@@ -52,11 +52,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static io.trino.metastore.HiveType.HIVE_TIMESTAMP;
 import static io.trino.plugin.hive.HiveColumnHandle.ColumnType.REGULAR;
 import static io.trino.plugin.hive.HiveColumnHandle.createBaseColumn;
 import static io.trino.plugin.hudi.HudiPageSourceProvider.createPageSource;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_PT_TBL;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_FG_PT_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
@@ -660,7 +663,9 @@ public class TestHudiSmokeTest
     @ValueSource(booleans = {true, false})
     public void testComprehensiveTypes(boolean isRtTable)
     {
-        Session session = withMdtEnabled(getSession());
+        Session session = SessionBuilder.from(getSession())
+                .withMdtEnabled(true)
+                .build();
         // Not using #assertQuery() as it uses H2QueryRunner, which restricts the types which can be defined, particularly MAP types
         // Use #getQueryRunner(), which uses TrinoQueryRunner instead
 
