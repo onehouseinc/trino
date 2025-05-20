@@ -64,6 +64,7 @@ import static com.google.common.base.Verify.verify;
 import static io.airlift.slice.Slices.utf8Slice;
 import static io.trino.plugin.hudi.HudiUtil.constructSchema;
 import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
+import static io.trino.spi.StandardErrorCode.NUMERIC_VALUE_OUT_OF_RANGE;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.DateType.DATE;
 import static io.trino.spi.type.Decimals.encodeShortScaledValue;
@@ -286,9 +287,30 @@ public class HudiAvroSerializer
                     Instant trueUtcInstant = zdtInOriginalZone.toInstant();
 
                     // Extract true UTC epoch micros and picos
-                    long trueUtcEpochMicros = trueUtcInstant.getEpochSecond() * 1_000_000L + trueUtcInstant.getNano() / 1000L;
-                    int truePicosOfMicros = (trueUtcInstant.getNano() % 1000) * 1000;
+                    long trueUtcEpochSeconds = trueUtcInstant.getEpochSecond();
+                    long trueUtcEpochMicrosContributionFromSeconds;
+                    try {
+                        trueUtcEpochMicrosContributionFromSeconds = Math.multiplyExact(trueUtcEpochSeconds, 1_000_000L);
+                    } catch (ArithmeticException e) {
+                        // Multiplication could overflow if epochSeconds is approximately more than 292,271 years from epoch
+                        throw new TrinoException(NUMERIC_VALUE_OUT_OF_RANGE,
+                                "Timestamp " + trueUtcInstant + " is too far in the past or future to be represented as microseconds in a long.", e);
+                    }
 
+                    long trueUtcEpochMicrosContributionFromNanos = trueUtcInstant.getNano() / 1000L;
+                    long trueUtcEpochMicros;
+
+                    try {
+                        trueUtcEpochMicros = Math.addExact(trueUtcEpochMicrosContributionFromSeconds, trueUtcEpochMicrosContributionFromNanos);
+                    } catch (ArithmeticException e) {
+                        // Addition could also theoretically overflow if epochMicrosContributionFromSeconds is:
+                        // 1. Very close to Long.MAX_VALUE and trueUtcEpochMicrosContributionFromNanos is positive
+                        // 2. Very close to Long.MIN_VALUE and trueUtcEpochMicrosContributionFromNanos is negative
+                        throw new TrinoException(NUMERIC_VALUE_OUT_OF_RANGE,
+                                "Timestamp " + trueUtcInstant + " results in microsecond representation overflow after adding nanosecond component.", e);
+                    }
+
+                    int truePicosOfMicros = (trueUtcInstant.getNano() % 1000) * 1000;
                     ((Fixed12BlockBuilder) output).writeFixed12(trueUtcEpochMicros, truePicosOfMicros);
                 }
                 else if (value instanceof Long epochMicros) {
