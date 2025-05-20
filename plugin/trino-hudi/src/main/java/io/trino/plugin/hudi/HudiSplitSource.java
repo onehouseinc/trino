@@ -161,12 +161,9 @@ public class HudiSplitSource
         }
 
         boolean noMoreSplits = isFinished();
-        TupleDomain<HiveColumnHandle> dynamicFilterPredicate =
-                dynamicFilter.getCurrentPredicate().transformKeys(HiveColumnHandle.class::cast);
-
-        if (dynamicFilterPredicate.isNone()) {
-            close();
-            return completedFuture(new ConnectorSplitBatch(ImmutableList.of(), true));
+        Throwable throwable = trinoException.get();
+        if (throwable != null) {
+            return CompletableFuture.failedFuture(throwable);
         }
 
         return toCompletableFuture(Futures.transform(
