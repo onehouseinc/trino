@@ -1,0 +1,407 @@
+{
+  "partitionToWriteStats" : {
+    "part_col=B" : [ {
+      "fileId" : "65503652-c237-4553-84bf-a6850678f3d8-0",
+      "path" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+      "cdcStats" : null,
+      "prevCommit" : "20250521133215452",
+      "numWrites" : 1,
+      "numDeletes" : 0,
+      "numUpdateWrites" : 1,
+      "numInserts" : 0,
+      "totalWriteBytes" : 6425,
+      "totalWriteErrors" : 0,
+      "tempPath" : null,
+      "partitionPath" : "part_col=B",
+      "totalLogRecords" : 0,
+      "totalLogFilesCompacted" : 0,
+      "totalLogSizeCompacted" : 0,
+      "totalUpdatedRecordsCompacted" : 0,
+      "totalLogBlocks" : 0,
+      "totalCorruptLogBlock" : 0,
+      "totalRollbackBlocks" : 0,
+      "fileSizeInBytes" : 6425,
+      "minEventTime" : null,
+      "maxEventTime" : null,
+      "runtimeStats" : {
+        "totalScanTime" : 0,
+        "totalUpsertTime" : 87,
+        "totalCreateTime" : 0
+      },
+      "logVersion" : 1,
+      "logOffset" : 0,
+      "baseFile" : "65503652-c237-4553-84bf-a6850678f3d8-0_0-124-261_20250521133215452.parquet",
+      "logFiles" : [ ".65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385" ],
+      "recordsStats" : {
+        "val" : {
+          "col_array_struct_with_map" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_array_struct_with_map",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_double" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_double",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_array_array_int" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_array_array_int",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_struct_array_struct" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_struct_array_struct",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "uuid" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "uuid",
+            "minValue" : "uuid3",
+            "maxValue" : "uuid3",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_tinyint" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_tinyint",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_array_int" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_array_int",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_map_struct_with_array" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_map_struct_with_array",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_date" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_date",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_partition_path" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "_hoodie_partition_path",
+            "minValue" : "part_col=B",
+            "maxValue" : "part_col=B",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_map_string_int" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_map_string_int",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_binary" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_binary",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_commit_seqno" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "_hoodie_commit_seqno",
+            "minValue" : "20250521133218440_0_3",
+            "maxValue" : "20250521133218440_0_3",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_struct_nested_struct" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_struct_nested_struct",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_timestamp" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_timestamp",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_commit_time" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "_hoodie_commit_time",
+            "minValue" : "20250521133218440",
+            "maxValue" : "20250521133218440",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_int" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_int",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "part_col" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "part_col",
+            "minValue" : "B",
+            "maxValue" : "B",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_array_struct" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_array_struct",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_struct" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_struct",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_string" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_string",
+            "minValue" : "updated string",
+            "maxValue" : "updated string",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_char" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_char",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_varchar" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_varchar",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_map_string_map_string_date" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_map_string_map_string_date",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_file_name" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "_hoodie_file_name",
+            "minValue" : "65503652-c237-4553-84bf-a6850678f3d8-0",
+            "maxValue" : "65503652-c237-4553-84bf-a6850678f3d8-0",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_map_string_array_double" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_map_string_array_double",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_array_string" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_array_string",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_smallint" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_smallint",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_struct_map" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_struct_map",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_map_string_struct" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_map_string_struct",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_decimal" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_decimal",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_record_key" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "_hoodie_record_key",
+            "minValue" : "uuid3",
+            "maxValue" : "uuid3",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_bigint" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_bigint",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_boolean" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_boolean",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "col_float" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "col_float",
+            "minValue" : null,
+            "maxValue" : null,
+            "nullCount" : 1,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "precombine_field" : {
+            "filePath" : "part_col=B/.65503652-c237-4553-84bf-a6850678f3d8-0_20250521133215452.log.1_0-181-385",
+            "columnName" : "precombine_field",
+            "minValue" : 1101,
+            "maxValue" : 1101,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          }
+        }
+      }
+    } ]
+  },
+  "compacted" : false,
+  "extraMetadata" : {
+    "schema" : "{\"type\":\"record\",\"name\":\"hudi_type_test_mor_record\",\"namespace\":\"hoodie.hudi_type_test_mor\",\"fields\":[{\"name\":\"uuid\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"precombine_field\",\"type\":[\"null\",\"long\"],\"default\":null},{\"name\":\"col_boolean\",\"type\":[\"null\",\"boolean\"],\"default\":null},{\"name\":\"col_tinyint\",\"type\":[\"null\",\"int\"],\"default\":null},{\"name\":\"col_smallint\",\"type\":[\"null\",\"int\"],\"default\":null},{\"name\":\"col_int\",\"type\":[\"null\",\"int\"],\"default\":null},{\"name\":\"col_bigint\",\"type\":[\"null\",\"long\"],\"default\":null},{\"name\":\"col_float\",\"type\":[\"null\",\"float\"],\"default\":null},{\"name\":\"col_double\",\"type\":[\"null\",\"double\"],\"default\":null},{\"name\":\"col_decimal\",\"type\":[\"null\",{\"type\":\"fixed\",\"name\":\"fixed\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record.col_decimal\",\"size\":5,\"logicalType\":\"decimal\",\"precision\":10,\"scale\":2}],\"default\":null},{\"name\":\"col_string\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"col_varchar\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"col_char\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"col_binary\",\"type\":[\"null\",\"bytes\"],\"default\":null},{\"name\":\"col_date\",\"type\":[\"null\",{\"type\":\"int\",\"logicalType\":\"date\"}],\"default\":null},{\"name\":\"col_timestamp\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}],\"default\":null},{\"name\":\"col_array_int\",\"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"int\"]}],\"default\":null},{\"name\":\"col_array_string\",\"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"string\"]}],\"default\":null},{\"name\":\"col_map_string_int\",\"type\":[\"null\",{\"type\":\"map\",\"values\":[\"null\",\"int\"]}],\"default\":null},{\"name\":\"col_struct\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"col_struct\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record\",\"fields\":[{\"name\":\"f1\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"f2\",\"type\":[\"null\",\"int\"],\"default\":null},{\"name\":\"f3\",\"type\":[\"null\",\"boolean\"],\"default\":null}]}],\"default\":null},{\"name\":\"col_array_struct\",\"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",{\"type\":\"record\",\"name\":\"col_array_struct\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record\",\"fields\":[{\"name\":\"nested_f1\",\"type\":[\"null\",\"double\"],\"default\":null},{\"name\":\"nested_f2\",\"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"string\"]}],\"default\":null}]}]}],\"default\":null},{\"name\":\"col_map_string_struct\",\"type\":[\"null\",{\"type\":\"map\",\"values\":[\"null\",{\"type\":\"record\",\"name\":\"col_map_string_struct\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record\",\"fields\":[{\"name\":\"nested_f3\",\"type\":[\"null\",{\"type\":\"int\",\"logicalType\":\"date\"}],\"default\":null},{\"name\":\"nested_f4\",\"type\":[\"null\",{\"type\":\"fixed\",\"name\":\"fixed\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record.col_map_string_struct.nested_f4\",\"size\":3,\"logicalType\":\"decimal\",\"precision\":5,\"scale\":2}],\"default\":null}]}]}],\"default\":null},{\"name\":\"col_array_struct_with_map\",\"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",{\"type\":\"record\",\"name\":\"col_array_struct_with_map\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record\",\"fields\":[{\"name\":\"f_arr_struct_str\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"f_arr_struct_map\",\"type\":[\"null\",{\"type\":\"map\",\"values\":[\"null\",\"int\"]}],\"default\":null}]}]}],\"default\":null},{\"name\":\"col_map_struct_with_array\",\"type\":[\"null\",{\"type\":\"map\",\"values\":[\"null\",{\"type\":\"record\",\"name\":\"col_map_struct_with_array\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record\",\"fields\":[{\"name\":\"f_map_struct_arr\",\"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"boolean\"]}],\"default\":null},{\"name\":\"f_map_struct_ts\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}],\"default\":null}]}]}],\"default\":null},{\"name\":\"col_struct_nested_struct\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"col_struct_nested_struct\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record\",\"fields\":[{\"name\":\"outer_f1\",\"type\":[\"null\",\"int\"],\"default\":null},{\"name\":\"nested_struct\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"nested_struct\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record.col_struct_nested_struct\",\"fields\":[{\"name\":\"inner_f1\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"inner_f2\",\"type\":[\"null\",\"boolean\"],\"default\":null}]}],\"default\":null}]}],\"default\":null},{\"name\":\"col_array_array_int\",\"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"int\"]}]}],\"default\":null},{\"name\":\"col_map_string_array_double\",\"type\":[\"null\",{\"type\":\"map\",\"values\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",\"double\"]}]}],\"default\":null},{\"name\":\"col_map_string_map_string_date\",\"type\":[\"null\",{\"type\":\"map\",\"values\":[\"null\",{\"type\":\"map\",\"values\":[\"null\",{\"type\":\"int\",\"logicalType\":\"date\"}]}]}],\"default\":null},{\"name\":\"col_struct_array_struct\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"col_struct_array_struct\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record\",\"fields\":[{\"name\":\"outer_f2\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"struct_array\",\"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\",{\"type\":\"record\",\"name\":\"struct_array\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record.col_struct_array_struct\",\"fields\":[{\"name\":\"inner_f3\",\"type\":[\"null\",{\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}],\"default\":null},{\"name\":\"inner_f4\",\"type\":[\"null\",\"string\"],\"default\":null}]}]}],\"default\":null}]}],\"default\":null},{\"name\":\"col_struct_map\",\"type\":[\"null\",{\"type\":\"record\",\"name\":\"col_struct_map\",\"namespace\":\"hoodie.hudi_type_test_mor.hudi_type_test_mor_record\",\"fields\":[{\"name\":\"outer_f3\",\"type\":[\"null\",\"boolean\"],\"default\":null},{\"name\":\"struct_map\",\"type\":[\"null\",{\"type\":\"map\",\"values\":[\"null\",\"long\"]}],\"default\":null}]}],\"default\":null},{\"name\":\"part_col\",\"type\":[\"null\",\"string\"],\"default\":null}]}",
+    "_hoodie.spark.sql.writes.prepped" : "true"
+  },
+  "operationType" : "UPSERT_PREPPED"
+}

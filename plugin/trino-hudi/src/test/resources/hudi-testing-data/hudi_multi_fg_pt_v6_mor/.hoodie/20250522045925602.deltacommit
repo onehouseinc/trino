@@ -1,0 +1,476 @@
+{
+  "partitionToWriteStats" : {
+    "country=SG" : [ {
+      "fileId" : "446ccfab-cc05-4113-9da3-ce05e1fdd78c-0",
+      "path" : "country=SG/.446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_20250522045918378.log.1_0-118-273",
+      "cdcStats" : null,
+      "prevCommit" : "20250522045918378",
+      "numWrites" : 1,
+      "numDeletes" : 0,
+      "numUpdateWrites" : 1,
+      "numInserts" : 0,
+      "totalWriteBytes" : 1004,
+      "totalWriteErrors" : 0,
+      "tempPath" : null,
+      "partitionPath" : "country=SG",
+      "totalLogRecords" : 0,
+      "totalLogFilesCompacted" : 0,
+      "totalLogSizeCompacted" : 0,
+      "totalUpdatedRecordsCompacted" : 0,
+      "totalLogBlocks" : 0,
+      "totalCorruptLogBlock" : 0,
+      "totalRollbackBlocks" : 0,
+      "fileSizeInBytes" : 1004,
+      "minEventTime" : null,
+      "maxEventTime" : null,
+      "runtimeStats" : {
+        "totalScanTime" : 0,
+        "totalUpsertTime" : 104,
+        "totalCreateTime" : 0
+      },
+      "logVersion" : 1,
+      "logOffset" : 0,
+      "baseFile" : "446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_0-41-98_20250522045918378.parquet",
+      "logFiles" : [ ".446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_20250522045918378.log.1_0-118-273" ],
+      "recordsStats" : {
+        "val" : {
+          "_hoodie_commit_time" : {
+            "filePath" : "country=SG/.446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_20250522045918378.log.1_0-118-273",
+            "columnName" : "_hoodie_commit_time",
+            "minValue" : "20250522045925602",
+            "maxValue" : "20250522045925602",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "country" : {
+            "filePath" : "country=SG/.446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_20250522045918378.log.1_0-118-273",
+            "columnName" : "country",
+            "minValue" : "SG",
+            "maxValue" : "SG",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_partition_path" : {
+            "filePath" : "country=SG/.446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_20250522045918378.log.1_0-118-273",
+            "columnName" : "_hoodie_partition_path",
+            "minValue" : "country=SG",
+            "maxValue" : "country=SG",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "price" : {
+            "filePath" : "country=SG/.446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_20250522045918378.log.1_0-118-273",
+            "columnName" : "price",
+            "minValue" : 101.0,
+            "maxValue" : 101.0,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_record_key" : {
+            "filePath" : "country=SG/.446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_20250522045918378.log.1_0-118-273",
+            "columnName" : "_hoodie_record_key",
+            "minValue" : "id:1,name:a1",
+            "maxValue" : "id:1,name:a1",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "name" : {
+            "filePath" : "country=SG/.446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_20250522045918378.log.1_0-118-273",
+            "columnName" : "name",
+            "minValue" : "a1",
+            "maxValue" : "a1",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "id" : {
+            "filePath" : "country=SG/.446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_20250522045918378.log.1_0-118-273",
+            "columnName" : "id",
+            "minValue" : 1,
+            "maxValue" : 1,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "ts" : {
+            "filePath" : "country=SG/.446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_20250522045918378.log.1_0-118-273",
+            "columnName" : "ts",
+            "minValue" : 1000,
+            "maxValue" : 1000,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          }
+        }
+      }
+    }, {
+      "fileId" : "46509def-d09b-4b19-ab5f-8f6e3b9cf667-0",
+      "path" : "country=SG/.46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_20250522045923957.log.1_1-118-274",
+      "cdcStats" : null,
+      "prevCommit" : "20250522045923957",
+      "numWrites" : 1,
+      "numDeletes" : 0,
+      "numUpdateWrites" : 1,
+      "numInserts" : 0,
+      "totalWriteBytes" : 1004,
+      "totalWriteErrors" : 0,
+      "tempPath" : null,
+      "partitionPath" : "country=SG",
+      "totalLogRecords" : 0,
+      "totalLogFilesCompacted" : 0,
+      "totalLogSizeCompacted" : 0,
+      "totalUpdatedRecordsCompacted" : 0,
+      "totalLogBlocks" : 0,
+      "totalCorruptLogBlock" : 0,
+      "totalRollbackBlocks" : 0,
+      "fileSizeInBytes" : 1004,
+      "minEventTime" : null,
+      "maxEventTime" : null,
+      "runtimeStats" : {
+        "totalScanTime" : 0,
+        "totalUpsertTime" : 104,
+        "totalCreateTime" : 0
+      },
+      "logVersion" : 1,
+      "logOffset" : 0,
+      "baseFile" : "46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_0-83-192_20250522045923957.parquet",
+      "logFiles" : [ ".46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_20250522045923957.log.1_1-118-274" ],
+      "recordsStats" : {
+        "val" : {
+          "_hoodie_commit_time" : {
+            "filePath" : "country=SG/.46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_20250522045923957.log.1_1-118-274",
+            "columnName" : "_hoodie_commit_time",
+            "minValue" : "20250522045925602",
+            "maxValue" : "20250522045925602",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "country" : {
+            "filePath" : "country=SG/.46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_20250522045923957.log.1_1-118-274",
+            "columnName" : "country",
+            "minValue" : "SG",
+            "maxValue" : "SG",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_partition_path" : {
+            "filePath" : "country=SG/.46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_20250522045923957.log.1_1-118-274",
+            "columnName" : "_hoodie_partition_path",
+            "minValue" : "country=SG",
+            "maxValue" : "country=SG",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "price" : {
+            "filePath" : "country=SG/.46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_20250522045923957.log.1_1-118-274",
+            "columnName" : "price",
+            "minValue" : 102.0,
+            "maxValue" : 102.0,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_record_key" : {
+            "filePath" : "country=SG/.46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_20250522045923957.log.1_1-118-274",
+            "columnName" : "_hoodie_record_key",
+            "minValue" : "id:3,name:a3",
+            "maxValue" : "id:3,name:a3",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "name" : {
+            "filePath" : "country=SG/.46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_20250522045923957.log.1_1-118-274",
+            "columnName" : "name",
+            "minValue" : "a3",
+            "maxValue" : "a3",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "id" : {
+            "filePath" : "country=SG/.46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_20250522045923957.log.1_1-118-274",
+            "columnName" : "id",
+            "minValue" : 3,
+            "maxValue" : 3,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "ts" : {
+            "filePath" : "country=SG/.46509def-d09b-4b19-ab5f-8f6e3b9cf667-0_20250522045923957.log.1_1-118-274",
+            "columnName" : "ts",
+            "minValue" : 1001,
+            "maxValue" : 1001,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          }
+        }
+      }
+    } ],
+    "country=US" : [ {
+      "fileId" : "e3d4f7a2-4044-4291-b464-a937a5f425f8-0",
+      "path" : "country=US/.e3d4f7a2-4044-4291-b464-a937a5f425f8-0_20250522045918378.log.1_2-118-275",
+      "cdcStats" : null,
+      "prevCommit" : "20250522045918378",
+      "numWrites" : 1,
+      "numDeletes" : 0,
+      "numUpdateWrites" : 1,
+      "numInserts" : 0,
+      "totalWriteBytes" : 1004,
+      "totalWriteErrors" : 0,
+      "tempPath" : null,
+      "partitionPath" : "country=US",
+      "totalLogRecords" : 0,
+      "totalLogFilesCompacted" : 0,
+      "totalLogSizeCompacted" : 0,
+      "totalUpdatedRecordsCompacted" : 0,
+      "totalLogBlocks" : 0,
+      "totalCorruptLogBlock" : 0,
+      "totalRollbackBlocks" : 0,
+      "fileSizeInBytes" : 1004,
+      "minEventTime" : null,
+      "maxEventTime" : null,
+      "runtimeStats" : {
+        "totalScanTime" : 0,
+        "totalUpsertTime" : 104,
+        "totalCreateTime" : 0
+      },
+      "logVersion" : 1,
+      "logOffset" : 0,
+      "baseFile" : "e3d4f7a2-4044-4291-b464-a937a5f425f8-0_1-41-99_20250522045918378.parquet",
+      "logFiles" : [ ".e3d4f7a2-4044-4291-b464-a937a5f425f8-0_20250522045918378.log.1_2-118-275" ],
+      "recordsStats" : {
+        "val" : {
+          "_hoodie_commit_time" : {
+            "filePath" : "country=US/.e3d4f7a2-4044-4291-b464-a937a5f425f8-0_20250522045918378.log.1_2-118-275",
+            "columnName" : "_hoodie_commit_time",
+            "minValue" : "20250522045925602",
+            "maxValue" : "20250522045925602",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "country" : {
+            "filePath" : "country=US/.e3d4f7a2-4044-4291-b464-a937a5f425f8-0_20250522045918378.log.1_2-118-275",
+            "columnName" : "country",
+            "minValue" : "US",
+            "maxValue" : "US",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_partition_path" : {
+            "filePath" : "country=US/.e3d4f7a2-4044-4291-b464-a937a5f425f8-0_20250522045918378.log.1_2-118-275",
+            "columnName" : "_hoodie_partition_path",
+            "minValue" : "country=US",
+            "maxValue" : "country=US",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "price" : {
+            "filePath" : "country=US/.e3d4f7a2-4044-4291-b464-a937a5f425f8-0_20250522045918378.log.1_2-118-275",
+            "columnName" : "price",
+            "minValue" : 201.0,
+            "maxValue" : 201.0,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_record_key" : {
+            "filePath" : "country=US/.e3d4f7a2-4044-4291-b464-a937a5f425f8-0_20250522045918378.log.1_2-118-275",
+            "columnName" : "_hoodie_record_key",
+            "minValue" : "id:2,name:a2",
+            "maxValue" : "id:2,name:a2",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "name" : {
+            "filePath" : "country=US/.e3d4f7a2-4044-4291-b464-a937a5f425f8-0_20250522045918378.log.1_2-118-275",
+            "columnName" : "name",
+            "minValue" : "a2",
+            "maxValue" : "a2",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "id" : {
+            "filePath" : "country=US/.e3d4f7a2-4044-4291-b464-a937a5f425f8-0_20250522045918378.log.1_2-118-275",
+            "columnName" : "id",
+            "minValue" : 2,
+            "maxValue" : 2,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "ts" : {
+            "filePath" : "country=US/.e3d4f7a2-4044-4291-b464-a937a5f425f8-0_20250522045918378.log.1_2-118-275",
+            "columnName" : "ts",
+            "minValue" : 1000,
+            "maxValue" : 1000,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          }
+        }
+      }
+    }, {
+      "fileId" : "5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0",
+      "path" : "country=US/.5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_20250522045923957.log.1_3-118-276",
+      "cdcStats" : null,
+      "prevCommit" : "20250522045923957",
+      "numWrites" : 1,
+      "numDeletes" : 0,
+      "numUpdateWrites" : 1,
+      "numInserts" : 0,
+      "totalWriteBytes" : 1004,
+      "totalWriteErrors" : 0,
+      "tempPath" : null,
+      "partitionPath" : "country=US",
+      "totalLogRecords" : 0,
+      "totalLogFilesCompacted" : 0,
+      "totalLogSizeCompacted" : 0,
+      "totalUpdatedRecordsCompacted" : 0,
+      "totalLogBlocks" : 0,
+      "totalCorruptLogBlock" : 0,
+      "totalRollbackBlocks" : 0,
+      "fileSizeInBytes" : 1004,
+      "minEventTime" : null,
+      "maxEventTime" : null,
+      "runtimeStats" : {
+        "totalScanTime" : 0,
+        "totalUpsertTime" : 104,
+        "totalCreateTime" : 0
+      },
+      "logVersion" : 1,
+      "logOffset" : 0,
+      "baseFile" : "5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_1-83-193_20250522045923957.parquet",
+      "logFiles" : [ ".5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_20250522045923957.log.1_3-118-276" ],
+      "recordsStats" : {
+        "val" : {
+          "_hoodie_commit_time" : {
+            "filePath" : "country=US/.5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_20250522045923957.log.1_3-118-276",
+            "columnName" : "_hoodie_commit_time",
+            "minValue" : "20250522045925602",
+            "maxValue" : "20250522045925602",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "country" : {
+            "filePath" : "country=US/.5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_20250522045923957.log.1_3-118-276",
+            "columnName" : "country",
+            "minValue" : "US",
+            "maxValue" : "US",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_partition_path" : {
+            "filePath" : "country=US/.5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_20250522045923957.log.1_3-118-276",
+            "columnName" : "_hoodie_partition_path",
+            "minValue" : "country=US",
+            "maxValue" : "country=US",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "price" : {
+            "filePath" : "country=US/.5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_20250522045923957.log.1_3-118-276",
+            "columnName" : "price",
+            "minValue" : 202.0,
+            "maxValue" : 202.0,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "_hoodie_record_key" : {
+            "filePath" : "country=US/.5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_20250522045923957.log.1_3-118-276",
+            "columnName" : "_hoodie_record_key",
+            "minValue" : "id:4,name:a3",
+            "maxValue" : "id:4,name:a3",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "name" : {
+            "filePath" : "country=US/.5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_20250522045923957.log.1_3-118-276",
+            "columnName" : "name",
+            "minValue" : "a3",
+            "maxValue" : "a3",
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "id" : {
+            "filePath" : "country=US/.5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_20250522045923957.log.1_3-118-276",
+            "columnName" : "id",
+            "minValue" : 4,
+            "maxValue" : 4,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          },
+          "ts" : {
+            "filePath" : "country=US/.5d7a2a4a-aad9-4cae-97d4-6ea3d2d03bce-0_20250522045923957.log.1_3-118-276",
+            "columnName" : "ts",
+            "minValue" : 1001,
+            "maxValue" : 1001,
+            "nullCount" : 0,
+            "valueCount" : 1,
+            "totalSize" : 0,
+            "totalUncompressedSize" : 0
+          }
+        }
+      }
+    } ]
+  },
+  "compacted" : false,
+  "extraMetadata" : {
+    "schema" : "{\"type\":\"record\",\"name\":\"hudi_multi_fg_pt_mor_record\",\"namespace\":\"hoodie.hudi_multi_fg_pt_mor\",\"fields\":[{\"name\":\"id\",\"type\":[\"null\",\"int\"],\"default\":null},{\"name\":\"name\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"price\",\"type\":[\"null\",\"double\"],\"default\":null},{\"name\":\"ts\",\"type\":[\"null\",\"long\"],\"default\":null},{\"name\":\"country\",\"type\":[\"null\",\"string\"],\"default\":null}]}",
+    "_hoodie.spark.sql.writes.prepped" : "true"
+  },
+  "operationType" : "UPSERT_PREPPED"
+}
