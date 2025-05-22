@@ -32,7 +32,7 @@ test("Create table multi filegroup partitioned mor") {
         spark.sql(s"set hoodie.parquet.small.file.limit=0")
         spark.sql(s"set hoodie.metadata.compact.max.delta.commits=1")
         // partition stats index is enabled together with column stats index
-        spark.sql(s"set hoodie.metadata.index.column.stas.enable=true")
+        spark.sql(s"set hoodie.metadata.index.column.stats.enable=true")
         spark.sql(s"set hoodie.metadata.record.index.enable=true")
         spark.sql(s"set hoodie.metadata.index.secondary.enable=true")
         spark.sql(s"set hoodie.metadata.index.column.stats.column.list=_hoodie_commit_time,_hoodie_partition_path,_hoodie_record_key,id,name,price,ts,country")
@@ -53,4 +53,4 @@ test("Create table multi filegroup partitioned mor") {
 - For test cases that require column stats index
 - For test cases that require partition stats index
 - For test cases that require record level index
-- FOr test cases that require secondary index
+- For test cases that require secondary index
