@@ -1,0 +1,67 @@
+{
+  "partitionToWriteStats" : {
+    "country=SG" : [ {
+      "fileId" : "446ccfab-cc05-4113-9da3-ce05e1fdd78c-0",
+      "path" : "country=SG/446ccfab-cc05-4113-9da3-ce05e1fdd78c-0_0-41-98_20250522045918378.parquet",
+      "cdcStats" : null,
+      "prevCommit" : "null",
+      "numWrites" : 1,
+      "numDeletes" : 0,
+      "numUpdateWrites" : 0,
+      "numInserts" : 1,
+      "totalWriteBytes" : 435331,
+      "totalWriteErrors" : 0,
+      "tempPath" : null,
+      "partitionPath" : "country=SG",
+      "totalLogRecords" : 0,
+      "totalLogFilesCompacted" : 0,
+      "totalLogSizeCompacted" : 0,
+      "totalUpdatedRecordsCompacted" : 0,
+      "totalLogBlocks" : 0,
+      "totalCorruptLogBlock" : 0,
+      "totalRollbackBlocks" : 0,
+      "fileSizeInBytes" : 435331,
+      "minEventTime" : null,
+      "maxEventTime" : null,
+      "runtimeStats" : {
+        "totalScanTime" : 0,
+        "totalUpsertTime" : 0,
+        "totalCreateTime" : 515
+      }
+    } ],
+    "country=US" : [ {
+      "fileId" : "e3d4f7a2-4044-4291-b464-a937a5f425f8-0",
+      "path" : "country=US/e3d4f7a2-4044-4291-b464-a937a5f425f8-0_1-41-99_20250522045918378.parquet",
+      "cdcStats" : null,
+      "prevCommit" : "null",
+      "numWrites" : 1,
+      "numDeletes" : 0,
+      "numUpdateWrites" : 0,
+      "numInserts" : 1,
+      "totalWriteBytes" : 435329,
+      "totalWriteErrors" : 0,
+      "tempPath" : null,
+      "partitionPath" : "country=US",
+      "totalLogRecords" : 0,
+      "totalLogFilesCompacted" : 0,
+      "totalLogSizeCompacted" : 0,
+      "totalUpdatedRecordsCompacted" : 0,
+      "totalLogBlocks" : 0,
+      "totalCorruptLogBlock" : 0,
+      "totalRollbackBlocks" : 0,
+      "fileSizeInBytes" : 435329,
+      "minEventTime" : null,
+      "maxEventTime" : null,
+      "runtimeStats" : {
+        "totalScanTime" : 0,
+        "totalUpsertTime" : 0,
+        "totalCreateTime" : 515
+      }
+    } ]
+  },
+  "compacted" : false,
+  "extraMetadata" : {
+    "schema" : "{\"type\":\"record\",\"name\":\"hudi_multi_fg_pt_mor_record\",\"namespace\":\"hoodie.hudi_multi_fg_pt_mor\",\"fields\":[{\"name\":\"id\",\"type\":[\"null\",\"int\"],\"default\":null},{\"name\":\"name\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"price\",\"type\":[\"null\",\"double\"],\"default\":null},{\"name\":\"ts\",\"type\":[\"null\",\"long\"],\"default\":null},{\"name\":\"country\",\"type\":[\"null\",\"string\"],\"default\":null}]}"
+  },
+  "operationType" : "UPSERT"
+}

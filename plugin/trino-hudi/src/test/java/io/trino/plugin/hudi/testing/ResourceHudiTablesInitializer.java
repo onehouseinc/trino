@@ -29,8 +29,12 @@ import io.trino.metastore.PrincipalPrivileges;
 import io.trino.metastore.StorageFormat;
 import io.trino.metastore.Table;
 import io.trino.plugin.hudi.HudiConnector;
+import io.trino.plugin.hudi.storage.HudiTrinoStorage;
+import io.trino.plugin.hudi.storage.TrinoStorageConfiguration;
 import io.trino.spi.security.ConnectorIdentity;
 import io.trino.testing.QueryRunner;
+import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.table.HoodieTableVersion;
 
 import java.io.File;
 import java.io.IOException;
@@ -126,6 +130,13 @@ public class ResourceHudiTablesInitializer
                         table.getPartitions(),
                         true);
             }
+
+            // Set table version
+            HoodieTableMetaClient metaClient = HoodieTableMetaClient.builder()
+                    .setStorage(new HudiTrinoStorage(fileSystem, new TrinoStorageConfiguration()))
+                    .setBasePath(tablePath.toString())
+                    .build();
+            table.setTableVersion(metaClient.getTableConfig().getTableVersion());
         }
     }
 
@@ -161,6 +172,7 @@ public class ResourceHudiTablesInitializer
                         .setStorageFormat(isRtTable ? rtStorageFormat : roStorageFormat)
                         .setLocation(tablePath.toString()))
                 .build();
+
         HiveMetastore metastore = ((HudiConnector) queryRunner.getCoordinator().getConnector("hudi")).getInjector()
                 .getInstance(HiveMetastoreFactory.class)
                 .createMetastore(Optional.empty());
@@ -219,8 +231,10 @@ public class ResourceHudiTablesInitializer
         STOCK_TICKS_MOR(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions(), false),
         HUDI_STOCK_TICKS_COW(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions(), false),
         HUDI_STOCK_TICKS_MOR(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions(), false),
-        HUDI_MULTI_FG_PT_MOR(hudiMultiFgRegularColumns(), hudiMultiFgPartitionsColumn(), hudiMultiFgPartitions(), false),
-        HUDI_COMPREHENSIVE_TYPES_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
+        HUDI_MULTI_FG_PT_V6_MOR(hudiMultiFgRegularColumns(), hudiMultiFgPartitionsColumn(), hudiMultiFgPartitions(), false),
+        HUDI_MULTI_FG_PT_V8_MOR(hudiMultiFgRegularColumns(), hudiMultiFgPartitionsColumn(), hudiMultiFgPartitions(), false),
+        HUDI_COMPREHENSIVE_TYPES_V6_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
+        HUDI_COMPREHENSIVE_TYPES_V8_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
         /**/;
 
         private static final List<Column> HUDI_META_COLUMNS = ImmutableList.of(
@@ -234,6 +248,7 @@ public class ResourceHudiTablesInitializer
         private final List<Column> partitionColumns;
         private final Map<String, String> partitions;
         private final boolean isCreateRtTable;
+        private HoodieTableVersion tableVersion;
 
         TestingTable(
                 List<Column> regularColumns,
@@ -266,6 +281,16 @@ public class ResourceHudiTablesInitializer
         {
             // ro tables do not have suffix
             return getTableName();
+        }
+
+        public void setTableVersion(HoodieTableVersion tableVersion)
+        {
+            this.tableVersion = tableVersion;
+        }
+
+        public HoodieTableVersion getHoodieTableVersion()
+        {
+            return this.tableVersion;
         }
 
         public List<Column> getDataColumns()
