@@ -29,30 +29,36 @@ import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * This page source is for reading data columns in the parquet format.
+ * This page source also avoids costly avro IndexRecord serialization.
+ */
 public class HudiBaseFileOnlyPageSource
         implements ConnectorPageSource
 {
-    private final ConnectorPageSource physicalDataPageSource;
+    private final ConnectorPageSource dataPageSource;
     private final List<HiveColumnHandle> allOutputColumns;
     private final SynthesizedColumnHandler synthesizedColumnHandler;
     // Maps output channel to physical source channel, or -1 if synthesized
     private final int[] physicalSourceChannelMap;
 
     public HudiBaseFileOnlyPageSource(
-            ConnectorPageSource physicalDataPageSource,
+            ConnectorPageSource dataPageSource,
             List<HiveColumnHandle> allOutputColumns,
-            List<HiveColumnHandle> physicalDataColumns, // Columns provided by physicalDataPageSource
+            // Columns provided by dataPageSource
+            List<HiveColumnHandle> dataColumns,
+            // Handler to manage synthesized/virtual in Hudi tables such as partition columns and metadata, i.e. file size (not hudi metadata)
             SynthesizedColumnHandler synthesizedColumnHandler)
     {
-        this.physicalDataPageSource = requireNonNull(physicalDataPageSource, "physicalDataPageSource is null");
+        this.dataPageSource = requireNonNull(dataPageSource, "dataPageSource is null");
         this.allOutputColumns = ImmutableList.copyOf(requireNonNull(allOutputColumns, "allOutputColumns is null"));
         this.synthesizedColumnHandler = requireNonNull(synthesizedColumnHandler, "synthesizedColumnHandler is null");
 
         // Create a mapping from the channel index in the output page to the channel index in the physicalDataPageSource's page
         this.physicalSourceChannelMap = new int[allOutputColumns.size()];
         Map<String, Integer> physicalColumnNameToChannel = new HashMap<>();
-        for (int i = 0; i < physicalDataColumns.size(); i++) {
-            physicalColumnNameToChannel.put(physicalDataColumns.get(i).getName().toLowerCase(Locale.ENGLISH), i);
+        for (int i = 0; i < dataColumns.size(); i++) {
+            physicalColumnNameToChannel.put(dataColumns.get(i).getName().toLowerCase(Locale.ENGLISH), i);
         }
 
         for (int i = 0; i < allOutputColumns.size(); i++) {
@@ -63,25 +69,25 @@ public class HudiBaseFileOnlyPageSource
     @Override
     public long getCompletedBytes()
     {
-        return physicalDataPageSource.getCompletedBytes();
+        return dataPageSource.getCompletedBytes();
     }
 
     @Override
     public long getReadTimeNanos()
     {
-        return physicalDataPageSource.getReadTimeNanos();
+        return dataPageSource.getReadTimeNanos();
     }
 
     @Override
     public boolean isFinished()
     {
-        return physicalDataPageSource.isFinished();
+        return dataPageSource.isFinished();
     }
 
     @Override
     public SourcePage getNextSourcePage()
     {
-        SourcePage physicalSourcePage = physicalDataPageSource.getNextSourcePage();
+        SourcePage physicalSourcePage = dataPageSource.getNextSourcePage();
         if (physicalSourcePage == null) {
             return null;
         }
@@ -109,13 +115,13 @@ public class HudiBaseFileOnlyPageSource
     @Override
     public long getMemoryUsage()
     {
-        return physicalDataPageSource.getMemoryUsage();
+        return dataPageSource.getMemoryUsage();
     }
 
     @Override
     public void close()
             throws IOException
     {
-        physicalDataPageSource.close();
+        dataPageSource.close();
     }
 }

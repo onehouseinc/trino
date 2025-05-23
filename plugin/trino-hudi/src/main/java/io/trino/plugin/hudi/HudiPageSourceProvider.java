@@ -179,19 +179,19 @@ public class HudiPageSourceProvider
                 .toList();
 
         // Get non-synthesized columns (columns that are available in data file)
-        List<HiveColumnHandle> nonSynthesizedColumnHandles = hiveColumnHandles.stream()
+        List<HiveColumnHandle> dataColumnHandles = hiveColumnHandles.stream()
                 .filter(columnHandle -> !columnHandle.isPartitionKey() && !columnHandle.isHidden())
                 .collect(Collectors.toList());
 
         // The `columns` list could be empty when count(*) is issued, prepending hoodie meta columns allows a non-empty dataPageSource to be returned
-        List<HiveColumnHandle> nonSynthesizedWithHoodieMetaColumnHandles = prependHudiMetaColumns(nonSynthesizedColumnHandles);
+        List<HiveColumnHandle> hudiMetaAndDataColumnHandles = prependHudiMetaColumns(dataColumnHandles);
 
         TrinoFileSystem fileSystem = fileSystemFactory.create(session);
         // Enable predicate pushdown for splits containing only base files
         boolean isBaseFileOnly = hudiSplit.getLogFiles().isEmpty();
         ConnectorPageSource dataPageSource = createPageSource(
                 session,
-                nonSynthesizedWithHoodieMetaColumnHandles,
+                hudiMetaAndDataColumnHandles,
                 hudiSplit,
                 fileSystem.newInputFile(Location.of(hudiBaseFileOpt.get().getPath()), hudiBaseFileOpt.get().getFileSize()),
                 dataSourceStats,
@@ -205,19 +205,19 @@ public class HudiPageSourceProvider
         if (isBaseFileOnly) {
             return new HudiBaseFileOnlyPageSource(
                     dataPageSource,
-                    hiveColumnHandles.isEmpty() ? nonSynthesizedWithHoodieMetaColumnHandles : hiveColumnHandles,
-                    nonSynthesizedWithHoodieMetaColumnHandles,
+                    hiveColumnHandles.isEmpty() ? hudiMetaAndDataColumnHandles : hiveColumnHandles,
+                    hudiMetaAndDataColumnHandles,
                     synthesizedColumnHandler);
         }
 
         HudiTrinoReaderContext readerContext = new HudiTrinoReaderContext(
                 dataPageSource,
-                nonSynthesizedColumnHandles,
-                nonSynthesizedWithHoodieMetaColumnHandles,
+                dataColumnHandles,
+                hudiMetaAndDataColumnHandles,
                 synthesizedColumnHandler);
 
         // Construct an Avro schema for log file reader
-        Schema requestedSchema = constructSchema(dataSchema, nonSynthesizedWithHoodieMetaColumnHandles.stream().map(HiveColumnHandle::getName).toList());
+        Schema requestedSchema = constructSchema(dataSchema, hudiMetaAndDataColumnHandles.stream().map(HiveColumnHandle::getName).toList());
         HoodieFileGroupReader<IndexedRecord> fileGroupReader =
                 new HoodieFileGroupReader<>(
                         readerContext,
