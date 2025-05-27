@@ -1,0 +1,42 @@
+name: Publish Image
+
+on:
+  push:
+    branches:
+      - release-*
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS: "aws"
+
+jobs:
+  generate-tags:
+    runs-on: ubuntu-latest
+    outputs:
+      tags: ${{ steps.tags.outputs.tags }}
+      
+    steps:
+      - name: Checkout self
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.CI_PAT }}
+
+      - name: Set RELEASE_BRANCH
+        run: echo "RELEASE_BRANCH=${{ github.ref_name }}" >> $GITHUB_ENV
+
+      - name: Set Image tag
+        run: echo "IMAGE_TAG=$RELEASE_BRANCH" >> $GITHUB_ENV
+        
+      - id: tags
+        run: echo "tags=latest $IMAGE_TAG" >> $GITHUB_OUTPUT
+  
+  build-images:
+    needs: generate-tags
+    uses: ./.github/workflows/build-images.yaml
+    secrets: inherit
+    with:
+      tags: ${{needs.generate-tags.outputs.tags}}

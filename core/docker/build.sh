@@ -138,6 +138,7 @@ for arch in "${ARCHITECTURES[@]}"; do
         --build-arg JDK_VERSION="${JDK_RELEASE}" \
         --build-arg JDK_DOWNLOAD_LINK="$(jdk_download_link "${JDKS_PATH}/${JDK_RELEASE}" "${arch}")" \
         --platform "linux/$arch" \
+        --no-cache \
         -f Dockerfile \
         -t "${TAG}-$arch"
 done
