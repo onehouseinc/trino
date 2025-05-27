@@ -25,7 +25,7 @@ jobs:
   build-images:
     if: ${{ github.event.issue.pull_request }} && contains(github.event.comment.body, '/push-image')
     needs: generate-tags
-    uses: ./.github/workflows/build_images.yaml
+    uses: ./.github/workflows/build-images.yaml
     secrets: inherit
     with:
       tags: ${{needs.generate-tags.outputs.tags}}
