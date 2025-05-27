@@ -3,6 +3,10 @@ name: build-adhoc-images
 on:
   pull_request_review:
     types: [ submitted ]
+  workflow_call:
+    secrets:
+      CI_PAT:
+        required: true
 
 permissions:
   id-token: write
