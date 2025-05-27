@@ -30,11 +30,6 @@ jobs:
     if: ${{ github.event.issue.pull_request }} && contains(github.event.comment.body, '/push-image')
     needs: generate-tags
     uses: ./.github/workflows/build-images.yaml
-    secrets:
-      CI_PAT: ${{ secrets.CI_PAT }}
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_KEY: ${{ secrets.DOCKER_KEY }}
-      COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-      COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+    secrets: inherit
     with:
       tags: ${{ needs.generate-tags.outputs.tags }}
