@@ -37,11 +37,16 @@ import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.HoodieTableVersion;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -95,6 +100,7 @@ import static io.trino.plugin.hudi.testing.TypeInfoHelper.varcharHiveType;
 public class ResourceHudiTablesInitializer
         implements HudiTablesInitializer
 {
+    private static final String HASH_ALGORITHM = "SHA-256";
     private static final String TEST_RESOURCE_NAME = "hudi-testing-data";
 
     @Override
@@ -230,6 +236,14 @@ public class ResourceHudiTablesInitializer
                     continue;
                 }
 
+                HashAndSizeResult srcHashAndSize;
+                try {
+                    srcHashAndSize = calculateHashAndSize(path);
+                }
+                catch (NoSuchAlgorithmException e) {
+                    throw new IOException("Failed to calculate source hash: Algorithm not found", e);
+                }
+
                 Location location = destinationDirectory.appendPath(sourceDirectory.relativize(path).toString());
                 fileSystem.createDirectory(location.parentDirectory());
                 try (OutputStream out = fileSystem.newOutputFile(location).create()) {
@@ -237,8 +251,72 @@ public class ResourceHudiTablesInitializer
                     // Flush all data before close() to ensure durability
                     out.flush();
                 }
+
+                HashAndSizeResult dstHashAndSize;
+                try {
+                    dstHashAndSize = calculateHashAndSize(location, fileSystem);
+                }
+                catch (NoSuchAlgorithmException e) {
+                    throw new IOException("Failed to calculate destination hash: Algorithm not found", e);
+                }
+                catch (IOException e) {
+                    throw new IOException("Failed to read back " + location + " for hash verification", e);
+                }
+
+                if (!Arrays.equals(srcHashAndSize.hash, dstHashAndSize.hash)) {
+                    // Hashes do not match, file is corrupt or copy failed
+                    String errorMessage = String.format(
+                            "Hash mismatch for file: %s (source size: %d bytes) copied to %s (destination size: %d bytes). Content hashes differ",
+                            path,
+                            srcHashAndSize.size,
+                            location,
+                            dstHashAndSize.size);
+                    throw new IOException(errorMessage);
+                }
             }
         }
+    }
+
+    /**
+     * Helper method to calculate hash for a local Path
+     */
+    private static HashAndSizeResult calculateHashAndSize(Path path)
+            throws IOException, NoSuchAlgorithmException
+    {
+        byte[] hashValue;
+        long streamSize = 0;
+        MessageDigest md = MessageDigest.getInstance(HASH_ALGORITHM);
+        try (InputStream is = Files.newInputStream(path);
+                DigestInputStream dis = new DigestInputStream(is, md)) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = dis.read(buffer)) != -1) {
+                streamSize += bytesRead;
+            }
+            hashValue = md.digest();
+        }
+        return new HashAndSizeResult(hashValue, streamSize);
+    }
+
+    /**
+     * Helper method to calculate hash for a file on TrinoFileSystem
+     */
+    private static HashAndSizeResult calculateHashAndSize(Location location, TrinoFileSystem fileSystem)
+            throws IOException, NoSuchAlgorithmException
+    {
+        byte[] hashValue;
+        long streamSize = 0;
+        MessageDigest md = MessageDigest.getInstance(HASH_ALGORITHM);
+        try (InputStream is = fileSystem.newInputFile(location).newStream();
+                DigestInputStream dis = new DigestInputStream(is, md)) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = dis.read(buffer)) != -1) {
+                streamSize += bytesRead;
+            }
+            hashValue = md.digest();
+        }
+        return new HashAndSizeResult(hashValue, streamSize);
     }
 
     public enum TestingTable
@@ -556,6 +634,18 @@ public class ResourceHudiTablesInitializer
             return ImmutableMap.of(
                     "part_col=A", "part_col=A",
                     "part_col=B", "part_col=B");
+        }
+    }
+
+    static class HashAndSizeResult
+    {
+        final byte[] hash;
+        final long size;
+
+        HashAndSizeResult(byte[] hash, long size)
+        {
+            this.hash = hash;
+            this.size = size;
         }
     }
 }
