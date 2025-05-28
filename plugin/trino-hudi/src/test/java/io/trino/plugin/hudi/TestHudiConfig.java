@@ -45,10 +45,10 @@ public class TestHudiConfig
                 .setPerTransactionMetastoreCacheMaximumSize(2000)
                 .setQueryPartitionFilterRequired(false)
                 .setIgnoreAbsentPartitions(false)
-                .setRecordLevelIndexEnabled(true)
-                .setSecondaryIndexEnabled(true)
-                .setColumnStatsIndexEnabled(true)
-                .setPartitionStatsIndexEnabled(true)
+                .setRecordLevelIndexEnabled(false)
+                .setSecondaryIndexEnabled(false)
+                .setColumnStatsIndexEnabled(false)
+                .setPartitionStatsIndexEnabled(false)
                 .setDynamicFilteringWaitTimeout(Duration.valueOf("1s")));
     }
 
@@ -69,10 +69,10 @@ public class TestHudiConfig
                 .put("hudi.per-transaction-metastore-cache-maximum-size", "1000")
                 .put("hudi.query-partition-filter-required", "true")
                 .put("hudi.ignore-absent-partitions", "true")
-                .put("hudi.index.record-level-index-enabled", "false")
-                .put("hudi.index.secondary-index-enabled", "false")
-                .put("hudi.index.column-stats-index-enabled", "false")
-                .put("hudi.index.partition-stats-index-enabled", "false")
+                .put("hudi.index.record-level-index-enabled", "true")
+                .put("hudi.index.secondary-index-enabled", "true")
+                .put("hudi.index.column-stats-index-enabled", "true")
+                .put("hudi.index.partition-stats-index-enabled", "true")
                 .put("hudi.dynamic-filtering.wait-timeout", "2s")
                 .buildOrThrow();
 
@@ -90,10 +90,10 @@ public class TestHudiConfig
                 .setPerTransactionMetastoreCacheMaximumSize(1000)
                 .setQueryPartitionFilterRequired(true)
                 .setIgnoreAbsentPartitions(true)
-                .setRecordLevelIndexEnabled(false)
-                .setSecondaryIndexEnabled(false)
-                .setColumnStatsIndexEnabled(false)
-                .setPartitionStatsIndexEnabled(false)
+                .setRecordLevelIndexEnabled(true)
+                .setSecondaryIndexEnabled(true)
+                .setColumnStatsIndexEnabled(true)
+                .setPartitionStatsIndexEnabled(true)
                 .setDynamicFilteringWaitTimeout(Duration.valueOf("2s"));
 
         assertFullMapping(properties, expected);

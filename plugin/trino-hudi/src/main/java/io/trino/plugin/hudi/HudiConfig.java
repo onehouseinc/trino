@@ -53,10 +53,10 @@ public class HudiConfig
     private Duration dynamicFilteringWaitTimeout = new Duration(1, SECONDS);
 
     // Internal configuration for debugging and testing
-    private boolean isRecordLevelIndexEnabled = true;
-    private boolean isSecondaryIndexEnabled = true;
-    private boolean isColumnStatsIndexEnabled = true;
-    private boolean isPartitionStatsIndexEnabled = true;
+    private boolean isRecordLevelIndexEnabled;
+    private boolean isSecondaryIndexEnabled;
+    private boolean isColumnStatsIndexEnabled;
+    private boolean isPartitionStatsIndexEnabled;
 
     public List<String> getColumnsToHide()
     {
