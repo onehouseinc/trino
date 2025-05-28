@@ -65,6 +65,7 @@ import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.Testing
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_MOR;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.NON_PART_MOR_WO_META_FIELDS;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.STOCK_TICKS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.STOCK_TICKS_MOR;
 import static io.trino.spi.type.TimestampType.createTimestampType;
@@ -92,6 +93,14 @@ public class TestHudiSmokeTest
         assertQuery(
                 "SELECT id, name FROM " + HUDI_NON_PART_COW,
                 "SELECT * FROM VALUES (1, 'a1'), (2, 'a2')");
+    }
+
+    @Test
+    public void testReadNonPartitionedTableWithoutMetaFields()
+    {
+        assertQuery(
+                "SELECT id, name FROM " + NON_PART_MOR_WO_META_FIELDS,
+                "SELECT * FROM VALUES (1, 'Alice'), (2, 'Bob')");
     }
 
     @Test

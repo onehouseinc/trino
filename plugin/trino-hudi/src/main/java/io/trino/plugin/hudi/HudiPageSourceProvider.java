@@ -101,6 +101,7 @@ import static io.trino.plugin.hudi.HudiUtil.prependHudiMetaColumns;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toUnmodifiableList;
+import static org.apache.hudi.common.model.HoodieRecord.HOODIE_META_COLUMNS;
 
 public class HudiPageSourceProvider
         implements ConnectorPageSourceProvider
@@ -186,8 +187,10 @@ public class HudiPageSourceProvider
                 .filter(columnHandle -> !columnHandle.isPartitionKey() && !columnHandle.isHidden())
                 .collect(Collectors.toList());
 
+        boolean includeMetaColumns = dataSchema.getFields().stream().map(Schema.Field::name).noneMatch(HOODIE_META_COLUMNS::contains);
         // The `columns` list could be empty when count(*) is issued, prepending hoodie meta columns allows a non-empty dataPageSource to be returned
-        List<HiveColumnHandle> hudiMetaAndDataColumnHandles = prependHudiMetaColumns(dataColumnHandles);
+        List<HiveColumnHandle> hudiMetaAndDataColumnHandles = includeMetaColumns ?
+                prependHudiMetaColumns(dataColumnHandles) : dataColumnHandles;
 
         TrinoFileSystem fileSystem = fileSystemFactory.create(session);
         // Enable predicate pushdown for splits containing only base files
