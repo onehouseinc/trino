@@ -68,22 +68,6 @@ jobs:
       - name: Login to DockerHub
         run: docker login --username ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_KEY }}
 
-      - name: Cleanup runner disk space
-        run: |
-          # Remove unused runtimes and SDKs
-          sudo rm -rf /usr/local/.ghcup /usr/local/julia* /usr/local/lib/android
-          sudo rm -rf /usr/local/share/chromium
-          sudo rm -rf /opt/microsoft /opt/google
-          sudo rm -rf /opt/az /usr/local/share/powershell /opt/hostedtoolcache
-          # Uninstall large pre-installed packages (optional; frees several GB)
-          sudo apt-get remove --auto-remove -y azure-cli google-cloud-cli microsoft-edge-stable \
-            google-chrome-stable firefox postgresql-* temurin-* llvm-* mysql* dotnet-sdk-* \
-          && sudo apt-get clean
-          # Prune Docker images and caches
-          docker system prune -af || true
-          docker builder prune -af || true
-          df -h
-
       - name: Build docker image
         run: |
           chmod +x ./core/docker/build.sh
