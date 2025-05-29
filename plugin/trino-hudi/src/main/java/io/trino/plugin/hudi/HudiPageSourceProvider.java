@@ -188,6 +188,9 @@ public class HudiPageSourceProvider
         List<HiveColumnHandle> dataColumnHandles = hiveColumnHandles.stream()
                 .filter(columnHandle -> !columnHandle.isPartitionKey() && !columnHandle.isHidden())
                 .collect(Collectors.toList());
+        // The `columns` list could be empty when count(*) is issued,
+        // prepending hoodie meta columns for Hudi split with log files
+        // to allow a non-empty dataPageSource to be returned
         List<HiveColumnHandle> hudiMetaAndDataColumnHandles = prependHudiMetaColumns(dataColumnHandles);
 
         TrinoFileSystem fileSystem = fileSystemFactory.create(session);
