@@ -106,7 +106,7 @@ public class ResourceHudiTablesInitializer
 
     private static final String HASH_ALGORITHM = "SHA-256";
     private static final String TEST_RESOURCE_NAME = "hudi-testing-data";
-    // There might be other entrypoints that are using this initializer, physically separate their test tables
+    // There might be other entry points that are using this initializer, make the location unique so it is more identifiable via logs
     private final String baseLocationPrefix = UUID.randomUUID().toString();
 
     @Override
