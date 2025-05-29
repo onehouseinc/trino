@@ -44,7 +44,8 @@ jobs:
       - name: Build app
         run: |
           echo "Building application..."
-          ./mvnw -T 1C clean install -DskipTests -Ddependency-scope.skip=true -Dmaven.javadoc.skip=true -Dair.check.skip-all=true
+          export MAVEN_OPTS="-Xmx2g -Xms1g -XX:MaxMetaspaceSize=512m"
+          ./mvnw -T 1 clean install -DskipTests -Ddependency-scope.skip=true -Dmaven.javadoc.skip=true -Dair.check.skip-all=true
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.3.0
 
