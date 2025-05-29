@@ -567,12 +567,10 @@ public class TestHudiSmokeTest
         int totalSplits = totalRes.getStatementStats().get().getTotalSplits();
         int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
         assertThat(prunedSplits).isLessThan(totalSplits);
-        int expectedSplits = 2;
-        if (table.getHoodieTableVersion().greaterThanOrEquals(HoodieTableVersion.EIGHT)) {
-            // SI is only available for table versions >= 8
-            // With SI file skipping, only 1 split should be returned
-            expectedSplits = 1;
-        }
+        // SI is only available for table versions >= 8
+        // With SI file skipping, only 1 split should be returned
+        int expectedSplits = table.getHoodieTableVersion()
+                .greaterThanOrEquals(HoodieTableVersion.EIGHT) ? 1 : 2;
         assertThat(prunedSplits).isEqualTo(expectedSplits);
     }
 
@@ -600,12 +598,10 @@ public class TestHudiSmokeTest
                 "AND id is not null");
         int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
 
-        int expectedSplits = 4;
-        if (table.getHoodieTableVersion().greaterThanOrEquals(HoodieTableVersion.EIGHT)) {
-            // Partition stats index is only available for table versions >= 8
-            // With PSI, only 2 splits in the SG partitions will be scanned
-            expectedSplits = 2;
-        }
+        // Partition stats index is only available for table versions >= 8
+        // With PSI, only 2 splits in the SG partitions will be scanned
+        int expectedSplits = table.getHoodieTableVersion()
+                .greaterThanOrEquals(HoodieTableVersion.EIGHT) ? 2 : 4;
         assertThat(prunedSplits).isEqualTo(expectedSplits);
     }
 
