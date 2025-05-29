@@ -645,6 +645,9 @@ public class TestHudiSmokeTest
         assertQuery(query, "SELECT * FROM VALUES (1, 'a1', 100.0, 1000), (3, 'a3', 101.0, 1001)");
     }
 
+    /**
+     * Note that this test may be flaky, dynamic filter may be enabled in some occasions, causing this test to fail.
+     */
     @ParameterizedTest
     @EnumSource(
             value = ResourceHudiTablesInitializer.TestingTable.class,
