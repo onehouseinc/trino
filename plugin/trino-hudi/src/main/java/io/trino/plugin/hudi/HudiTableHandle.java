@@ -16,6 +16,7 @@ package io.trino.plugin.hudi;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import io.trino.metastore.Table;
 import io.trino.plugin.hive.HiveColumnHandle;
@@ -26,8 +27,12 @@ import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
+import org.apache.hudi.expression.Predicate;
 import org.apache.hudi.util.Lazy;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -52,6 +57,7 @@ public class HudiTableHandle
     private final transient Optional<Table> table;
     private final transient Optional<Lazy<HoodieTableMetaClient>> lazyMetaClient;
     private final transient Optional<Lazy<String>> lazyLatestCommitTime;
+    private final List<Predicate> expressionIndexCandidates;
 
     @JsonCreator
     public HudiTableHandle(
@@ -63,7 +69,8 @@ public class HudiTableHandle
             @JsonProperty("partitionPredicates") TupleDomain<HiveColumnHandle> partitionPredicates,
             @JsonProperty("regularPredicates") TupleDomain<HiveColumnHandle> regularPredicates)
     {
-        this(Optional.empty(), Optional.empty(), schemaName, tableName, basePath, tableType, partitionColumns, ImmutableSet.of(), partitionPredicates, regularPredicates);
+        this(Optional.empty(), Optional.empty(), schemaName, tableName, basePath, tableType, partitionColumns, ImmutableSet.of(), partitionPredicates, regularPredicates,
+                ImmutableList.of());
     }
 
     public HudiTableHandle(
@@ -76,7 +83,8 @@ public class HudiTableHandle
             List<HiveColumnHandle> partitionColumns,
             Set<HiveColumnHandle> constraintColumns,
             TupleDomain<HiveColumnHandle> partitionPredicates,
-            TupleDomain<HiveColumnHandle> regularPredicates)
+            TupleDomain<HiveColumnHandle> regularPredicates,
+            List<Predicate> expressionIndexCandidates)
     {
         this.table = requireNonNull(table, "table is null");
         this.lazyMetaClient = requireNonNull(lazyMetaClient, "lazyMetaClient is null");
@@ -95,6 +103,7 @@ public class HudiTableHandle
         this.constraintColumns = requireNonNull(constraintColumns, "constraintColumns is null");
         this.partitionPredicates = requireNonNull(partitionPredicates, "partitionPredicates is null");
         this.regularPredicates = requireNonNull(regularPredicates, "regularPredicates is null");
+        this.expressionIndexCandidates = requireNonNull(expressionIndexCandidates, "expressionIndexCandidates is null");
     }
 
     public Table getTable()
@@ -156,8 +165,8 @@ public class HudiTableHandle
     {
         return partitionColumns;
     }
-
     // do not serialize constraint columns as they are not needed on workers
+
     @JsonIgnore
     public Set<HiveColumnHandle> getConstraintColumns()
     {
@@ -170,6 +179,13 @@ public class HudiTableHandle
         return regularPredicates;
     }
 
+    // do not serialize constraint columns as they are not needed on workers
+    @JsonIgnore
+    public List<Predicate> getExpressionIndexCandidates()
+    {
+        return expressionIndexCandidates;
+    }
+
     public SchemaTableName getSchemaTableName()
     {
         return schemaTableName(schemaName, tableName);
@@ -178,8 +194,18 @@ public class HudiTableHandle
     HudiTableHandle applyPredicates(
             Set<HiveColumnHandle> constraintColumns,
             TupleDomain<HiveColumnHandle> partitionTupleDomain,
-            TupleDomain<HiveColumnHandle> regularTupleDomain)
+            TupleDomain<HiveColumnHandle> regularTupleDomain,
+            List<Predicate> expressionIndexCandidates)
     {
+        // Merge candidate expressions: existing ones from 'this' first + new ones from current pass
+        Set<Predicate> combinedUniqueCandidates = new HashSet<>();
+        combinedUniqueCandidates.addAll(this.expressionIndexCandidates);
+        combinedUniqueCandidates.addAll(expressionIndexCandidates);
+
+        List<Predicate> finalMergedCandidateList = combinedUniqueCandidates.isEmpty()
+                ? Collections.emptyList()
+                : new ArrayList<>(combinedUniqueCandidates);
+
         return new HudiTableHandle(
                 table,
                 lazyMetaClient,
@@ -190,7 +216,8 @@ public class HudiTableHandle
                 partitionColumns,
                 constraintColumns,
                 partitionPredicates.intersect(partitionTupleDomain),
-                regularPredicates.intersect(regularTupleDomain));
+                regularPredicates.intersect(regularTupleDomain),
+                finalMergedCandidateList);
     }
 
     @Override

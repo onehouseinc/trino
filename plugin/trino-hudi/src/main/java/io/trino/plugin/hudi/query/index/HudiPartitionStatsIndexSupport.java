@@ -102,7 +102,7 @@ public class HudiPartitionStatsIndexSupport
                         return evaluateStatisticPredicate(filteredRegularPredicates, partitionStats, regularColumns);
                     }
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         log.info("Took %s ms to prune partitions using Partition Stats Index for table %s", timer.endTimer(), schemaTableName);
         return Optional.of(prunedPartitions);

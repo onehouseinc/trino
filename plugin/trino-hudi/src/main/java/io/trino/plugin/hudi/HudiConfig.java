@@ -58,6 +58,7 @@ public class HudiConfig
     // Internal configuration for debugging and testing
     private boolean isRecordLevelIndexEnabled = true;
     private boolean isSecondaryIndexEnabled = true;
+    private boolean isExpressionIndexEnabled = true;
     private boolean isColumnStatsIndexEnabled = true;
     private boolean isPartitionStatsIndexEnabled = true;
     private Duration columnStatsWaitTimeout = new Duration(1, SECONDS);
@@ -309,6 +310,19 @@ public class HudiConfig
     public boolean isSecondaryIndexEnabled()
     {
         return isSecondaryIndexEnabled;
+    }
+
+    @Config("hudi.index.expression-index-enabled")
+    @ConfigDescription("Internal configuration to control whether expression index is enabled for debugging/testing.")
+    public HudiConfig setExpressionIndexEnabled(boolean isExpressionIndexEnabled)
+    {
+        this.isExpressionIndexEnabled = isExpressionIndexEnabled;
+        return this;
+    }
+
+    public boolean isExpressionIndexEnabled()
+    {
+        return isExpressionIndexEnabled;
     }
 
     @Config("hudi.index.column-stats-index-enabled")

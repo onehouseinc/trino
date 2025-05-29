@@ -229,7 +229,7 @@ public class HudiColumnStatsIndexSupport
         return true;
     }
 
-    private static Domain getDomain(String colName, Type type, HoodieMetadataColumnStats statistics)
+    protected static Domain getDomain(String colName, Type type, HoodieMetadataColumnStats statistics)
     {
         if (statistics == null) {
             return Domain.all(type);
