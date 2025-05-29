@@ -529,18 +529,5 @@ public class ResourceHudiTablesInitializer
                     "part_col=A", "part_col=A",
                     "part_col=B", "part_col=B");
         }
-
-        private static List<Column> hudiWithoutMetaFieldsRegularColumns() {
-            return ImmutableList.of(
-                    column("ts", HIVE_LONG),
-                    column("uuid", HIVE_STRING),
-                    column("rider", HIVE_STRING),
-                    column("driver", HIVE_STRING),
-                    column("begin_lat", HIVE_DOUBLE),
-                    column("begin_lon", HIVE_DOUBLE),
-                    column("end_lat", HIVE_DOUBLE),
-                    column("end_lon", HIVE_DOUBLE),
-                    column("fare", HIVE_DOUBLE));
-        }
     }
 }
