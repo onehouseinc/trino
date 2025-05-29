@@ -89,7 +89,7 @@ public class HudiPageSource
     }
 
     @Override
-    public SourcePage getNextSourcePage()
+    public Page getNextPage()
     {
         checkState(pageBuilder.isEmpty(), "PageBuilder is not empty at the beginning of a new page");
         try {
@@ -103,7 +103,7 @@ public class HudiPageSource
 
         Page newPage = pageBuilder.build();
         pageBuilder.reset();
-        return SourcePage.create(newPage);
+        return newPage;
     }
 
     @Override

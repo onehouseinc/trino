@@ -11,6 +11,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+<<<<<<<< HEAD:plugin/trino-ldap-group-provider/src/main/java/io/trino/plugin/ldapgroup/LdapGroupProviderPlugin.java
 package io.trino.plugin.ldapgroup;
 
 import com.google.common.collect.ImmutableList;
@@ -25,4 +26,21 @@ public class LdapGroupProviderPlugin
     {
         return ImmutableList.of(new LdapGroupProviderFactory());
     }
+========
+package io.trino.plugin.hudi.file;
+
+public interface HudiFile
+{
+    String getPath();
+
+    String getFileName();
+
+    long getFileSize();
+
+    long getModificationTime();
+
+    long getStart();
+
+    long getLength();
+>>>>>>>> origin/master:plugin/trino-hudi/src/main/java/io/trino/plugin/hudi/file/HudiFile.java
 }
