@@ -44,7 +44,6 @@ jobs:
       - name: Build app
         run: |
           echo "Building application..."
-          export MAVEN_OPTS="-Xmx8g -Xms4g -XX:MaxMetaspaceSize=1g"
           ./mvnw -T 1C clean install -DskipTests -Ddependency-scope.skip=true -Dmaven.javadoc.skip=true -Dair.check.skip-all=true
 
       - name: Install Cosign
