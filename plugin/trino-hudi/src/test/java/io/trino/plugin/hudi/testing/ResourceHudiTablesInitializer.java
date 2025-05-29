@@ -291,24 +291,32 @@ public class ResourceHudiTablesInitializer
     }
 
     /**
+     * Helper method to calculate hash and size from an input stream
+     */
+    private static HashAndSizeResult calculateHashAndSize(InputStream inputStream)
+            throws IOException, NoSuchAlgorithmException
+    {
+        MessageDigest md = MessageDigest.getInstance(HASH_ALGORITHM);
+        try (DigestInputStream dis = new DigestInputStream(inputStream, md)) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            long streamSize = 0;
+            while ((bytesRead = dis.read(buffer)) != -1) {
+                streamSize += bytesRead;
+            }
+            return new HashAndSizeResult(md.digest(), streamSize);
+        }
+    }
+
+    /**
      * Helper method to calculate hash for a local Path
      */
     private static HashAndSizeResult calculateHashAndSize(Path path)
             throws IOException, NoSuchAlgorithmException
     {
-        byte[] hashValue;
-        long streamSize = 0;
-        MessageDigest md = MessageDigest.getInstance(HASH_ALGORITHM);
-        try (InputStream is = Files.newInputStream(path);
-                DigestInputStream dis = new DigestInputStream(is, md)) {
-            byte[] buffer = new byte[8192];
-            int bytesRead;
-            while ((bytesRead = dis.read(buffer)) != -1) {
-                streamSize += bytesRead;
-            }
-            hashValue = md.digest();
+        try (InputStream is = Files.newInputStream(path)) {
+            return calculateHashAndSize(is);
         }
-        return new HashAndSizeResult(hashValue, streamSize);
     }
 
     /**
@@ -317,19 +325,9 @@ public class ResourceHudiTablesInitializer
     private static HashAndSizeResult calculateHashAndSize(Location location, TrinoFileSystem fileSystem)
             throws IOException, NoSuchAlgorithmException
     {
-        byte[] hashValue;
-        long streamSize = 0;
-        MessageDigest md = MessageDigest.getInstance(HASH_ALGORITHM);
-        try (InputStream is = fileSystem.newInputFile(location).newStream();
-                DigestInputStream dis = new DigestInputStream(is, md)) {
-            byte[] buffer = new byte[8192];
-            int bytesRead;
-            while ((bytesRead = dis.read(buffer)) != -1) {
-                streamSize += bytesRead;
-            }
-            hashValue = md.digest();
+        try (InputStream is = fileSystem.newInputFile(location).newStream()) {
+            return calculateHashAndSize(is);
         }
-        return new HashAndSizeResult(hashValue, streamSize);
     }
 
     public enum TestingTable
