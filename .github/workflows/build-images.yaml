@@ -62,9 +62,6 @@ jobs:
           echo "Building application..."
           ./mvnw -T 1C clean install -DskipTests -Ddependency-scope.skip=true -Dmaven.javadoc.skip=true -Dair.check.skip-all=true
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3.3.0
-
       - name: Login to DockerHub
         run: docker login --username ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_KEY }}
 
@@ -74,14 +71,12 @@ jobs:
           ./core/docker/build.sh -a amd64 -x
 
       - name: Tag and push image
-        env:
-          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
         run: |
           for input_tag in ${{ inputs.tags }}; do
             docker tag trino:472-amd64 onehouse/onehouse-trino:$input_tag
             docker push onehouse/onehouse-trino:$input_tag
           done
+
       - name: Cleanup
         if: always()
         run: |
