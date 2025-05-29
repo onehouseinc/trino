@@ -15,6 +15,7 @@ package io.trino.plugin.hudi.testing;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.airlift.log.Logger;
 import io.trino.filesystem.Location;
 import io.trino.filesystem.TrinoFileSystem;
 import io.trino.filesystem.TrinoFileSystemFactory;
@@ -53,6 +54,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -100,8 +102,12 @@ import static io.trino.plugin.hudi.testing.TypeInfoHelper.varcharHiveType;
 public class ResourceHudiTablesInitializer
         implements HudiTablesInitializer
 {
+    private static final Logger log = Logger.get(ResourceHudiTablesInitializer.class);
+
     private static final String HASH_ALGORITHM = "SHA-256";
     private static final String TEST_RESOURCE_NAME = "hudi-testing-data";
+    // There might be other entrypoints that are using this initializer, physically separate their test tables
+    private final String baseLocationPrefix = UUID.randomUUID().toString();
 
     @Override
     public void initializeTables(QueryRunner queryRunner, Location externalLocation, String schemaName)
@@ -111,7 +117,9 @@ public class ResourceHudiTablesInitializer
         TrinoFileSystem fileSystem = ((HudiConnector) queryRunner.getCoordinator().getConnector("hudi")).getInjector()
                 .getInstance(TrinoFileSystemFactory.class)
                 .create(ConnectorIdentity.ofUser("test"));
-        Location baseLocation = externalLocation.appendSuffix(schemaName);
+        String locationSuffix = schemaName + "_" + baseLocationPrefix;
+        Location baseLocation = externalLocation.appendSuffix(locationSuffix);
+        log.info("Initialized test resource directory as: %s", baseLocation.toString());
         copyDir(Path.of(getResource(TEST_RESOURCE_NAME).toURI()), fileSystem, baseLocation);
 
         for (TestingTable table : TestingTable.values()) {
