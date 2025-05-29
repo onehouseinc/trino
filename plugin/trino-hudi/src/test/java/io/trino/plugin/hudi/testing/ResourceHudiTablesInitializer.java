@@ -237,6 +237,7 @@ public class ResourceHudiTablesInitializer
         HUDI_STOCK_TICKS_MOR(hudiStockTicksRegularColumns(), hudiStockTicksPartitionColumns(), hudiStockTicksPartitions(), false),
         HUDI_MULTI_FG_PT_MOR(hudiMultiFgRegularColumns(), hudiMultiFgPartitionsColumn(), hudiMultiFgPartitions(), false),
         HUDI_COMPREHENSIVE_TYPES_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
+        NON_PART_MOR_WO_META_FIELDS(nonPartitionRegularColumns(), ImmutableList.of(), ImmutableMap.of(), false, false),
         /**/;
 
         private static final List<Column> HUDI_META_COLUMNS = ImmutableList.of(
@@ -250,6 +251,7 @@ public class ResourceHudiTablesInitializer
         private final List<Column> partitionColumns;
         private final Map<String, String> partitions;
         private final boolean isCreateRtTable;
+        private final boolean includeMetaColumns;
 
         TestingTable(
                 List<Column> regularColumns,
@@ -257,11 +259,23 @@ public class ResourceHudiTablesInitializer
                 Map<String, String> partitions,
                 boolean isCreateRtTable)
         {
+            this(regularColumns, partitionColumns, partitions, isCreateRtTable, true);
+        }
+
+        TestingTable(
+                List<Column> regularColumns,
+                List<Column> partitionColumns,
+                Map<String, String> partitions,
+                boolean isCreateRtTable,
+                boolean includeMetaColumns)
+        {
             this.regularColumns = regularColumns;
             this.partitionColumns = partitionColumns;
             this.partitions = partitions;
             this.isCreateRtTable = isCreateRtTable;
+            this.includeMetaColumns = includeMetaColumns;
         }
+
 
         TestingTable(List<Column> regularColumns)
         {
@@ -284,11 +298,12 @@ public class ResourceHudiTablesInitializer
             return getTableName();
         }
 
-        public List<Column> getDataColumns()
-        {
-            return Stream.of(HUDI_META_COLUMNS, regularColumns)
-                    .flatMap(Collection::stream)
-                    .collect(Collectors.toUnmodifiableList());
+        public List<Column> getDataColumns() {
+            Stream<Column> columnStream = includeMetaColumns
+                    ? Stream.concat(HUDI_META_COLUMNS.stream(), regularColumns.stream())
+                    : regularColumns.stream();
+
+            return columnStream.collect(Collectors.toUnmodifiableList());
         }
 
         public List<Column> getPartitionColumns()
