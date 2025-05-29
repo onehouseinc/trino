@@ -63,6 +63,7 @@ import static io.trino.metastore.HiveType.HIVE_TIMESTAMP;
 import static io.trino.plugin.hive.HiveColumnHandle.ColumnType.REGULAR;
 import static io.trino.plugin.hive.HiveColumnHandle.createBaseColumn;
 import static io.trino.plugin.hudi.HudiPageSourceProvider.createPageSource;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_PT_TBL;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_COW;
@@ -574,6 +575,29 @@ public class TestHudiSmokeTest
         assertThat(prunedSplits).isEqualTo(expectedSplits);
     }
 
+    @Test
+    public void testExpressionIndex()
+    {
+        Session session = SessionBuilder.from(getSession())
+                .withMdtEnabled(true)
+                .withColStatsIndexEnabled(true)
+                .withRecordLevelIndexEnabled(false)
+                .withSecondaryIndexEnabled(false)
+                .withPartitionStatsIndexEnabled(false)
+                .build();
+        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_COMPREHENSIVE_TYPES_V8_MOR
+                + " WHERE part_col='a'" +
+                " AND year(col_date) < 2001" + // Trino will optimize and rewrite this to col_date < 2001-01-01
+                " AND month(col_date) > 2" +
+                " AND day(col_date) <= 3" +
+                " AND hour(col_date) >= 4" +
+                " AND day(col_timestamp) = 5" +
+                " AND year(from_unixtime(col_bigint)) > 6" +
+                " AND substring(col_string, 7) = 'hello1'" +
+                " AND substring(col_string, 8, 9) = 'hello2'");
+        System.out.println(prunedRes);
+    }
+
     @ParameterizedTest
     @EnumSource(
             value = ResourceHudiTablesInitializer.TestingTable.class,
@@ -1015,7 +1039,7 @@ public class TestHudiSmokeTest
     {
         ResourceHudiTablesInitializer.TestingTable[] tablesToTest = {
                 ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_V6_MOR,
-                ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_V8_MOR
+                HUDI_COMPREHENSIVE_TYPES_V8_MOR
         };
         Boolean[] booleanValues = {true, false};
 
