@@ -4,7 +4,6 @@ Structure of table:
 - MOR table with MDT enabled
 - Revision: tag release-0.15.0
 - Record Level Index is enabled with a recordKey of id,name
-- Secondary index created on the column `price`
 - 2 Partitions [US, SG]
 - 2 Filegroups per partition
 
