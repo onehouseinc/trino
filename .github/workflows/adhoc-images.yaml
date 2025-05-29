@@ -15,7 +15,7 @@ permissions:
 jobs:
   generate-tags:
     if: contains(github.event.review.body, '/push-image')
-    runs-on: arc-16-cores-ondemand-staging-arm
+    runs-on: ubuntu-latest-8-cores
     outputs:
       tags: ${{ steps.tags.outputs.tags }}
     steps:
