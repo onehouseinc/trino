@@ -18,14 +18,22 @@ import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hive.HivePartitionKey;
 import io.trino.plugin.hudi.HudiSplit;
 import io.trino.plugin.hudi.file.HudiFile;
+import io.trino.spi.TrinoException;
 import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.block.RunLengthEncodedBlock;
 import io.trino.spi.type.BigintType;
+import io.trino.spi.type.BooleanType;
+import io.trino.spi.type.DateType;
+import io.trino.spi.type.DecimalType;
+import io.trino.spi.type.IntegerType;
+import io.trino.spi.type.SqlDecimal;
 import io.trino.spi.type.TimestampWithTimeZoneType;
 import io.trino.spi.type.Type;
 import io.trino.spi.type.VarcharType;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,8 +44,13 @@ import static io.trino.plugin.hive.HiveColumnHandle.FILE_MODIFIED_TIME_COLUMN_NA
 import static io.trino.plugin.hive.HiveColumnHandle.FILE_SIZE_COLUMN_NAME;
 import static io.trino.plugin.hive.HiveColumnHandle.PARTITION_COLUMN_NAME;
 import static io.trino.plugin.hive.HiveColumnHandle.PATH_COLUMN_NAME;
+import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.type.DateTimeEncoding.packDateTimeWithZone;
+import static io.trino.spi.type.Decimals.writeBigDecimal;
+import static io.trino.spi.type.Decimals.writeShortDecimal;
 import static io.trino.spi.type.TimeZoneKey.UTC_KEY;
+import static java.lang.Math.toIntExact;
+import static java.lang.String.format;
 
 /**
  * Handles synthesized (virtual) columns in Hudi tables, such as partition columns and metadata (not hudi metadata)
@@ -95,7 +108,7 @@ public class SynthesizedColumnHandler
     {
         for (HivePartitionKey partitionKey : hudiSplit.getPartitionKeys()) {
             builder.put(partitionKey.name(), (blockBuilder, type) ->
-                    HudiAvroSerializer.appendTo(type, partitionKey.value(), blockBuilder));
+                    appendToBuilder(type, partitionKey.value(), blockBuilder));
         }
     }
 
@@ -236,6 +249,70 @@ public class SynthesizedColumnHandler
         public long getFileModificationTime()
         {
             return modifiedTime;
+        }
+    }
+
+    /**
+     * Helper function to prefill BlockBuilders with values from PartitionKeys which are in the string type.
+     * This function handles the casting of String type the actual column type.
+     */
+    private static void appendToBuilder(Type type, Object value, BlockBuilder blockBuilder)
+    {
+        if (value == null) {
+            blockBuilder.appendNull();
+            return;
+        }
+
+        if (type instanceof VarcharType varcharType) {
+            varcharType.writeSlice(blockBuilder, utf8Slice(value.toString()));
+        }
+        else if (type instanceof IntegerType integerType) {
+            integerType.writeInt(blockBuilder, Integer.parseInt((String) value));
+        }
+        else if (type instanceof BigintType bigintType) {
+            bigintType.writeLong(blockBuilder, Long.parseLong((String) value));
+        }
+        else if (type instanceof BooleanType booleanType) {
+            booleanType.writeBoolean(blockBuilder, Boolean.parseBoolean((String) value));
+        }
+        else if (type instanceof DecimalType decimalType) {
+            SqlDecimal sqlDecimalFromStr = SqlDecimal.decimal((String) value, decimalType);
+
+            if (decimalType.isShort()) {
+                // For short decimals, get the unscaled long value
+                // SqlDecimal.toBigDecimal() is used for consistency with the original SqlDecimal path
+                // The unscaled value of a Trino short decimal (precision <= 18) fits in a long
+                writeShortDecimal(blockBuilder, sqlDecimalFromStr.toBigDecimal().unscaledValue().longValue());
+            }
+            else {
+                // For long decimals, use the BigDecimal representation obtained from SqlDecimal.
+                writeBigDecimal(decimalType, blockBuilder, sqlDecimalFromStr.toBigDecimal());
+            }
+        }
+        else if (type instanceof DateType dateType) {
+            String dateString = (String) value;
+            try {
+                // Parse the date string using "YYYY-MM-DD" format
+                LocalDate localDate = LocalDate.parse(dateString);
+                // Convert LocalDate to days since epoch where LocalDate#toEpochDay() returns a long
+                int daysSinceEpoch = toIntExact(localDate.toEpochDay());
+                dateType.writeInt(blockBuilder, daysSinceEpoch);
+            }
+            catch (DateTimeParseException e) {
+                // Handle parsing error
+                throw new TrinoException(GENERIC_INTERNAL_ERROR,
+                        format("Invalid date string format for DATE type: '%s'. Expected format like YYYY-MM-DD. Details: %s",
+                                dateString, e.getMessage()), e);
+            }
+            catch (ArithmeticException e) {
+                // Handle potential overflow if toEpochDay() result is outside int range
+                throw new TrinoException(GENERIC_INTERNAL_ERROR,
+                        format("Date string '%s' results in a day count out of integer range for DATE type. Details: %s",
+                                dateString, e.getMessage()), e);
+            }
+        }
+        else {
+            throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Unknown type '%s' for column '%s'", type, value));
         }
     }
 }
