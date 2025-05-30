@@ -47,6 +47,7 @@ public class TestHudiConfig
                 .setIgnoreAbsentPartitions(false)
                 .setRecordLevelIndexEnabled(true)
                 .setSecondaryIndexEnabled(true)
+                .setExpressionIndexEnabled(true)
                 .setColumnStatsIndexEnabled(true)
                 .setPartitionStatsIndexEnabled(true)
                 .setDynamicFilteringWaitTimeout(Duration.valueOf("1s")));
@@ -71,6 +72,7 @@ public class TestHudiConfig
                 .put("hudi.ignore-absent-partitions", "true")
                 .put("hudi.index.record-level-index-enabled", "false")
                 .put("hudi.index.secondary-index-enabled", "false")
+                .put("hudi.index.expression-index-enabled", "false")
                 .put("hudi.index.column-stats-index-enabled", "false")
                 .put("hudi.index.partition-stats-index-enabled", "false")
                 .put("hudi.dynamic-filtering.wait-timeout", "2s")
@@ -92,6 +94,7 @@ public class TestHudiConfig
                 .setIgnoreAbsentPartitions(true)
                 .setRecordLevelIndexEnabled(false)
                 .setSecondaryIndexEnabled(false)
+                .setExpressionIndexEnabled(false)
                 .setColumnStatsIndexEnabled(false)
                 .setPartitionStatsIndexEnabled(false)
                 .setDynamicFilteringWaitTimeout(Duration.valueOf("2s"));

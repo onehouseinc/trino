@@ -17,6 +17,7 @@ import io.trino.Session;
 
 import static io.trino.plugin.hudi.HudiSessionProperties.COLUMN_STATS_INDEX_ENABLED;
 import static io.trino.plugin.hudi.HudiSessionProperties.DYNAMIC_FILTERING_WAIT_TIMEOUT;
+import static io.trino.plugin.hudi.HudiSessionProperties.EXPRESSION_INDEX_ENABLED;
 import static io.trino.plugin.hudi.HudiSessionProperties.METADATA_TABLE_ENABLED;
 import static io.trino.plugin.hudi.HudiSessionProperties.PARTITION_STATS_INDEX_ENABLED;
 import static io.trino.plugin.hudi.HudiSessionProperties.QUERY_PARTITION_FILTER_REQUIRED;
@@ -92,6 +93,11 @@ public class SessionBuilder
     public SessionBuilder withSecondaryIndexEnabled(boolean enabled)
     {
         return setProperty(SECONDARY_INDEX_ENABLED, String.valueOf(enabled));
+    }
+
+    public SessionBuilder withExpressionIndexEnabled(boolean enabled)
+    {
+        return setProperty(EXPRESSION_INDEX_ENABLED, String.valueOf(enabled));
     }
 
     public SessionBuilder withPartitionStatsIndexEnabled(boolean enabled)

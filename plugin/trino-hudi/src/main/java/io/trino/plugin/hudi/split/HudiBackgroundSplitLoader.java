@@ -96,7 +96,7 @@ public class HudiBackgroundSplitLoader
         this.metaClient = requireNonNull(metaClient, "metaClient is null");
         this.regularPredicates = tableHandle.getRegularPredicates();
         this.errorListener = requireNonNull(errorListener, "errorListener is null");
-        this.indexSupportOpt = IndexSupportFactory.createIndexSupport(metaClient, regularPredicates, session);
+        this.indexSupportOpt = IndexSupportFactory.createIndexSupport(tableHandle, metaClient, regularPredicates, session);
         this.partitionIndexSupportOpt = IndexSupportFactory.createPartitionStatsIndexSupport(metaClient, regularPredicates, session);
     }
 
