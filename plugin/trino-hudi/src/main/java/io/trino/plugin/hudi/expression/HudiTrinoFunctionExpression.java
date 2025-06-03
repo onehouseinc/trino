@@ -13,6 +13,7 @@
  */
 package io.trino.plugin.hudi.expression;
 
+import org.apache.hudi.common.model.HoodieIndexDefinition;
 import org.apache.hudi.expression.Expression;
 import org.apache.hudi.internal.schema.Type;
 
@@ -20,14 +21,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class HudiFunctionExpression
+public class HudiTrinoFunctionExpression
         implements HudiTrinoExpression
 {
     private final String name;
     private final List<Expression> arguments;
     private final Type returnType;
 
-    public HudiFunctionExpression(String name, List<Expression> arguments, Type returnType)
+    public HudiTrinoFunctionExpression(String name, List<Expression> arguments, Type returnType)
     {
         this.name = name;
         // Store an immutable copy or an unmodifiable view
@@ -62,5 +63,20 @@ public class HudiFunctionExpression
     public String toString()
     {
         return name + arguments.stream().map(Object::toString).collect(Collectors.joining(", ", "(", ")"));
+    }
+
+    public boolean canUseIndex(HoodieIndexDefinition indexDefinition)
+    {
+        return getName().equals(indexDefinition.getIndexFunction());
+    }
+
+    /**
+     * There might be cases where the Trino litVal returns a long type, but stored column stats uses int to represent the value.
+     * This helper method helps to cast it Tsrino's equivalent type.
+     */
+    public Object castToTrinoType(Object stat)
+    {
+        // Base case, just pass through
+        return stat;
     }
 }

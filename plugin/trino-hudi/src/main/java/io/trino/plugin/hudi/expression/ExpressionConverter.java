@@ -26,6 +26,7 @@ import io.trino.spi.expression.Variable;
 import org.apache.hudi.expression.Expression;
 import org.apache.hudi.expression.Literal;
 import org.apache.hudi.expression.NameReference;
+import org.apache.hudi.expression.Predicate;
 import org.apache.hudi.expression.Predicates;
 import org.apache.hudi.internal.schema.Type;
 
@@ -40,17 +41,17 @@ import static java.util.Objects.requireNonNull;
 public class ExpressionConverter
 {
     private static final Logger log = Logger.get(ExpressionConverter.class);
-    private static final String FN_YEAR = "year";
-    private static final String FN_MONTH = "month";
-    private static final String FN_DAY = "day";
-    private static final String FN_HOUR = "hour";
-    private static final String FN_DATE_FORMAT = "date_format";
-    private static final String FN_FROM_UNIX = "from_unixtime";
-    private static final String FN_SUBSTRING = "substring";
 
-    private static final List<String> CANDIDATE_FUNCTIONS_FOR_EI = ImmutableList.of(FN_YEAR, FN_MONTH, FN_DAY, FN_HOUR, FN_DATE_FORMAT, FN_FROM_UNIX, FN_SUBSTRING);
+    private static final List<String> CANDIDATE_FUNCTIONS_FOR_EI = ImmutableList.of(
+            HudiTrinoYearFunctionExpression.TRINO_FN_NAME,
+            HudiTrinoMonthFunctionExpression.TRINO_FN_NAME,
+            HudiTrinoDayFunctionExpression.TRINO_FN_NAME,
+            HudiTrinoHourFunctionExpression.TRINO_FN_NAME,
+            HudiTrinoDateFormatFunctionExpression.TRINO_FN_NAME,
+            HudiTrinoFromUnixFunctionExpression.TRINO_FN_NAME,
+            HudiTrinoSubstringFunctionExpression.TRINO_FN_NAME);
 
-    private final Set<Expression> candidateCollector;
+    private final Set<Predicate> candidateCollector;
 
     public ExpressionConverter(ConnectorExpression connectorExpression)
     {
@@ -64,7 +65,7 @@ public class ExpressionConverter
      *
      * @return An unmodifiable list of candidate expressions
      */
-    public List<Expression> getCandidateExpressions()
+    public List<Predicate> getCandidateExpressions()
     {
         return this.candidateCollector.stream().toList();
     }
@@ -162,6 +163,9 @@ public class ExpressionConverter
         else if (StandardFunctions.EQUAL_OPERATOR_FUNCTION_NAME.equals(functionName) && arguments.size() == 2) {
             finalHudiExpression = Predicates.eq(arguments.get(0), arguments.get(1));
         }
+        else if (StandardFunctions.NOT_EQUAL_OPERATOR_FUNCTION_NAME.equals(functionName) && arguments.size() == 2) {
+            finalHudiExpression = Predicates.not(Predicates.eq(arguments.get(0), arguments.get(1)));
+        }
         else if (StandardFunctions.GREATER_THAN_OPERATOR_FUNCTION_NAME.equals(functionName) && arguments.size() == 2) {
             finalHudiExpression = Predicates.gt(arguments.get(0), arguments.get(1));
         }
@@ -191,35 +195,39 @@ public class ExpressionConverter
             finalHudiExpression = new CastExpression(sourceExpression, hudiReturnType);
         }
         // Functions
-        else if (FN_DAY.equalsIgnoreCase(functionName.getName())) {
-            finalHudiExpression = checkAndCreateExpression(FN_DAY, 1, arguments, hudiReturnType);
+        else if (HudiTrinoDayFunctionExpression.TRINO_FN_NAME.equalsIgnoreCase(functionName.getName())) {
+            checkArgumentSize(1, functionName.getName(), arguments);
+            return new HudiTrinoDayFunctionExpression(functionName.getName(), arguments, hudiReturnType);
         }
-        else if (FN_FROM_UNIX.equalsIgnoreCase(functionName.getName())) {
+        else if (HudiTrinoFromUnixFunctionExpression.TRINO_FN_NAME.equalsIgnoreCase(functionName.getName())) {
             // The number of arguments will determine which overload it is.
             // Trino's type system will provide the correct trinoReturnType based on the overload.
             // (e.g., TIMESTAMP for 1-arg, TIMESTAMP WITH TIME ZONE for 2/3-arg versions)
             // No need to force a correct returnType here; expression should handle it.
-            finalHudiExpression = new HudiFunctionExpression(FN_FROM_UNIX, arguments, hudiReturnType);
+            finalHudiExpression = new HudiTrinoFromUnixFunctionExpression(arguments, hudiReturnType);
         }
-        else if (FN_YEAR.equalsIgnoreCase(functionName.getName())) {
-            finalHudiExpression = checkAndCreateExpression(FN_YEAR, 1, arguments, hudiReturnType);
+        else if (HudiTrinoYearFunctionExpression.TRINO_FN_NAME.equalsIgnoreCase(functionName.getName())) {
+            checkArgumentSize(1, functionName.getName(), arguments);
+            finalHudiExpression = new HudiTrinoYearFunctionExpression(arguments, hudiReturnType);
         }
-        else if (FN_MONTH.equalsIgnoreCase(functionName.getName())) {
-            finalHudiExpression = checkAndCreateExpression(FN_MONTH, 1, arguments, hudiReturnType);
+        else if (HudiTrinoMonthFunctionExpression.TRINO_FN_NAME.equalsIgnoreCase(functionName.getName())) {
+            checkArgumentSize(1, functionName.getName(), arguments);
+            finalHudiExpression = new HudiTrinoMonthFunctionExpression(arguments, hudiReturnType);
         }
-        else if (FN_HOUR.equalsIgnoreCase(functionName.getName())) {
-            finalHudiExpression = checkAndCreateExpression(FN_HOUR, 1, arguments, hudiReturnType);
+        else if (HudiTrinoHourFunctionExpression.TRINO_FN_NAME.equalsIgnoreCase(functionName.getName())) {
+            checkArgumentSize(1, functionName.getName(), arguments);
+            finalHudiExpression = new HudiTrinoHourFunctionExpression(arguments, hudiReturnType);
         }
-        else if (FN_DATE_FORMAT.equalsIgnoreCase(functionName.getName())) {
-            finalHudiExpression = new HudiFunctionExpression(FN_DATE_FORMAT, arguments, hudiReturnType);
+        else if (HudiTrinoDateFormatFunctionExpression.TRINO_FN_NAME.equalsIgnoreCase(functionName.getName())) {
+            finalHudiExpression = new HudiTrinoDateFormatFunctionExpression(arguments, hudiReturnType);
         }
-        else if (FN_SUBSTRING.equalsIgnoreCase(functionName.getName())) {
-            finalHudiExpression = new HudiFunctionExpression(FN_SUBSTRING, arguments, hudiReturnType);
+        else if (HudiTrinoSubstringFunctionExpression.TRINO_FN_NAME.equalsIgnoreCase(functionName.getName())) {
+            finalHudiExpression = new HudiTrinoSubstringFunctionExpression(arguments, hudiReturnType);
         }
         else {
             // TODO: represent as a generic function call if not mapped?
             log.warn("Unhandled Trino function: " + functionName);
-            finalHudiExpression = new HudiFunctionExpression(functionName.getName(), arguments, hudiReturnType);
+            finalHudiExpression = new HudiTrinoFunctionExpression(functionName.getName(), arguments, hudiReturnType);
         }
         tryAddAsCandidate(finalHudiExpression);
         return finalHudiExpression;
@@ -227,29 +235,23 @@ public class ExpressionConverter
 
     private void tryAddAsCandidate(Expression expression)
     {
-        if (isCandidateForExpressionIndex(expression)) {
-            this.candidateCollector.add(expression);
+        if (expression instanceof Predicate predicate && isCandidateForExpressionIndex(predicate)) {
+            this.candidateCollector.add(predicate);
         }
     }
 
-    private static HudiFunctionExpression checkAndCreateExpression(String functionName, int argumentSize, List<Expression> arguments, Type returnType)
+    private static void checkArgumentSize(int argumentSize, String functionName, List<Expression> arguments)
     {
-        if (arguments.size() == argumentSize) {
-            return new HudiFunctionExpression(functionName, arguments, returnType);
+        if (arguments.size() != argumentSize) {
+            throw new TrinoException(INVALID_ARGUMENTS, "Trino " + functionName + " function expects 1 argument, but got " + argumentSize);
         }
-        throw new TrinoException(INVALID_ARGUMENTS, getErrorMessage(FN_DAY, arguments.size()));
     }
 
-    private static String getErrorMessage(String functionName, int argumentSize)
+    private static boolean isCandidateForExpressionIndex(Predicate predicate)
     {
-        return "Trino " + functionName + " function expects 1 argument, but got " + argumentSize;
-    }
-
-    private static boolean isCandidateForExpressionIndex(Expression expression)
-    {
-        if (expression instanceof Predicates.BinaryComparison binaryComparison) {
+        if (predicate instanceof Predicates.BinaryComparison binaryComparison) {
             Expression left = binaryComparison.getLeft();
-            if (left instanceof HudiFunctionExpression fnExpression) {
+            if (left instanceof HudiTrinoFunctionExpression fnExpression) {
                 return CANDIDATE_FUNCTIONS_FOR_EI.contains(fnExpression.getName());
             }
         }

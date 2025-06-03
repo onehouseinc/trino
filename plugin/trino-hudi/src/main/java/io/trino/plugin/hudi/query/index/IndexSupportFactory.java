@@ -65,7 +65,7 @@ public class IndexSupportFactory
                 new StrategyProvider(() -> isRecordLevelIndexEnabled(session), () -> new HudiRecordLevelIndexSupport(metaClient)),
                 new StrategyProvider(() -> isSecondaryIndexEnabled(session), () -> new HudiSecondaryIndexSupport(metaClient)),
                 new StrategyProvider(() -> isColumnStatsIndexEnabled(session), () -> new HudiColumnStatsIndexSupport(metaClient)),
-                new StrategyProvider(() -> isExpressionIndexEnabled(session), () -> new HudiExpressionIndexSupport(metaClient)),
+                new StrategyProvider(() -> isExpressionIndexEnabled(session), () -> new HudiExpressionIndexSupport(metaClient, tableHandle.getExpressionIndexCandidates())),
                 new StrategyProvider(() -> isNoOpIndexEnabled(session), () -> new HudiNoOpIndexSupport(metaClient)));
 
         TupleDomain<String> transformedTupleDomain = tupleDomain.transformKeys(HiveColumnHandle::getName);

@@ -65,6 +65,7 @@ import static io.trino.plugin.hive.HiveColumnHandle.createBaseColumn;
 import static io.trino.plugin.hudi.HudiPageSourceProvider.createPageSource;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_PT_TBL;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_EI_PT_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_MOR;
@@ -515,6 +516,7 @@ public class TestHudiSmokeTest
                 .withColStatsIndexEnabled(true)
                 .withRecordLevelIndexEnabled(false)
                 .withSecondaryIndexEnabled(false)
+                .withExpressionIndexEnabled(false)
                 .withPartitionStatsIndexEnabled(false)
                 .build();
         MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + table);
@@ -537,6 +539,7 @@ public class TestHudiSmokeTest
                 .withColStatsIndexEnabled(false)
                 .withRecordLevelIndexEnabled(true)
                 .withSecondaryIndexEnabled(false)
+                .withExpressionIndexEnabled(false)
                 .withPartitionStatsIndexEnabled(false)
                 .build();
         MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + table);
@@ -560,6 +563,7 @@ public class TestHudiSmokeTest
                 .withColStatsIndexEnabled(false)
                 .withRecordLevelIndexEnabled(false)
                 .withSecondaryIndexEnabled(true)
+                .withExpressionIndexEnabled(false)
                 .withPartitionStatsIndexEnabled(false)
                 .build();
         MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + table);
@@ -580,22 +584,39 @@ public class TestHudiSmokeTest
     {
         Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(true)
-                .withColStatsIndexEnabled(true)
+                .withColStatsIndexEnabled(false)
                 .withRecordLevelIndexEnabled(false)
                 .withSecondaryIndexEnabled(false)
+                .withExpressionIndexEnabled(true)
                 .withPartitionStatsIndexEnabled(false)
                 .build();
-        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_COMPREHENSIVE_TYPES_V8_MOR
-                + " WHERE part_col='a'" +
-                " AND year(col_date) < 2001" + // Trino will optimize and rewrite this to col_date < 2001-01-01
-                " AND month(col_date) > 2" +
-                " AND day(col_date) <= 3" +
-                " AND hour(col_date) >= 4" +
-                " AND day(col_timestamp) = 5" +
-                " AND year(from_unixtime(col_bigint)) > 6" +
-                " AND substring(col_string, 7) = 'hello1'" +
-                " AND substring(col_string, 8, 9) = 'hello2'");
-        System.out.println(prunedRes);
+
+        @Language("SQL") String monthIdxFileSkippingSql = "SELECT id FROM " + HUDI_EI_PT_V8_MOR +
+                " WHERE country='SG'" +
+                " AND year(col_date) < 2025" + // Trino will optimize and rewrite this to col_date < 2025-01-01
+                " AND month(col_date) < 2";
+        assertQuery(session, monthIdxFileSkippingSql, "VALUES (1)");
+        MaterializedResult monthIdxFileSkippingRes = getQueryRunner().execute(session, monthIdxFileSkippingSql);
+        int monthIdxFileSkippingSplits = monthIdxFileSkippingRes.getStatementStats().get().getTotalSplits();
+        assertThat(monthIdxFileSkippingSplits).isEqualTo(1);
+
+        @Language("SQL") String dayIdxFileSkippingSql = "SELECT id FROM " + HUDI_EI_PT_V8_MOR +
+                " WHERE country='SG'" +
+                " AND year(col_date) < 2025" +
+                " AND day(col_date) > 15";
+        assertQuery(session, dayIdxFileSkippingSql, "VALUES (2)");
+        MaterializedResult dayIdxFileSkippingRes = getQueryRunner().execute(session, dayIdxFileSkippingSql);
+        int dayIdxFileSkippingSplits = dayIdxFileSkippingRes.getStatementStats().get().getTotalSplits();
+        assertThat(dayIdxFileSkippingSplits).isEqualTo(1);
+
+        @Language("SQL") String subStrFileSkippingSql = "SELECT id FROM " + HUDI_EI_PT_V8_MOR +
+                " WHERE country='SG'" +
+                " AND year(col_date) < 2025" +
+                " AND substring(col_string, 1, 5) > 'apple'";
+        assertQuery(session, subStrFileSkippingSql, "VALUES (2)");
+        MaterializedResult subStrFileSkippingRes = getQueryRunner().execute(session, subStrFileSkippingSql);
+        int subStrFileSkippingSplits = subStrFileSkippingRes.getStatementStats().get().getTotalSplits();
+        assertThat(subStrFileSkippingSplits).isEqualTo(1);
     }
 
     @ParameterizedTest
@@ -609,6 +630,8 @@ public class TestHudiSmokeTest
                 .withColStatsIndexEnabled(false)
                 .withRecordLevelIndexEnabled(false)
                 .withSecondaryIndexEnabled(false)
+                .withExpressionIndexEnabled(true)
+                .withExpressionIndexEnabled(false)
                 .withPartitionStatsIndexEnabled(true)
                 .build();
         MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + table

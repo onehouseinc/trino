@@ -279,7 +279,11 @@ public class HudiSessionProperties
 
     public static boolean isNoOpIndexEnabled(ConnectorSession session)
     {
-        return !isRecordLevelIndexEnabled(session) && !isSecondaryIndexEnabled(session) && !isColumnStatsIndexEnabled(session);
+        // Only true if all other index are disabled explicitly
+        return !isRecordLevelIndexEnabled(session)
+                && !isSecondaryIndexEnabled(session)
+                && !isColumnStatsIndexEnabled(session)
+                && !isExpressionIndexEnabled(session);
     }
 
     public static Duration getDynamicFilteringWaitTimeout(ConnectorSession session)

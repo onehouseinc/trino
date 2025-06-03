@@ -18,7 +18,7 @@ import org.apache.hudi.expression.ExpressionVisitor;
 public interface HudiTrinoExpressionVisitor<T>
         extends ExpressionVisitor<T>
 {
-    T visitFunction(HudiFunctionExpression function);
+    T visitFunction(HudiTrinoFunctionExpression function);
 
     T visitCast(CastExpression castExpression);
 }

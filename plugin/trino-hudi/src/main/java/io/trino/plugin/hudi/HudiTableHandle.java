@@ -23,7 +23,7 @@ import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.model.HoodieTableType;
-import org.apache.hudi.expression.Expression;
+import org.apache.hudi.expression.Predicate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,7 +48,7 @@ public class HudiTableHandle
     private final Set<HiveColumnHandle> constraintColumns;
     private final TupleDomain<HiveColumnHandle> partitionPredicates;
     private final TupleDomain<HiveColumnHandle> regularPredicates;
-    private final List<Expression> expressionIndexCandidates;
+    private final List<Predicate> expressionIndexCandidates;
 
     @JsonCreator
     public HudiTableHandle(
@@ -75,7 +75,7 @@ public class HudiTableHandle
             Set<HiveColumnHandle> constraintColumns,
             TupleDomain<HiveColumnHandle> partitionPredicates,
             TupleDomain<HiveColumnHandle> regularPredicates,
-            List<Expression> expressionIndexCandidates)
+            List<Predicate> expressionIndexCandidates)
     {
         this.schemaName = requireNonNull(schemaName, "schemaName is null");
         this.tableName = requireNonNull(tableName, "tableName is null");
@@ -146,7 +146,7 @@ public class HudiTableHandle
 
     // do not serialize constraint columns as they are not needed on workers
     @JsonIgnore
-    public List<Expression> getExpressionIndexCandidates()
+    public List<Predicate> getExpressionIndexCandidates()
     {
         return expressionIndexCandidates;
     }
@@ -160,14 +160,14 @@ public class HudiTableHandle
             Set<HiveColumnHandle> constraintColumns,
             TupleDomain<HiveColumnHandle> partitionTupleDomain,
             TupleDomain<HiveColumnHandle> regularTupleDomain,
-            List<Expression> expressionIndexCandidates)
+            List<Predicate> expressionIndexCandidates)
     {
         // Merge candidate expressions: existing ones from 'this' first + new ones from current pass
-        Set<Expression> combinedUniqueCandidates = new HashSet<>();
+        Set<Predicate> combinedUniqueCandidates = new HashSet<>();
         combinedUniqueCandidates.addAll(this.expressionIndexCandidates);
         combinedUniqueCandidates.addAll(expressionIndexCandidates);
 
-        List<Expression> finalMergedCandidateList = combinedUniqueCandidates.isEmpty()
+        List<Predicate> finalMergedCandidateList = combinedUniqueCandidates.isEmpty()
                 ? Collections.emptyList()
                 : new ArrayList<>(combinedUniqueCandidates);
 

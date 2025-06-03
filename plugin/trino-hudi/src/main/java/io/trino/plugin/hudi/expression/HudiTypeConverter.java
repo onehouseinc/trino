@@ -15,6 +15,7 @@ package io.trino.plugin.hudi.expression;
 
 import io.trino.spi.type.BigintType;
 import io.trino.spi.type.BooleanType;
+import io.trino.spi.type.DateType;
 import io.trino.spi.type.DoubleType;
 import io.trino.spi.type.IntegerType;
 import io.trino.spi.type.RealType;
@@ -39,8 +40,8 @@ public class HudiTypeConverter
             case RealType _ -> Types.FloatType.get();
             case DoubleType _ -> Types.DoubleType.get();
             case VarcharType _ -> Types.StringType.get();
-            case TimestampType _ -> Types.TimestampType.get();
-            case TimestampWithTimeZoneType _ -> Types.TimestampType.get();
+            case TimestampType _, TimestampWithTimeZoneType _ -> Types.TimestampType.get();
+            case DateType _ -> Types.DateType.get();
             default -> throw new IllegalStateException("Unsupported type: " + trinoType);
         };
     }

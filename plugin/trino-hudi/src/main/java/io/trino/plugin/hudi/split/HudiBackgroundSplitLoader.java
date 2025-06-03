@@ -63,7 +63,6 @@ public class HudiBackgroundSplitLoader
     private final Executor splitGeneratorExecutor;
     private final int splitGeneratorNumThreads;
     private final HudiSplitFactory hudiSplitFactory;
-    private final List<String> partitions;
     private final String commitTime;
     private final Consumer<Throwable> errorListener;
     private final boolean enableMetadataTable;
@@ -71,6 +70,8 @@ public class HudiBackgroundSplitLoader
     private final TupleDomain<HiveColumnHandle> regularPredicates;
     private final Optional<HudiIndexSupport> indexSupportOpt;
     private final Optional<HudiPartitionStatsIndexSupport> partitionIndexSupportOpt;
+
+    private List<String> partitions;
 
     public HudiBackgroundSplitLoader(
             ConnectorSession session,
@@ -106,8 +107,18 @@ public class HudiBackgroundSplitLoader
         if (enableMetadataTable) {
             // Wrap entire logic so that ANY error will be thrown out and not cause program to get stuck
             try {
+                HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
+                HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
+                HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
+                        engineContext,
+                        metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
+
+                if (partitionIndexSupportOpt.isPresent()) {
+                    doIndexEnabledPartitionPruning(metadataTable);
+                }
+
                 if (indexSupportOpt.isPresent()) {
-                    indexEnabledSplitGenerator(indexSupportOpt.get());
+                    indexEnabledSplitGenerator(metadataTable, indexSupportOpt.get());
                     return;
                 }
             }
@@ -120,25 +131,24 @@ public class HudiBackgroundSplitLoader
         partitionPruningSplitGenerator();
     }
 
-    private void indexEnabledSplitGenerator(HudiIndexSupport hudiIndexSupport)
+    private void doIndexEnabledPartitionPruning(HoodieTableMetadata metadataTable)
     {
-        // Data Skipping based on column stats
-        HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
-        HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
-        HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
-                engineContext,
-                metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
-
         // Attempt to apply partition pruning using partition stats index
         Optional<List<String>> effectivePartitionsOpt = partitionIndexSupportOpt.isPresent() ? partitionIndexSupportOpt.get().prunePartitions(
                 partitions, metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
+        // Updates the partitions attribute with an ImmutableList of prunedPartitions
+        effectivePartitionsOpt.ifPresent(prunedPartitions -> partitions = prunedPartitions);
+    }
 
+    private void indexEnabledSplitGenerator(HoodieTableMetadata metadataTable, HudiIndexSupport hudiIndexSupport)
+    {
         // For MDT the file listing is already loaded in memory
         // TODO(yihua): refactor split loader/directory lister API for maintainability
         Map<String, List<FileSlice>> partitionFileSliceMap = new HashMap<>();
         Map<String, List<HivePartitionKey>> partitionToPartitionKeyMap = new HashMap<>();
+
         // non-partitioned tables have empty strings
-        for (String partitionName : effectivePartitionsOpt.orElse(partitions)) {
+        for (String partitionName : partitions) {
             Optional<HudiPartitionInfo> partitionInfo = hudiDirectoryLister.getPartitionInfo(partitionName);
             partitionInfo.ifPresent(hudiPartitionInfo -> {
                 if (hudiPartitionInfo.doesMatchPredicates() || partitionName.equals(NON_PARTITION)) {
