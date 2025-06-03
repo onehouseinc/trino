@@ -50,29 +50,23 @@ public class HudiPartitionInfoLoader
             AsyncQueue<ConnectorSplit> asyncQueue,
             Deque<String> partitionQueue)
     {
-        this.hudiDirectoryLister = hudiDirectoryLister;
-        this.commitTime = commitTime;
-        this.hudiSplitFactory = hudiSplitFactory;
-        this.asyncQueue = asyncQueue;
-        this.partitionQueue = partitionQueue;
-        this.isRunning = true;
-        this.indexSupportOpt = Optional.empty();
+        this(hudiDirectoryLister, commitTime, hudiSplitFactory, asyncQueue, partitionQueue, Optional.empty());
     }
 
     public HudiPartitionInfoLoader(
             HudiDirectoryLister hudiDirectoryLister,
             String commitTime,
             HudiSplitFactory hudiSplitFactory,
-            Optional<HudiIndexSupport> indexSupportOpt,
             AsyncQueue<ConnectorSplit> asyncQueue,
-            Deque<String> partitionQueue)
+            Deque<String> partitionQueue,
+            Optional<HudiIndexSupport> indexSupportOpt)
     {
         this.hudiDirectoryLister = hudiDirectoryLister;
         this.commitTime = commitTime;
         this.hudiSplitFactory = hudiSplitFactory;
-        this.indexSupportOpt = indexSupportOpt;
         this.asyncQueue = asyncQueue;
         this.partitionQueue = partitionQueue;
+        this.indexSupportOpt = indexSupportOpt;
         this.isRunning = true;
     }
 

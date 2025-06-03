@@ -87,7 +87,6 @@ public class HudiColumnStatsIndexSupport
         List<String> encodedTargetColumnNames = regularColumns
                 .stream()
                 .map(col -> new ColumnIndexID(col).asBase64EncodedString()).collect(Collectors.toList());
-        Instant start = Instant.now();
         statsByFileName = metadataTable.getRecordsByKeyPrefixes(
                         encodedTargetColumnNames,
                         HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS, true)
@@ -96,8 +95,6 @@ public class HudiColumnStatsIndexSupport
                 .filter(f -> f.getData().getColumnStatMetadata().isPresent())
                 .map(f -> f.getData().getColumnStatMetadata().get())
                 .collect(Collectors.groupingBy(HoodieMetadataColumnStats::getFileName));
-        long timeTaken = Duration.between(start, Instant.now()).toMillis();
-        log.info("Retrieved column stats for %s files in %s ms", statsByFileName.size(), timeTaken);
         this.regularColumnPredicates = regularPredicatesTransformed;
     }
 
@@ -112,21 +109,7 @@ public class HudiColumnStatsIndexSupport
 
         List<String> regularColumns = regularColumnPredicates
                 .getDomains().get().entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList());
-        // Get filter columns
-        List<String> encodedTargetColumnNames = regularColumns
-                .stream()
-                .map(col -> new ColumnIndexID(col).asBase64EncodedString()).collect(Collectors.toList());
-        Map<String, List<HoodieMetadataColumnStats>> statsByFileName = metadataTable.getRecordsByKeyPrefixes(
-                        encodedTargetColumnNames,
-                        HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS, true)
-                .collectAsList()
-                .stream()
-                .filter(f -> f.getData().getColumnStatMetadata().isPresent())
-                .map(f -> f.getData().getColumnStatMetadata().get())
-                .collect(Collectors.groupingBy(HoodieMetadataColumnStats::getFileName));
 
-        Instant start = Instant.now();
-        log.info("Started pruning files");
         // Prune files
         Map<String, List<FileSlice>> candidateFileSlices = inputFileSlices
                 .entrySet()
@@ -137,8 +120,6 @@ public class HudiColumnStatsIndexSupport
                                 .stream()
                                 .filter(fileSlice -> shouldKeepFileSlice(fileSlice, statsByFileName, regularColumnPredicates, regularColumns))
                                 .collect(Collectors.toList())));
-        long timeTaken = Duration.between(start, Instant.now()).toMillis();
-        log.info("Complete files pruning in %s ms", timeTaken);
 
         this.printDebugMessage(candidateFileSlices, inputFileSlices);
         return candidateFileSlices;

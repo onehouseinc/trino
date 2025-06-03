@@ -15,7 +15,6 @@ package io.trino.plugin.hudi.split;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.airlift.log.Logger;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hive.util.AsyncQueue;
 import io.trino.plugin.hudi.HudiTableHandle;
@@ -28,14 +27,8 @@ import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.ConnectorSplit;
 import io.trino.spi.predicate.TupleDomain;
-import org.apache.hudi.common.config.HoodieMetadataConfig;
-import org.apache.hudi.common.engine.HoodieEngineContext;
-import org.apache.hudi.common.engine.HoodieLocalEngineContext;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
-import org.apache.hudi.metadata.HoodieTableMetadata;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
@@ -54,8 +47,6 @@ import static java.util.Objects.requireNonNull;
 public class HudiBackgroundSplitLoader
         implements Runnable
 {
-    private static final Logger log = Logger.get(HudiBackgroundSplitLoader.class);
-
     private final HudiDirectoryLister hudiDirectoryLister;
     private final AsyncQueue<ConnectorSplit> asyncQueue;
     private final Executor splitGeneratorExecutor;
@@ -104,10 +95,8 @@ public class HudiBackgroundSplitLoader
         if (enableMetadataTable) {
             // Wrap entire logic so that ANY error will be thrown out and not cause program to get stuck
             try {
-                if (indexSupportOpt.isPresent()) {
-                    indexEnabledSplitGenerator(indexSupportOpt.get());
-                    return;
-                }
+                generateSplits(indexSupportOpt);
+                return;
             }
             catch (Exception e) {
                 errorListener.accept(e);
@@ -115,90 +104,35 @@ public class HudiBackgroundSplitLoader
         }
 
         // Fallback to partition pruning generator
-        partitionPruningSplitGenerator();
+        generateSplits(Optional.empty());
     }
 
-    private void indexEnabledSplitGenerator(HudiIndexSupport hudiIndexSupport)
+    private void generateSplits(Optional<HudiIndexSupport> hudiIndexSupportOptional)
     {
-        // Data Skipping based on column stats
-        HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
-        HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
-        HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
-                engineContext,
-                metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
-
-        // Attempt to apply partition pruning using partition stats index
-        Optional<List<String>> effectivePartitionsOpt = partitionIndexSupportOpt.isPresent() ? partitionIndexSupportOpt.get().prunePartitions(
-                partitions, metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
-
-        // For MDT the file listing is already loaded in memory
         // TODO(yihua): refactor split loader/directory lister API for maintainability
-        // non-partitioned tables have empty strings
 
-        TupleDomain<String> regularPredicatesTransformed = regularPredicates.transformKeys(HiveColumnHandle::getName);
-
-        Instant start = Instant.now();
-        log.info("Started generating splits");
         Deque<String> partitionQueue = new ConcurrentLinkedDeque<>(partitions);
-        List<HudiPartitionInfoLoader> splitGeneratorList = new ArrayList<>();
-        List<ListenableFuture<Void>> splitGeneratorFutures = new ArrayList<>();
+        List<HudiPartitionInfoLoader> splitGenerators = new ArrayList<>();
+        List<ListenableFuture<Void>> futures = new ArrayList<>();
 
-        // Start a number of partition split generators to generate the splits in parallel
         for (int i = 0; i < splitGeneratorNumThreads; i++) {
-            HudiPartitionInfoLoader generator = new HudiPartitionInfoLoader(hudiDirectoryLister, commitTime, hudiSplitFactory,
-                    Optional.of(hudiIndexSupport), asyncQueue, partitionQueue);
-            splitGeneratorList.add(generator);
+            HudiPartitionInfoLoader generator = hudiIndexSupportOptional
+                    .map(indexSupport -> new HudiPartitionInfoLoader(hudiDirectoryLister, commitTime, hudiSplitFactory,
+                            asyncQueue, partitionQueue, Optional.of(indexSupport)))
+                    .orElseGet(() -> new HudiPartitionInfoLoader(hudiDirectoryLister, commitTime, hudiSplitFactory,
+                            asyncQueue, partitionQueue));
+
+            splitGenerators.add(generator);
             ListenableFuture<Void> future = Futures.submit(generator, splitGeneratorExecutor);
             addExceptionCallback(future, errorListener);
-            splitGeneratorFutures.add(future);
+            futures.add(future);
         }
 
-        for (HudiPartitionInfoLoader generator : splitGeneratorList) {
-            // Let the split generator stop once the partition queue is empty
-            generator.stopRunning();
-        }
+        // Signal all generators to stop once partition queue is drained
+        splitGenerators.forEach(HudiPartitionInfoLoader::stopRunning);
 
         try {
-            // Wait for all split generators to finish
-            Futures.whenAllComplete(splitGeneratorFutures)
-                    .run(asyncQueue::finish, directExecutor())
-                    .get();
-        }
-        catch (InterruptedException | ExecutionException e) {
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
-            }
-            throw new TrinoException(HUDI_CANNOT_OPEN_SPLIT, "Error generating Hudi split", e);
-        }
-        long timeTaken = Duration.between(start, Instant.now()).toSeconds();
-        log.info("Completed generating splits, time taken %s", timeTaken);
-
-        asyncQueue.finish();
-    }
-
-    private void partitionPruningSplitGenerator()
-    {
-        Deque<String> partitionQueue = new ConcurrentLinkedDeque<>(partitions);
-        List<HudiPartitionInfoLoader> splitGeneratorList = new ArrayList<>();
-        List<ListenableFuture<Void>> splitGeneratorFutures = new ArrayList<>();
-
-        // Start a number of partition split generators to generate the splits in parallel
-        for (int i = 0; i < splitGeneratorNumThreads; i++) {
-            HudiPartitionInfoLoader generator = new HudiPartitionInfoLoader(hudiDirectoryLister, commitTime, hudiSplitFactory, asyncQueue, partitionQueue);
-            splitGeneratorList.add(generator);
-            ListenableFuture<Void> future = Futures.submit(generator, splitGeneratorExecutor);
-            addExceptionCallback(future, errorListener);
-            splitGeneratorFutures.add(future);
-        }
-
-        for (HudiPartitionInfoLoader generator : splitGeneratorList) {
-            // Let the split generator stop once the partition queue is empty
-            generator.stopRunning();
-        }
-
-        try {
-            // Wait for all split generators to finish
-            Futures.whenAllComplete(splitGeneratorFutures)
+            Futures.whenAllComplete(futures)
                     .run(asyncQueue::finish, directExecutor())
                     .get();
         }
@@ -209,4 +143,5 @@ public class HudiBackgroundSplitLoader
             throw new TrinoException(HUDI_CANNOT_OPEN_SPLIT, "Error generating Hudi split", e);
         }
     }
+
 }
