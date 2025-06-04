@@ -57,8 +57,8 @@ public class IndexSupportFactory
         // Define strategies as Suppliers paired with their config (isEnabled) flag
         // IMPORTANT: Order of strategy here determines which index implementation is preferred first
         List<StrategyProvider> strategyProviders = List.of(
-                new StrategyProvider(() -> isRecordLevelIndexEnabled(session), () -> new HudiRecordLevelIndexSupport(metaClient)),
-                new StrategyProvider(() -> isSecondaryIndexEnabled(session), () -> new HudiSecondaryIndexSupport(metaClient)),
+                new StrategyProvider(() -> isRecordLevelIndexEnabled(session), () -> new HudiRecordLevelIndexSupport(metaClient, tupleDomain)),
+                new StrategyProvider(() -> isSecondaryIndexEnabled(session), () -> new HudiSecondaryIndexSupport(metaClient, tupleDomain)),
                 new StrategyProvider(() -> isColumnStatsIndexEnabled(session), () -> new HudiColumnStatsIndexSupport(metaClient, tupleDomain)),
                 new StrategyProvider(() -> isNoOpIndexEnabled(session), () -> new HudiNoOpIndexSupport(metaClient)));
 

@@ -29,5 +29,8 @@ public interface HudiIndexSupport
 
     boolean canApply(TupleDomain<String> tupleDomain);
 
-    default boolean shouldKeepFileSlice(FileSlice slice) {return true;}
+    default boolean shouldKeepFileSlice(FileSlice slice)
+    {
+        return true;
+    }
 }

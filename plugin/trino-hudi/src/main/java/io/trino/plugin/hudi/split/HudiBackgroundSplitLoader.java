@@ -21,7 +21,6 @@ import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.partition.HudiPartitionInfoLoader;
 import io.trino.plugin.hudi.query.HudiDirectoryLister;
 import io.trino.plugin.hudi.query.index.HudiIndexSupport;
-import io.trino.plugin.hudi.query.index.HudiPartitionStatsIndexSupport;
 import io.trino.plugin.hudi.query.index.IndexSupportFactory;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ConnectorSession;
@@ -56,10 +55,8 @@ public class HudiBackgroundSplitLoader
     private final String commitTime;
     private final Consumer<Throwable> errorListener;
     private final boolean enableMetadataTable;
-    private final HoodieTableMetaClient metaClient;
     private final TupleDomain<HiveColumnHandle> regularPredicates;
     private final Optional<HudiIndexSupport> indexSupportOpt;
-    private final Optional<HudiPartitionStatsIndexSupport> partitionIndexSupportOpt;
 
     public HudiBackgroundSplitLoader(
             ConnectorSession session,
@@ -82,11 +79,10 @@ public class HudiBackgroundSplitLoader
         this.partitions = requireNonNull(partitions, "partitions is null");
         this.commitTime = requireNonNull(commitTime, "commitTime is null");
         this.enableMetadataTable = enableMetadataTable;
-        this.metaClient = requireNonNull(metaClient, "metaClient is null");
         this.regularPredicates = tableHandle.getRegularPredicates();
         this.errorListener = requireNonNull(errorListener, "errorListener is null");
-        this.indexSupportOpt = IndexSupportFactory.createIndexSupport(metaClient, regularPredicates, session);
-        this.partitionIndexSupportOpt = IndexSupportFactory.createPartitionStatsIndexSupport(metaClient, regularPredicates, session);
+        this.indexSupportOpt = enableMetadataTable ?
+                IndexSupportFactory.createIndexSupport(metaClient, regularPredicates, session) : Optional.empty();
     }
 
     @Override

@@ -50,4 +50,10 @@ public class HudiNoOpIndexSupport
     {
         return true;
     }
+
+    @Override
+    public boolean shouldKeepFileSlice(FileSlice slice)
+    {
+        return true;
+    }
 }

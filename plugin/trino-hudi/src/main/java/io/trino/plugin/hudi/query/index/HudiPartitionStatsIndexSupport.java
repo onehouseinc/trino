@@ -49,6 +49,12 @@ public class HudiPartitionStatsIndexSupport
         throw new UnsupportedOperationException("This method is not supported by " + getClass().getSimpleName());
     }
 
+    @Override
+    public boolean shouldKeepFileSlice(FileSlice slice)
+    {
+        throw new UnsupportedOperationException("This method is not supported by " + getClass().getSimpleName());
+    }
+
     public Optional<List<String>> prunePartitions(
             List<String> allPartitions,
             HoodieTableMetadata metadataTable,
