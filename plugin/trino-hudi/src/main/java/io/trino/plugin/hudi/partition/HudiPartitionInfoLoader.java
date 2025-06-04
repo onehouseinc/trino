@@ -20,8 +20,8 @@ import io.trino.plugin.hudi.query.HudiDirectoryLister;
 import io.trino.plugin.hudi.query.index.HudiIndexSupport;
 import io.trino.plugin.hudi.split.HudiSplitFactory;
 import io.trino.spi.connector.ConnectorSplit;
-
 import org.apache.hudi.common.model.FileSlice;
+
 import java.util.Deque;
 import java.util.List;
 import java.util.Optional;

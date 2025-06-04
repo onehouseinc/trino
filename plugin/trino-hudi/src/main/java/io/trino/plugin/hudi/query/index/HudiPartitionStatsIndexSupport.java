@@ -38,19 +38,13 @@ public class HudiPartitionStatsIndexSupport
 {
     private static final Logger log = Logger.get(HudiColumnStatsIndexSupport.class);
 
-    public HudiPartitionStatsIndexSupport(HoodieTableMetaClient metaClient, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiPartitionStatsIndexSupport(HoodieTableMetaClient metaClient, HoodieTableMetadata metadataTable, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        super(log, metaClient, regularColumnPredicates);
+        super(log, metaClient, metadataTable, regularColumnPredicates);
     }
 
     @Override
     public Map<String, List<FileSlice>> lookupCandidateFilesInMetadataTable(HoodieTableMetadata metadataTable, Map<String, List<FileSlice>> inputFileSlices, TupleDomain<String> regularColumnPredicates)
-    {
-        throw new UnsupportedOperationException("This method is not supported by " + getClass().getSimpleName());
-    }
-
-    @Override
-    public boolean shouldKeepFileSlice(FileSlice slice)
     {
         throw new UnsupportedOperationException("This method is not supported by " + getClass().getSimpleName());
     }

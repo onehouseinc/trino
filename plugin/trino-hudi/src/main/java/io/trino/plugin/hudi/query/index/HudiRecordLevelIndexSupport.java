@@ -20,9 +20,6 @@ import io.trino.plugin.hudi.util.TupleDomainUtils;
 import io.trino.spi.TrinoException;
 import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.TupleDomain;
-import org.apache.hudi.common.config.HoodieMetadataConfig;
-import org.apache.hudi.common.engine.HoodieEngineContext;
-import org.apache.hudi.common.engine.HoodieLocalEngineContext;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieRecordGlobalLocation;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
@@ -52,18 +49,13 @@ public class HudiRecordLevelIndexSupport
     public static final String DEFAULT_RECORD_KEY_PARTS_SEPARATOR = ",";
     private final Optional<Set<String>> relevantRecordKeyFieldsOpt;
 
-    public HudiRecordLevelIndexSupport(HoodieTableMetaClient metaClient, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiRecordLevelIndexSupport(HoodieTableMetaClient metaClient, HoodieTableMetadata metadataTable, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
         super(log, metaClient);
         if (regularColumnPredicates.isAll()) {
             this.relevantRecordKeyFieldsOpt = Optional.empty();
-        } else {
-            HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
-            HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
-            HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
-                    engineContext,
-                    metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
-
+        }
+        else {
             Option<String[]> recordKeyFieldsOpt = metaClient.getTableConfig().getRecordKeyFields();
             if (recordKeyFieldsOpt.isEmpty() || recordKeyFieldsOpt.get().length == 0) {
                 // Should not happen since canApply checks for this, include for safety

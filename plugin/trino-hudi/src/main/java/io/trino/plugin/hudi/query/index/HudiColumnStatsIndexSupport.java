@@ -28,9 +28,6 @@ import io.trino.spi.type.Type;
 import io.trino.spi.type.VarcharType;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.hudi.avro.model.HoodieMetadataColumnStats;
-import org.apache.hudi.common.config.HoodieMetadataConfig;
-import org.apache.hudi.common.engine.HoodieEngineContext;
-import org.apache.hudi.common.engine.HoodieLocalEngineContext;
 import org.apache.hudi.common.model.BaseFile;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieIndexDefinition;
@@ -63,27 +60,23 @@ public class HudiColumnStatsIndexSupport
     private final Optional<Map<String, List<HoodieMetadataColumnStats>>> statsByFileNameOpt;
     private final TupleDomain<String> regularColumnPredicates;
 
-    public HudiColumnStatsIndexSupport(HoodieTableMetaClient metaClient, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiColumnStatsIndexSupport(HoodieTableMetaClient metaClient, HoodieTableMetadata metadataTable, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        this(log, metaClient, regularColumnPredicates);
+        this(log, metaClient, metadataTable, regularColumnPredicates);
     }
 
-    public HudiColumnStatsIndexSupport(Logger log, HoodieTableMetaClient metaClient, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiColumnStatsIndexSupport(Logger log, HoodieTableMetaClient metaClient, HoodieTableMetadata metadataTable, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
         super(log, metaClient);
         TupleDomain<String> regularPredicatesTransformed = regularColumnPredicates.transformKeys(HiveColumnHandle::getName);
         this.regularColumnPredicates = regularPredicatesTransformed;
         if (regularColumnPredicates.isAll() || !regularColumnPredicates.getDomains().isPresent()) {
             this.statsByFileNameOpt = Optional.empty();
-        } else {
-            HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
-            HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
-            HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
-                    engineContext,
-                    metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
-
+        }
+        else {
             List<String> regularColumns = regularPredicatesTransformed
                     .getDomains().get().entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList());
+
             // Get filter columns
             List<String> encodedTargetColumnNames = regularColumns
                     .stream()

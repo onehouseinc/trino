@@ -21,12 +21,17 @@ import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.partition.HudiPartitionInfoLoader;
 import io.trino.plugin.hudi.query.HudiDirectoryLister;
 import io.trino.plugin.hudi.query.index.HudiIndexSupport;
+import io.trino.plugin.hudi.query.index.HudiPartitionStatsIndexSupport;
 import io.trino.plugin.hudi.query.index.IndexSupportFactory;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.ConnectorSplit;
 import io.trino.spi.predicate.TupleDomain;
+import org.apache.hudi.common.config.HoodieMetadataConfig;
+import org.apache.hudi.common.engine.HoodieEngineContext;
+import org.apache.hudi.common.engine.HoodieLocalEngineContext;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.metadata.HoodieTableMetadata;
 
 import java.util.ArrayList;
 import java.util.Deque;
@@ -56,7 +61,9 @@ public class HudiBackgroundSplitLoader
     private final Consumer<Throwable> errorListener;
     private final boolean enableMetadataTable;
     private final TupleDomain<HiveColumnHandle> regularPredicates;
+    private final HoodieTableMetadata metadataTable;
     private final Optional<HudiIndexSupport> indexSupportOpt;
+    private final Optional<HudiPartitionStatsIndexSupport> partitionIndexSupportOpt;
 
     public HudiBackgroundSplitLoader(
             ConnectorSession session,
@@ -81,8 +88,15 @@ public class HudiBackgroundSplitLoader
         this.enableMetadataTable = enableMetadataTable;
         this.regularPredicates = tableHandle.getRegularPredicates();
         this.errorListener = requireNonNull(errorListener, "errorListener is null");
+        HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
+        HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
+        this.metadataTable = HoodieTableMetadata.create(
+                engineContext,
+                metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
         this.indexSupportOpt = enableMetadataTable ?
-                IndexSupportFactory.createIndexSupport(metaClient, regularPredicates, session) : Optional.empty();
+                IndexSupportFactory.createIndexSupport(metaClient, metadataTable, regularPredicates, session) : Optional.empty();
+        this.partitionIndexSupportOpt = enableMetadataTable ?
+                IndexSupportFactory.createPartitionStatsIndexSupport(metaClient, metadataTable, regularPredicates, session) : Optional.empty();
     }
 
     @Override
@@ -106,8 +120,11 @@ public class HudiBackgroundSplitLoader
     private void generateSplits(Optional<HudiIndexSupport> hudiIndexSupportOptional)
     {
         // TODO(yihua): refactor split loader/directory lister API for maintainability
+        // Attempt to apply partition pruning using partition stats index
+        Optional<List<String>> effectivePartitionsOpt = partitionIndexSupportOpt.isPresent() ? partitionIndexSupportOpt.get().prunePartitions(
+                partitions, metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
 
-        Deque<String> partitionQueue = new ConcurrentLinkedDeque<>(partitions);
+        Deque<String> partitionQueue = new ConcurrentLinkedDeque<>(effectivePartitionsOpt.orElse(partitions));
         List<HudiPartitionInfoLoader> splitGenerators = new ArrayList<>();
         List<ListenableFuture<Void>> futures = new ArrayList<>();
 
@@ -139,5 +156,4 @@ public class HudiBackgroundSplitLoader
             throw new TrinoException(HUDI_CANNOT_OPEN_SPLIT, "Error generating Hudi split", e);
         }
     }
-
 }

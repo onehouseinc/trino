@@ -17,9 +17,6 @@ import io.airlift.log.Logger;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
 import io.trino.spi.predicate.TupleDomain;
-import org.apache.hudi.common.config.HoodieMetadataConfig;
-import org.apache.hudi.common.engine.HoodieEngineContext;
-import org.apache.hudi.common.engine.HoodieLocalEngineContext;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieIndexDefinition;
 import org.apache.hudi.common.model.HoodieRecordGlobalLocation;
@@ -42,13 +39,14 @@ public class HudiSecondaryIndexSupport
     private static final Logger log = Logger.get(HudiSecondaryIndexSupport.class);
     private final Optional<Set<String>> relevantRecordKeyFieldsOpt;
 
-    public HudiSecondaryIndexSupport(HoodieTableMetaClient metaClient, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiSecondaryIndexSupport(HoodieTableMetaClient metaClient, HoodieTableMetadata metadataTable, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
         super(log, metaClient);
         TupleDomain<String> regularPredicatesTransformed = regularColumnPredicates.transformKeys(HiveColumnHandle::getName);
         if (regularColumnPredicates.isAll() || metaClient.getIndexMetadata().isEmpty()) {
             this.relevantRecordKeyFieldsOpt = Optional.empty();
-        } else {
+        }
+        else {
             Optional<Map.Entry<String, HoodieIndexDefinition>> firstApplicableIndex = findFirstApplicableSecondaryIndex(regularPredicatesTransformed);
             if (firstApplicableIndex.isEmpty()) {
                 log.debug("No secondary index definition found matching the query's referenced columns.");
@@ -71,12 +69,6 @@ public class HudiSecondaryIndexSupport
                 return;
             }
             log.debug(String.format("Constructed %d secondary keys for index lookup.", secondaryKeys.size()));
-
-            HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
-            HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
-            HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
-                    engineContext,
-                    metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
 
             // Perform index lookup in metadataTable
             // TODO: document here what this map is keyed by
