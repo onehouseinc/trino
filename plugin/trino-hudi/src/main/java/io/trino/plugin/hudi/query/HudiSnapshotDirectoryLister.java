@@ -85,10 +85,10 @@ public class HudiSnapshotDirectoryLister
     @Override
     public List<FileSlice> listStatus(HudiPartitionInfo partitionInfo, String commitTime)
     {
-        HoodieTimer timer = HoodieTimer.start();
+        // HoodieTimer timer = HoodieTimer.start();
         ImmutableList<FileSlice> collect = fileSystemView.getLatestFileSlicesBeforeOrOn(partitionInfo.getRelativePartitionPath(), commitTime, false)
                 .collect(toImmutableList());
-        log.info("List files for partition %s in %s ms", partitionInfo, timer.endTimer());
+        // log.info("List files for partition %s in %s ms", partitionInfo, timer.endTimer());
         return collect;
     }
 

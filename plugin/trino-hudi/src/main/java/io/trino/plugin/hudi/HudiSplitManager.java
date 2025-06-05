@@ -13,9 +13,12 @@
  */
 package io.trino.plugin.hudi;
 
+import org.apache.hudi.common.util.HoodieTimer;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
+import io.airlift.log.Logger;
 import io.trino.filesystem.TrinoFileSystemFactory;
 import io.trino.metastore.HiveMetastore;
 import io.trino.metastore.Partition;
@@ -24,6 +27,7 @@ import io.trino.metastore.Table;
 import io.trino.plugin.base.classloader.ClassLoaderSafeConnectorSplitSource;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hive.HiveTransactionHandle;
+import io.trino.plugin.hudi.partition.HudiPartitionInfoLoader;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.ConnectorSplitManager;
 import io.trino.spi.connector.ConnectorSplitSource;
@@ -57,6 +61,7 @@ import static java.util.function.Function.identity;
 public class HudiSplitManager
         implements ConnectorSplitManager
 {
+    private static final Logger log = Logger.get(HudiSplitManager.class);
     private final TypeManager typeManager;
     private final BiFunction<ConnectorIdentity, HiveTransactionHandle, HiveMetastore> metastoreProvider;
     private final TrinoFileSystemFactory fileSystemFactory;
@@ -94,7 +99,10 @@ public class HudiSplitManager
         List<HiveColumnHandle> partitionColumns = getPartitionKeyColumnHandles(table, typeManager);
         Map<String, HiveColumnHandle> partitionColumnHandles = partitionColumns.stream()
                 .collect(toImmutableMap(HiveColumnHandle::getName, identity()));
+        HoodieTimer timer = HoodieTimer.start();
         Map<String, Partition> allPartitions = getPartitions(metastore, hudiTableHandle, table, partitionColumns);
+        log.info("Found %s partitions for table %s.%s in %s ms",
+                allPartitions.size(), hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName(), timer.endTimer());
 
         HudiSplitSource splitSource = new HudiSplitSource(
                 session,

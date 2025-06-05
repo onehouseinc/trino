@@ -15,6 +15,7 @@ package io.trino.plugin.hudi;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.airlift.log.Logger;
 import io.trino.filesystem.FileIterator;
 import io.trino.filesystem.Location;
 import io.trino.filesystem.TrinoFileSystem;
@@ -25,6 +26,7 @@ import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hive.HivePartitionKey;
 import io.trino.plugin.hive.HivePartitionManager;
 import io.trino.plugin.hive.avro.AvroHiveFileUtils;
+import io.trino.plugin.hudi.partition.HudiPartitionInfoLoader;
 import io.trino.plugin.hudi.storage.HudiTrinoStorage;
 import io.trino.plugin.hudi.storage.TrinoStorageConfiguration;
 import io.trino.spi.TrinoException;
@@ -42,6 +44,7 @@ import org.apache.hudi.common.model.HoodieFileFormat;
 import org.apache.hudi.common.model.HoodieFileGroupId;
 import org.apache.hudi.common.model.HoodieLogFile;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.storage.StoragePath;
 
 import java.io.IOException;
@@ -59,6 +62,7 @@ import static org.apache.hudi.common.model.HoodieRecord.HOODIE_META_COLUMNS;
 
 public final class HudiUtil
 {
+    private static final Logger log = Logger.get(HudiUtil.class);
     private HudiUtil() {}
 
     public static HoodieFileFormat getHudiFileFormat(String path)
@@ -145,10 +149,13 @@ public final class HudiUtil
             TrinoFileSystem fileSystem,
             String basePath)
     {
-        return HoodieTableMetaClient.builder()
+        HoodieTimer timer = HoodieTimer.start();
+        HoodieTableMetaClient metaClient = HoodieTableMetaClient.builder()
                 .setStorage(new HudiTrinoStorage(fileSystem, new TrinoStorageConfiguration()))
                 .setBasePath(basePath)
                 .build();
+        log.info("Built meta client in %s ms", timer.endTimer());
+        return metaClient;
     }
 
     public static Schema constructSchema(List<String> columnNames, List<HiveType> columnTypes)
