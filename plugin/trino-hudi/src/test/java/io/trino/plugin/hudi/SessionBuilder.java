@@ -55,7 +55,7 @@ public class SessionBuilder
         return this;
     }
 
-    private SessionBuilder setSystemProperty(String propertyName, String propertyValue)
+    public SessionBuilder setSystemProperty(String propertyName, String propertyValue)
     {
         this.sessionBuilder.setSystemProperty(propertyName, propertyValue);
         return this;
