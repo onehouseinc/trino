@@ -17,6 +17,7 @@ import com.google.common.collect.ImmutableList;
 import io.airlift.log.Logger;
 import io.trino.metastore.Column;
 import io.trino.metastore.HiveMetastore;
+import io.trino.metastore.Partition;
 import io.trino.metastore.Table;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hudi.HudiMetadata;
@@ -55,7 +56,7 @@ public class HudiSnapshotDirectoryLister
             HiveMetastore hiveMetastore,
             Table hiveTable,
             List<HiveColumnHandle> partitionColumnHandles,
-            List<String> hivePartitionNames,
+            Map<String, Partition> allPartitions,
             String commitTime)
     {
         HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder()
@@ -70,16 +71,15 @@ public class HudiSnapshotDirectoryLister
         }
         //new HoodieTableFileSystemView(metaClient, metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants());
         this.partitionColumns = hiveTable.getPartitionColumns();
-        this.allPartitionInfoMap = hivePartitionNames.stream()
+        this.allPartitionInfoMap = allPartitions.entrySet().stream()
                 .collect(Collectors.toMap(
-                        Function.identity(),
-                        hivePartitionName -> new HiveHudiPartitionInfo(
-                                hivePartitionName,
-                                partitionColumns,
+                        Map.Entry::getKey,
+                        e -> new HiveHudiPartitionInfo(
+                                e.getKey(),
+                                e.getValue(),
                                 partitionColumnHandles,
                                 tableHandle.getPartitionPredicates(),
-                                hiveTable,
-                                hiveMetastore)));
+                                hiveTable)));
     }
 
     @Override

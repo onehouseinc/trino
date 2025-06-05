@@ -21,6 +21,7 @@ import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import io.trino.filesystem.TrinoFileSystemFactory;
 import io.trino.metastore.HiveMetastore;
+import io.trino.metastore.Partition;
 import io.trino.metastore.Table;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hive.HivePartitionKey;
@@ -91,7 +92,7 @@ public class HudiSplitSource
             ScheduledExecutorService splitLoaderExecutorService,
             int maxSplitsPerSecond,
             int maxOutstandingSplits,
-            List<String> partitions,
+            Map<String, Partition> partitions,
             DynamicFilter dynamicFilter,
             Duration dynamicFilteringWaitTimeoutMillis)
     {

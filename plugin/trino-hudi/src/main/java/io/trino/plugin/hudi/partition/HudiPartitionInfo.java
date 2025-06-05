@@ -26,6 +26,4 @@ public interface HudiPartitionInfo
     List<HivePartitionKey> getHivePartitionKeys();
 
     boolean doesMatchPredicates();
-
-    void loadPartitionInfo(Optional<Partition> partition);
 }

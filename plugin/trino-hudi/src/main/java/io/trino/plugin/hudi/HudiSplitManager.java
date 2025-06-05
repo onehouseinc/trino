@@ -14,9 +14,12 @@
 package io.trino.plugin.hudi;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import io.trino.filesystem.TrinoFileSystemFactory;
 import io.trino.metastore.HiveMetastore;
+import io.trino.metastore.Partition;
+import io.trino.metastore.StorageFormat;
 import io.trino.metastore.Table;
 import io.trino.plugin.base.classloader.ClassLoaderSafeConnectorSplitSource;
 import io.trino.plugin.hive.HiveColumnHandle;
@@ -34,6 +37,7 @@ import io.trino.spi.type.TypeManager;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.BiFunction;
@@ -90,7 +94,7 @@ public class HudiSplitManager
         List<HiveColumnHandle> partitionColumns = getPartitionKeyColumnHandles(table, typeManager);
         Map<String, HiveColumnHandle> partitionColumnHandles = partitionColumns.stream()
                 .collect(toImmutableMap(HiveColumnHandle::getName, identity()));
-        List<String> allPartitions = getPartitions(metastore, hudiTableHandle, partitionColumns);
+        Map<String, Partition> allPartitions = getPartitions(metastore, hudiTableHandle, table, partitionColumns);
 
         HudiSplitSource splitSource = new HudiSplitSource(
                 session,
@@ -109,17 +113,31 @@ public class HudiSplitManager
         return new ClassLoaderSafeConnectorSplitSource(splitSource, HudiSplitManager.class.getClassLoader());
     }
 
-    private static List<String> getPartitions(HiveMetastore metastore, HudiTableHandle table, List<HiveColumnHandle> partitionColumns)
+    private static Map<String, Partition> getPartitions(
+            HiveMetastore metastore, HudiTableHandle table, Table metastoreTable, List<HiveColumnHandle> partitionColumns)
     {
         if (partitionColumns.isEmpty()) {
-            return ImmutableList.of(NON_PARTITION);
+            return ImmutableMap.of(
+                    NON_PARTITION, Partition.builder()
+                            .setDatabaseName(table.getSchemaName())
+                            .setTableName(table.getTableName())
+                            .withStorage(storageBuilder ->
+                                    storageBuilder.setLocation(table.getBasePath())
+                                            .setStorageFormat(StorageFormat.NULL_STORAGE_FORMAT))
+                            .setColumns(ImmutableList.of())
+                            .setValues(ImmutableList.of())
+                            .build());
         }
 
-        return metastore.getPartitionNamesByFilter(
+        List<String> partitionNames = metastore.getPartitionNamesByFilter(
                         table.getSchemaName(),
                         table.getTableName(),
                         partitionColumns.stream().map(HiveColumnHandle::getName).collect(Collectors.toList()),
                         computePartitionKeyFilter(partitionColumns, table.getPartitionPredicates()))
                 .orElseThrow(() -> new TableNotFoundException(table.getSchemaTableName()));
+        return metastore.getPartitionsByNames(metastoreTable, partitionNames)
+                .entrySet().stream()
+                .filter(e -> e.getValue().isPresent())
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> e.getValue().get()));
     }
 }

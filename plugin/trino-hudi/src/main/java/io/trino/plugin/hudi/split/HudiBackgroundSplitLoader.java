@@ -16,6 +16,7 @@ package io.trino.plugin.hudi.split;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.log.Logger;
+import io.trino.metastore.Partition;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hive.util.AsyncQueue;
 import io.trino.plugin.hudi.HudiTableHandle;
@@ -39,6 +40,7 @@ import org.apache.hudi.metadata.HoodieTableMetadata;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
@@ -60,7 +62,7 @@ public class HudiBackgroundSplitLoader
     private final Executor splitGeneratorExecutor;
     private final int splitGeneratorNumThreads;
     private final HudiSplitFactory hudiSplitFactory;
-    private final List<String> partitions;
+    private final Map<String, Partition> partitions;
     private final String commitTime;
     private final Consumer<Throwable> errorListener;
     private final boolean enableMetadataTable;
@@ -76,7 +78,7 @@ public class HudiBackgroundSplitLoader
             AsyncQueue<ConnectorSplit> asyncQueue,
             Executor splitGeneratorExecutor,
             HudiSplitWeightProvider hudiSplitWeightProvider,
-            List<String> partitions,
+            Map<String, Partition> partitions,
             String commitTime,
             boolean enableMetadataTable,
             HoodieTableMetaClient metaClient,
@@ -129,10 +131,11 @@ public class HudiBackgroundSplitLoader
     {
         // TODO(yihua): refactor split loader/directory lister API for maintainability
         // Attempt to apply partition pruning using partition stats index
+        List<String> partitionList = partitions.keySet().stream().toList();
         Optional<List<String>> effectivePartitionsOpt = partitionIndexSupportOpt.isPresent() ? partitionIndexSupportOpt.get().prunePartitions(
-                partitions, metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
+                partitionList, metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
 
-        Deque<String> partitionQueue = new ConcurrentLinkedDeque<>(effectivePartitionsOpt.orElse(partitions));
+        Deque<String> partitionQueue = new ConcurrentLinkedDeque<>(effectivePartitionsOpt.orElse(partitionList));
         List<HudiPartitionInfoLoader> splitGenerators = new ArrayList<>();
         List<ListenableFuture<Void>> futures = new ArrayList<>();
 
