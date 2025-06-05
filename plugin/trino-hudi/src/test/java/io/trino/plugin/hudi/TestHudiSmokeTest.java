@@ -33,6 +33,7 @@ import io.trino.spi.connector.DynamicFilter;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.security.ConnectorIdentity;
 import io.trino.spi.type.Type;
+import io.trino.sql.planner.OptimizerConfig;
 import io.trino.testing.AbstractTestQueryFramework;
 import io.trino.testing.MaterializedResult;
 import io.trino.testing.MaterializedRow;
@@ -59,6 +60,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import static io.trino.SystemSessionProperties.JOIN_DISTRIBUTION_TYPE;
 import static io.trino.metastore.HiveType.HIVE_TIMESTAMP;
 import static io.trino.plugin.hive.HiveColumnHandle.ColumnType.REGULAR;
 import static io.trino.plugin.hive.HiveColumnHandle.createBaseColumn;
@@ -139,7 +141,15 @@ public class TestHudiSmokeTest
     @Test
     public void testBaseFileOnlyReadWithProjection()
     {
-        Session session = SessionBuilder.from(getSession()).build();
+        //@Language("SQL") String query = "EXPLAIN ANALYZE SELECT t1.uuid, t1.driver, t1.fare, t1.ts FROM " +
+        //        HUDI_TRIPS_COW_V8 + " t1 " +
+        //        "INNER JOIN " + HUDI_COW_PT_TBL + " t2 ON t1.uuid = t2.name " +
+        //        "WHERE t2.ts > 0";
+        Session session = SessionBuilder.from(getSession())
+                .setSystemProperty(JOIN_DISTRIBUTION_TYPE, OptimizerConfig.JoinDistributionType.AUTOMATIC.name())
+                .withMdtEnabled(true)
+                .build();
+        //MaterializedResult joinResult = getQueryRunner().execute(session, query);
         MaterializedResult countResult = getQueryRunner().execute(
                 session, "SELECT count(*) FROM " + HUDI_TRIPS_COW_V8);
         assertThat(countResult.getOnlyValue()).isEqualTo(40000L);

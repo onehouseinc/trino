@@ -38,6 +38,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 public class HudiConfig
 {
     private List<String> columnsToHide = ImmutableList.of();
+    private boolean tableStatisticsEnabled = true;
     private boolean metadataEnabled;
     private boolean shouldUseParquetColumnNames = true;
     private boolean sizeBasedSplitWeightsEnabled = true;
@@ -72,6 +73,19 @@ public class HudiConfig
                 .map(s -> s.toLowerCase(ENGLISH))
                 .collect(toImmutableList());
         return this;
+    }
+
+    @Config("hudi.table-statistics-enabled")
+    @ConfigDescription("Enable table statistics for query planning.")
+    public HudiConfig setTableStatisticsEnabled(boolean tableStatisticsEnabled)
+    {
+        this.tableStatisticsEnabled = tableStatisticsEnabled;
+        return this;
+    }
+
+    public boolean isTableStatisticsEnabled()
+    {
+        return this.tableStatisticsEnabled;
     }
 
     @Config("hudi.metadata-enabled")
