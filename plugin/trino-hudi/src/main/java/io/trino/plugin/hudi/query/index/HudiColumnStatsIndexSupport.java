@@ -33,6 +33,7 @@ import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieIndexDefinition;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.HoodieTableVersion;
+import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.common.util.hash.ColumnIndexID;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadataUtil;
@@ -81,6 +82,7 @@ public class HudiColumnStatsIndexSupport
             List<String> encodedTargetColumnNames = regularColumns
                     .stream()
                     .map(col -> new ColumnIndexID(col).asBase64EncodedString()).collect(Collectors.toList());
+            HoodieTimer timer = HoodieTimer.start();
             statsByFileNameOpt = Optional.of(metadataTable.getRecordsByKeyPrefixes(
                             encodedTargetColumnNames,
                             HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS, true)
@@ -89,6 +91,8 @@ public class HudiColumnStatsIndexSupport
                     .filter(f -> f.getData().getColumnStatMetadata().isPresent())
                     .map(f -> f.getData().getColumnStatMetadata().get())
                     .collect(Collectors.groupingBy(HoodieMetadataColumnStats::getFileName)));
+            log.info("Loaded column stats of %s for %s files in %s ms",
+                    encodedTargetColumnNames, statsByFileNameOpt.get().size(), timer.endTimer());
         }
     }
 

@@ -15,11 +15,13 @@ package io.trino.plugin.hudi.split;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.log.Logger;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hive.util.AsyncQueue;
 import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.partition.HudiPartitionInfoLoader;
 import io.trino.plugin.hudi.query.HudiDirectoryLister;
+import io.trino.plugin.hudi.query.HudiSnapshotDirectoryLister;
 import io.trino.plugin.hudi.query.index.HudiIndexSupport;
 import io.trino.plugin.hudi.query.index.HudiPartitionStatsIndexSupport;
 import io.trino.plugin.hudi.query.index.IndexSupportFactory;
@@ -31,6 +33,7 @@ import org.apache.hudi.common.config.HoodieMetadataConfig;
 import org.apache.hudi.common.engine.HoodieEngineContext;
 import org.apache.hudi.common.engine.HoodieLocalEngineContext;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 
 import java.util.ArrayList;
@@ -51,6 +54,7 @@ import static java.util.Objects.requireNonNull;
 public class HudiBackgroundSplitLoader
         implements Runnable
 {
+    private static final Logger log = Logger.get(HudiBackgroundSplitLoader.class);
     private final HudiDirectoryLister hudiDirectoryLister;
     private final AsyncQueue<ConnectorSplit> asyncQueue;
     private final Executor splitGeneratorExecutor;
@@ -90,13 +94,17 @@ public class HudiBackgroundSplitLoader
         this.errorListener = requireNonNull(errorListener, "errorListener is null");
         HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
         HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
+        HoodieTimer timer = HoodieTimer.start();
         this.metadataTable = HoodieTableMetadata.create(
                 engineContext,
                 metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
+        log.info("Loaded metadata table in constructor in %s ms", timer.endTimer());
+        timer = HoodieTimer.start();
         this.indexSupportOpt = enableMetadataTable ?
                 IndexSupportFactory.createIndexSupport(metaClient, metadataTable, regularPredicates, session) : Optional.empty();
         this.partitionIndexSupportOpt = enableMetadataTable ?
                 IndexSupportFactory.createPartitionStatsIndexSupport(metaClient, metadataTable, regularPredicates, session) : Optional.empty();
+        log.info("Loaded index support in constructor in %s ms", timer.endTimer());
     }
 
     @Override
