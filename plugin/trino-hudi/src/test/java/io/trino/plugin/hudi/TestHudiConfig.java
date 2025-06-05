@@ -33,6 +33,7 @@ public class TestHudiConfig
     {
         assertRecordedDefaults(recordDefaults(HudiConfig.class)
                 .setColumnsToHide(ImmutableList.of())
+                .setTableStatisticsEnabled(true)
                 .setMetadataEnabled(false)
                 .setUseParquetColumnNames(true)
                 .setSizeBasedSplitWeightsEnabled(true)
@@ -57,6 +58,7 @@ public class TestHudiConfig
     {
         Map<String, String> properties = ImmutableMap.<String, String>builder()
                 .put("hudi.columns-to-hide", "_hoodie_record_key")
+                .put("hudi.table-statistics-enabled", "false")
                 .put("hudi.metadata-enabled", "true")
                 .put("hudi.parquet.use-column-names", "false")
                 .put("hudi.size-based-split-weights-enabled", "false")
@@ -78,6 +80,7 @@ public class TestHudiConfig
 
         HudiConfig expected = new HudiConfig()
                 .setColumnsToHide(ImmutableList.of("_hoodie_record_key"))
+                .setTableStatisticsEnabled(false)
                 .setMetadataEnabled(true)
                 .setUseParquetColumnNames(false)
                 .setSizeBasedSplitWeightsEnabled(false)

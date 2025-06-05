@@ -48,6 +48,12 @@ public class SessionBuilder
         return new SessionBuilder(session);
     }
 
+    public SessionBuilder setSystemProperty(String propertyName, String propertyValue)
+    {
+        this.sessionBuilder.setSystemProperty(propertyName, propertyValue);
+        return this;
+    }
+
     private SessionBuilder setProperty(String propertyName, String propertyValue)
     {
         this.sessionBuilder.setCatalogSessionProperty(catalogName, propertyName, propertyValue);

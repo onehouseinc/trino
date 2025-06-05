@@ -15,6 +15,7 @@ package io.trino.plugin.hudi;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.airlift.log.Logger;
 import io.trino.filesystem.Location;
 import io.trino.filesystem.TrinoFileSystem;
 import io.trino.filesystem.TrinoFileSystemFactory;
@@ -24,6 +25,8 @@ import io.trino.metastore.Table;
 import io.trino.metastore.TableInfo;
 import io.trino.plugin.base.classloader.ClassLoaderSafeSystemTable;
 import io.trino.plugin.hive.HiveColumnHandle;
+import io.trino.plugin.hudi.stats.HudiTableStatistics;
+import io.trino.plugin.hudi.stats.TableStatisticsReader;
 import io.trino.plugin.hudi.storage.HudiTrinoStorage;
 import io.trino.plugin.hudi.storage.TrinoStorageConfiguration;
 import io.trino.plugin.hudi.util.HudiTableTypeUtils;
@@ -43,10 +46,16 @@ import io.trino.spi.connector.SchemaTablePrefix;
 import io.trino.spi.connector.SystemTable;
 import io.trino.spi.connector.TableNotFoundException;
 import io.trino.spi.predicate.TupleDomain;
+import io.trino.spi.statistics.Estimate;
+import io.trino.spi.statistics.TableStatistics;
 import io.trino.spi.type.TypeManager;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.HoodieTableConfig;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.table.timeline.HoodieInstant;
+import org.apache.hudi.common.util.HoodieTimer;
+import org.apache.hudi.common.util.Option;
+import org.apache.hudi.metadata.MetadataPartitionType;
 import org.apache.hudi.storage.StoragePath;
 
 import java.util.Collection;
@@ -56,6 +65,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
@@ -73,9 +83,12 @@ import static io.trino.plugin.hive.util.HiveUtil.isHiveSystemSchema;
 import static io.trino.plugin.hive.util.HiveUtil.isHudiTable;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_BAD_DATA;
 import static io.trino.plugin.hudi.HudiSessionProperties.getColumnsToHide;
+import static io.trino.plugin.hudi.HudiSessionProperties.isHudiMetadataTableEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.isQueryPartitionFilterRequired;
+import static io.trino.plugin.hudi.HudiSessionProperties.isTableStatisticsEnabled;
 import static io.trino.plugin.hudi.HudiTableProperties.LOCATION_PROPERTY;
 import static io.trino.plugin.hudi.HudiTableProperties.PARTITIONED_BY_PROPERTY;
+import static io.trino.plugin.hudi.HudiUtil.buildTableMetaClient;
 import static io.trino.plugin.hudi.HudiUtil.hudiMetadataExists;
 import static io.trino.spi.StandardErrorCode.NOT_SUPPORTED;
 import static io.trino.spi.StandardErrorCode.QUERY_REJECTED;
@@ -89,9 +102,12 @@ import static java.util.function.Function.identity;
 public class HudiMetadata
         implements ConnectorMetadata
 {
+    private static final Logger log = Logger.get(HudiMetadata.class);
     private final HiveMetastore metastore;
     private final TrinoFileSystemFactory fileSystemFactory;
     private final TypeManager typeManager;
+
+    private final Map<TableStatisticsCacheKey, HudiTableStatistics> tableStatisticsCache = new ConcurrentHashMap<>();
 
     public HudiMetadata(HiveMetastore metastore, TrinoFileSystemFactory fileSystemFactory, TypeManager typeManager)
     {
@@ -293,6 +309,24 @@ public class HudiMetadata
     }
 
     @Override
+    public TableStatistics getTableStatistics(ConnectorSession session, ConnectorTableHandle tableHandle)
+    {
+        if (!isTableStatisticsEnabled(session) || !isHudiMetadataTableEnabled(session)) {
+            return TableStatistics.empty();
+        }
+
+        // TODO: pass in projected columns only
+        List<HiveColumnHandle> columnHandles = getColumnHandles(session, tableHandle)
+                .values().stream()
+                .map(e -> (HiveColumnHandle) e)
+                .filter(e -> !e.isHidden())
+                .toList();
+        return getTableStatisticsFromCache(
+                fileSystemFactory.create(session), tableStatisticsCache,
+                (HudiTableHandle) tableHandle, columnHandles);
+    }
+
+    @Override
     public void validateScan(ConnectorSession session, ConnectorTableHandle handle)
     {
         HudiTableHandle hudiTableHandle = (HudiTableHandle) handle;
@@ -372,4 +406,51 @@ public class HudiMetadata
                 .map(Collections::singletonList)
                 .orElseGet(() -> listSchemaNames(session));
     }
+
+    private static TableStatistics getTableStatisticsFromCache(
+            TrinoFileSystem fileSystem,
+            Map<TableStatisticsCacheKey, HudiTableStatistics> cache,
+            HudiTableHandle tableHandle,
+            List<HiveColumnHandle> columnHandles)
+    {
+        HoodieTimer timer = HoodieTimer.start();
+        HoodieTableMetaClient metaClient = buildTableMetaClient(fileSystem, tableHandle.getBasePath());
+        if (!metaClient.getTableConfig().isMetadataTableAvailable()
+                || !metaClient.getTableConfig().isMetadataPartitionAvailable(MetadataPartitionType.COLUMN_STATS)) {
+            log.info("Returning empty table statistics in %s ms as metadata table "
+                            + "or column stats is not available for table: %s.%s",
+                    timer.endTimer(), tableHandle.getSchemaName(), tableHandle.getTableName());
+            return TableStatistics.empty();
+        }
+        TableStatisticsCacheKey key = new TableStatisticsCacheKey(tableHandle.getBasePath());
+        HudiTableStatistics cachedValue = cache.get(key);
+        Option<HoodieInstant> latestCommitOption =
+                metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants().lastInstant();
+        if (latestCommitOption.isEmpty()) {
+            log.info("Returning table statistics in %s ms for empty table: %s.%s",
+                    timer.endTimer(), tableHandle.getSchemaName(), tableHandle.getTableName());
+            // There is no commit and no data
+            return TableStatistics.builder()
+                    .setRowCount(Estimate.of(0))
+                    .build();
+        }
+        HoodieInstant latestCommit = latestCommitOption.get();
+        if (cachedValue != null && cachedValue.latestCommit().equals(latestCommit)) {
+            log.info("Returning cached table statistics in %s ms for table: %s.%s, latest commit: %s",
+                    timer.endTimer(), tableHandle.getSchemaName(), tableHandle.getTableName(), latestCommit);
+            return cachedValue.tableStatistics();
+        }
+
+        HudiTableStatistics newValue = new HudiTableStatistics(
+                latestCommit,
+                TableStatisticsReader.create(metaClient)
+                        .getTableStatistics(latestCommit, columnHandles));
+        cache.put(key, newValue);
+
+        log.info("Calculated table statistics in %s ms for table: %s.%s, latest commit: %s",
+                timer.endTimer(), tableHandle.getSchemaName(), tableHandle.getTableName(), latestCommit);
+        return newValue.tableStatistics();
+    }
+
+    private record TableStatisticsCacheKey(String basePath) {}
 }
