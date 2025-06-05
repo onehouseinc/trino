@@ -74,6 +74,7 @@ public class HudiPartitionInfoLoader
     @Override
     public void run()
     {
+        log.info("Start partition info loader");
         while (isRunning || !partitionQueue.isEmpty()) {
             String partitionName = partitionQueue.poll();
             log.info("Generating splits for partition %s", partitionName);
@@ -82,6 +83,7 @@ public class HudiPartitionInfoLoader
                 generateSplitsFromPartition(partitionName);
             }
         }
+        log.info("Finished partition info loading");
     }
 
     private void generateSplitsFromPartition(String partitionName)
@@ -89,9 +91,11 @@ public class HudiPartitionInfoLoader
         Optional<HudiPartitionInfo> partitionInfo = hudiDirectoryLister.getPartitionInfo(partitionName);
         partitionInfo.ifPresent(hudiPartitionInfo -> {
             if (hudiPartitionInfo.doesMatchPredicates() || partitionName.equals(NON_PARTITION)) {
-                List<HivePartitionKey> partitionKeys = hudiPartitionInfo.getHivePartitionKeys();
-                List<FileSlice> partitionFileSlices = hudiDirectoryLister.listStatus(hudiPartitionInfo, commitTime);
                 HoodieTimer timer = HoodieTimer.start();
+                List<HivePartitionKey> partitionKeys = hudiPartitionInfo.getHivePartitionKeys();
+                log.info("Fetched partition keys for partition %s in %s ms", partitionName, timer.endTimer());
+                List<FileSlice> partitionFileSlices = hudiDirectoryLister.listStatus(hudiPartitionInfo, commitTime);
+                timer = HoodieTimer.start();
                 partitionFileSlices.stream()
                         .filter(slice -> indexSupportOpt.map(hudiIndexSupport -> hudiIndexSupport.shouldKeepFileSlice(slice)).orElse(true))
                         .flatMap(slice -> hudiSplitFactory.createSplits(partitionKeys, slice, commitTime).stream())
