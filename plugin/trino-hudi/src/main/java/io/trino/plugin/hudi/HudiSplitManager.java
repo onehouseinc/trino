@@ -91,6 +91,7 @@ public class HudiSplitManager
             DynamicFilter dynamicFilter,
             Constraint constraint)
     {
+        log.info("Generating splits for table %s.%s", ((HudiTableHandle) tableHandle).getSchemaName(), ((HudiTableHandle) tableHandle).getTableName());
         HudiTableHandle hudiTableHandle = (HudiTableHandle) tableHandle;
         HiveMetastore metastore = metastoreProvider.apply(session.getIdentity(), (HiveTransactionHandle) transaction);
         Table table = metastore.getTable(hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName())
