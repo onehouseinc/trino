@@ -32,6 +32,7 @@ import io.trino.spi.type.TimestampWithTimeZoneType;
 import io.trino.spi.type.Type;
 import io.trino.spi.type.VarcharType;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -106,9 +107,10 @@ public class SynthesizedColumnHandler
     private void initPartitionKeyStrategies(ImmutableMap.Builder<String, SynthesizedColumnStrategy> builder,
             HudiSplit hudiSplit)
     {
+        // Type is ignored here as input partitionKey.value() is always passed as a String type
         for (HivePartitionKey partitionKey : hudiSplit.getPartitionKeys()) {
-            builder.put(partitionKey.name(), (blockBuilder, type) ->
-                    appendToBuilder(type, partitionKey.value(), blockBuilder));
+            builder.put(partitionKey.name(), (blockBuilder, targetType) ->
+                    appendPartitionKey(targetType, partitionKey.value(), blockBuilder));
         }
     }
 
@@ -253,43 +255,44 @@ public class SynthesizedColumnHandler
     }
 
     /**
-     * Helper function to prefill BlockBuilders with values from PartitionKeys which are in the string type.
+     * Helper function to prefill BlockBuilders with values from PartitionKeys which are in the String type.
      * This function handles the casting of String type the actual column type.
      */
-    private static void appendToBuilder(Type type, Object value, BlockBuilder blockBuilder)
+    private static void appendPartitionKey(Type targetType, Object value, BlockBuilder blockBuilder)
     {
         if (value == null) {
             blockBuilder.appendNull();
             return;
         }
 
-        if (type instanceof VarcharType varcharType) {
+        if (targetType instanceof VarcharType varcharType) {
             varcharType.writeSlice(blockBuilder, utf8Slice(value.toString()));
         }
-        else if (type instanceof IntegerType integerType) {
+        else if (targetType instanceof IntegerType integerType) {
             integerType.writeInt(blockBuilder, Integer.parseInt((String) value));
         }
-        else if (type instanceof BigintType bigintType) {
+        else if (targetType instanceof BigintType bigintType) {
             bigintType.writeLong(blockBuilder, Long.parseLong((String) value));
         }
-        else if (type instanceof BooleanType booleanType) {
+        else if (targetType instanceof BooleanType booleanType) {
             booleanType.writeBoolean(blockBuilder, Boolean.parseBoolean((String) value));
         }
-        else if (type instanceof DecimalType decimalType) {
-            SqlDecimal sqlDecimalFromStr = SqlDecimal.decimal((String) value, decimalType);
+        else if (targetType instanceof DecimalType decimalType) {
+            SqlDecimal sqlDecimal = SqlDecimal.decimal((String) value, decimalType);
+            BigDecimal bigDecimal = sqlDecimal.toBigDecimal();
 
             if (decimalType.isShort()) {
                 // For short decimals, get the unscaled long value
                 // SqlDecimal.toBigDecimal() is used for consistency with the original SqlDecimal path
                 // The unscaled value of a Trino short decimal (precision <= 18) fits in a long
-                writeShortDecimal(blockBuilder, sqlDecimalFromStr.toBigDecimal().unscaledValue().longValue());
+                writeShortDecimal(blockBuilder, bigDecimal.unscaledValue().longValue());
             }
             else {
                 // For long decimals, use the BigDecimal representation obtained from SqlDecimal.
-                writeBigDecimal(decimalType, blockBuilder, sqlDecimalFromStr.toBigDecimal());
+                writeBigDecimal(decimalType, blockBuilder, bigDecimal);
             }
         }
-        else if (type instanceof DateType dateType) {
+        else if (targetType instanceof DateType dateType) {
             String dateString = (String) value;
             try {
                 // Parse the date string using "YYYY-MM-DD" format
@@ -312,7 +315,7 @@ public class SynthesizedColumnHandler
             }
         }
         else {
-            throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Unknown type '%s' for column '%s'", type, value));
+            throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Unknown target type '%s' for column '%s'", targetType, value));
         }
     }
 }

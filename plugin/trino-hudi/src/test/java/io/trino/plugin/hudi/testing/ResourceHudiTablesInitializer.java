@@ -343,7 +343,7 @@ public class ResourceHudiTablesInitializer
         HUDI_MULTI_FG_PT_V8_MOR(hudiMultiFgRegularColumns(), hudiMultiFgPartitionsColumn(), hudiMultiFgPartitions(), false),
         HUDI_COMPREHENSIVE_TYPES_V6_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
         HUDI_COMPREHENSIVE_TYPES_V8_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
-        HUDI_MULTI_PT_MOR(hudiMultiPtMorColumns(), hudiMultiPtMorPartitionColumns(), hudiMultiPtMorPartitions(), false),
+        HUDI_MULTI_PT_v8_MOR(hudiMultiPtMorColumns(), hudiMultiPtMorPartitionColumns(), hudiMultiPtMorPartitions(), false),
         /**/;
 
         private static final List<Column> HUDI_META_COLUMNS = ImmutableList.of(
@@ -660,23 +660,23 @@ public class ResourceHudiTablesInitializer
         private static List<Column> hudiMultiPtMorPartitionColumns()
         {
             return ImmutableList.of(
-                    column("category", HIVE_STRING),
-                    column("year", HIVE_INT),
-                    column("event_date", HIVE_DATE),
-                    column("batch_id", HIVE_LONG),
-                    column("metric_value", decimalHiveType(10, 2)),
-                    column("event_timestamp", HIVE_TIMESTAMP),
-                    column("is_feature_enabled", HIVE_BOOLEAN));
+                    column("part_str", HIVE_STRING),
+                    column("part_int", HIVE_INT),
+                    column("part_date", HIVE_DATE),
+                    column("part_bigint", HIVE_LONG),
+                    column("part_decimal", decimalHiveType(10, 2)),
+                    column("part_timestamp", HIVE_TIMESTAMP),
+                    column("part_bool", HIVE_BOOLEAN));
         }
 
         private static Map<String, String> hudiMultiPtMorPartitions()
         {
             return ImmutableMap.of(
-                    "category=electronics/year=2023/event_date=2023-03-10/batch_id=10000000002/metric_value=50.00/event_timestamp=2023-03-10 12%3A30%3A00/is_feature_enabled=true", "category=electronics/year=2023/event_date=2023-03-10/batch_id=10000000002/metric_value=50.00/event_timestamp=2023-03-10 12%3A30%3A00/is_feature_enabled=true",
-                    "category=electronics/year=2023/event_date=2023-03-10/batch_id=10000000002/metric_value=50.00/event_timestamp=2023-03-10 12%3A30%3A00/is_feature_enabled=false", "category=electronics/year=2023/event_date=2023-03-10/batch_id=10000000002/metric_value=50.00/event_timestamp=2023-03-10 12%3A30%3A00/is_feature_enabled=false",
-                    "category=books/year=2024/event_date=2024-02-20/batch_id=10000000003/metric_value=75.00/event_timestamp=2024-02-20 08%3A45%3A10/is_feature_enabled=true", "category=books/year=2024/event_date=2024-02-20/batch_id=10000000003/metric_value=75.00/event_timestamp=2024-02-20 08%3A45%3A10/is_feature_enabled=true",
-                    "category=books/year=2023/event_date=2023-01-15/batch_id=10000000001/metric_value=123.00/event_timestamp=2023-01-15 10%3A00%3A00/is_feature_enabled=true", "category=books/year=2023/event_date=2023-01-15/batch_id=10000000001/metric_value=123.00/event_timestamp=2023-01-15 10%3A00%3A00/is_feature_enabled=true",
-                    "category=apparel/year=2024/event_date=2024-01-05/batch_id=20000000001/metric_value=100.00/event_timestamp=2024-01-05 18%3A00%3A00/is_feature_enabled=false", "category=apparel/year=2024/event_date=2024-01-05/batch_id=20000000001/metric_value=100.00/event_timestamp=2024-01-05 18%3A00%3A00/is_feature_enabled=false");
+                    "part_str=apparel/part_int=2024/part_date=2024-01-05/part_bigint=20000000001/part_decimal=100.00/part_timestamp=2024-01-05 18%3A00%3A00/part_bool=false", "part_str=apparel/part_int=2024/part_date=2024-01-05/part_bigint=20000000001/part_decimal=100.00/part_timestamp=2024-01-05 18%3A00%3A00/part_bool=false",
+                    "part_str=electronics/part_int=2023/part_date=2023-03-10/part_bigint=10000000002/part_decimal=50.00/part_timestamp=2023-03-10 12%3A30%3A00/part_bool=true", "part_str=electronics/part_int=2023/part_date=2023-03-10/part_bigint=10000000002/part_decimal=50.00/part_timestamp=2023-03-10 12%3A30%3A00/part_bool=true",
+                    "part_str=electronics/part_int=2023/part_date=2023-03-10/part_bigint=10000000002/part_decimal=50.00/part_timestamp=2023-03-10 12%3A30%3A00/part_bool=false", "part_str=electronics/part_int=2023/part_date=2023-03-10/part_bigint=10000000002/part_decimal=50.00/part_timestamp=2023-03-10 12%3A30%3A00/part_bool=false",
+                    "part_str=books/part_int=2023/part_date=2023-01-15/part_bigint=10000000001/part_decimal=123.00/part_timestamp=2023-01-15 10%3A00%3A00/part_bool=true", "part_str=books/part_int=2023/part_date=2023-01-15/part_bigint=10000000001/part_decimal=123.00/part_timestamp=2023-01-15 10%3A00%3A00/part_bool=true",
+                    "part_str=books/part_int=2024/part_date=2024-02-20/part_bigint=10000000003/part_decimal=75.00/part_timestamp=2024-02-20 08%3A45%3A10/part_bool=true", "part_str=books/part_int=2024/part_date=2024-02-20/part_bigint=10000000003/part_decimal=75.00/part_timestamp=2024-02-20 08%3A45%3A10/part_bool=true");
         }
     }
 
