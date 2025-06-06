@@ -45,7 +45,7 @@ public class HudiPartitionStatsIndexSupport
     @Override
     public Map<String, List<FileSlice>> lookupCandidateFilesInMetadataTable(HoodieTableMetadata metadataTable, Map<String, List<FileSlice>> inputFileSlices, TupleDomain<String> regularColumnPredicates)
     {
-        throw new UnsupportedOperationException("This method is not supported by " + getClass().getSimpleName());
+        throw new UnsupportedOperationException("#lookupCandidateFilesInMetadataTable method is not supported by " + getClass().getSimpleName());
     }
 
     public Optional<List<String>> prunePartitions(
@@ -96,7 +96,7 @@ public class HudiPartitionStatsIndexSupport
                         return evaluateStatisticPredicate(filteredRegularPredicates, partitionStats, regularColumns);
                     }
                 })
-                .collect(Collectors.toList());
+                .toList();
 
         return Optional.of(prunedPartitions);
     }

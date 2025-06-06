@@ -15,6 +15,7 @@ package io.trino.plugin.hudi.query.index;
 
 import io.airlift.log.Logger;
 import io.trino.plugin.hive.HiveColumnHandle;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
@@ -24,6 +25,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static io.trino.plugin.hudi.HudiSessionProperties.isColumnStatsIndexEnabled;
+import static io.trino.plugin.hudi.HudiSessionProperties.isExpressionIndexEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.isNoOpIndexEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.isPartitionStatsIndexEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.isRecordLevelIndexEnabled;
@@ -46,20 +48,24 @@ public class IndexSupportFactory
      * Creates the most suitable HudiIndexSupport strategy, considering configuration.
      * Uses Supplier-based lazy instantiation combined with config checks.
      *
+     * @param tableHandle The Hudi table handle.
      * @param metaClient The Hudi table metadata client.
      * @param tupleDomain The query predicates.
      * @param session Session containing session properties, which is required to control index behaviours for testing/debugging
      * @return An Optional containing the chosen HudiIndexSupport strategy, or empty if none are applicable or enabled.
      */
     public static Optional<HudiIndexSupport> createIndexSupport(
-            HoodieTableMetaClient metaClient, TupleDomain<HiveColumnHandle> tupleDomain, ConnectorSession session)
+            HudiTableHandle tableHandle, HoodieTableMetaClient metaClient, TupleDomain<HiveColumnHandle> tupleDomain, ConnectorSession session)
     {
+        log.info("Expression Index candidates: %s", tableHandle.getExpressionIndexCandidates());
+
         // Define strategies as Suppliers paired with their config (isEnabled) flag
         // IMPORTANT: Order of strategy here determines which index implementation is preferred first
         List<StrategyProvider> strategyProviders = List.of(
                 new StrategyProvider(() -> isRecordLevelIndexEnabled(session), () -> new HudiRecordLevelIndexSupport(metaClient)),
                 new StrategyProvider(() -> isSecondaryIndexEnabled(session), () -> new HudiSecondaryIndexSupport(metaClient)),
                 new StrategyProvider(() -> isColumnStatsIndexEnabled(session), () -> new HudiColumnStatsIndexSupport(metaClient)),
+                new StrategyProvider(() -> isExpressionIndexEnabled(session), () -> new HudiExpressionIndexSupport(metaClient, tableHandle.getExpressionIndexCandidates())),
                 new StrategyProvider(() -> isNoOpIndexEnabled(session), () -> new HudiNoOpIndexSupport(metaClient)));
 
         TupleDomain<String> transformedTupleDomain = tupleDomain.transformKeys(HiveColumnHandle::getName);

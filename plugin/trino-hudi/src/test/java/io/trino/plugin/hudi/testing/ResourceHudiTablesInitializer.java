@@ -343,6 +343,7 @@ public class ResourceHudiTablesInitializer
         HUDI_MULTI_FG_PT_V8_MOR(hudiMultiFgRegularColumns(), hudiMultiFgPartitionsColumn(), hudiMultiFgPartitions(), false),
         HUDI_COMPREHENSIVE_TYPES_V6_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
         HUDI_COMPREHENSIVE_TYPES_V8_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
+        HUDI_EI_PT_V8_MOR(hudiExpressionIndexMorColumns(), hudiExpressionIndexMorPartitionColumns(), hudiExpressionIndexMorPartitions(), false),
         /**/;
 
         private static final List<Column> HUDI_META_COLUMNS = ImmutableList.of(
@@ -645,6 +646,30 @@ public class ResourceHudiTablesInitializer
             return ImmutableMap.of(
                     "part_col=A", "part_col=A",
                     "part_col=B", "part_col=B");
+        }
+
+        private static List<Column> hudiExpressionIndexMorColumns()
+        {
+            return ImmutableList.of(
+                    column("id", HIVE_INT),
+                    column("col_date", HIVE_DATE),
+                    column("col_string", HIVE_STRING),
+                    column("col_bigint", HIVE_LONG),
+                    column("col_timestamp", HIVE_TIMESTAMP),
+                    column("ts", HIVE_LONG),
+                    column("day", HIVE_STRING));
+        }
+
+        private static List<Column> hudiExpressionIndexMorPartitionColumns()
+        {
+            return ImmutableList.of(column("country", HIVE_STRING));
+        }
+
+        private static Map<String, String> hudiExpressionIndexMorPartitions()
+        {
+            return ImmutableMap.of(
+                    "country=SG", "country=SG",
+                    "country=US", "country=US");
         }
     }
 

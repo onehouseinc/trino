@@ -82,6 +82,7 @@ public class HudiColumnStatsIndexSupport
         List<String> encodedTargetColumnNames = regularColumns
                 .stream()
                 .map(col -> new ColumnIndexID(col).asBase64EncodedString()).collect(Collectors.toList());
+
         Map<String, List<HoodieMetadataColumnStats>> statsByFileName = metadataTable.getRecordsByKeyPrefixes(
                         encodedTargetColumnNames,
                         HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS, true)
@@ -184,7 +185,7 @@ public class HudiColumnStatsIndexSupport
         return true;
     }
 
-    private static Domain getDomain(String colName, Type type, HoodieMetadataColumnStats statistics)
+    protected static Domain getDomain(String colName, Type type, HoodieMetadataColumnStats statistics)
     {
         if (statistics == null) {
             return Domain.all(type);
