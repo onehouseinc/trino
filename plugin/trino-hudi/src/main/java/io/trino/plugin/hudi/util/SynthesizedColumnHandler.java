@@ -258,7 +258,7 @@ public class SynthesizedColumnHandler
      * Helper function to prefill BlockBuilders with values from PartitionKeys which are in the String type.
      * This function handles the casting of String type the actual column type.
      */
-    private static void appendPartitionKey(Type targetType, Object value, BlockBuilder blockBuilder)
+    private static void appendPartitionKey(Type targetType, String value, BlockBuilder blockBuilder)
     {
         if (value == null) {
             blockBuilder.appendNull();
@@ -269,16 +269,16 @@ public class SynthesizedColumnHandler
             varcharType.writeSlice(blockBuilder, utf8Slice(value.toString()));
         }
         else if (targetType instanceof IntegerType integerType) {
-            integerType.writeInt(blockBuilder, Integer.parseInt((String) value));
+            integerType.writeInt(blockBuilder, Integer.parseInt(value));
         }
         else if (targetType instanceof BigintType bigintType) {
-            bigintType.writeLong(blockBuilder, Long.parseLong((String) value));
+            bigintType.writeLong(blockBuilder, Long.parseLong(value));
         }
         else if (targetType instanceof BooleanType booleanType) {
-            booleanType.writeBoolean(blockBuilder, Boolean.parseBoolean((String) value));
+            booleanType.writeBoolean(blockBuilder, Boolean.parseBoolean(value));
         }
         else if (targetType instanceof DecimalType decimalType) {
-            SqlDecimal sqlDecimal = SqlDecimal.decimal((String) value, decimalType);
+            SqlDecimal sqlDecimal = SqlDecimal.decimal(value, decimalType);
             BigDecimal bigDecimal = sqlDecimal.toBigDecimal();
 
             if (decimalType.isShort()) {
@@ -293,10 +293,9 @@ public class SynthesizedColumnHandler
             }
         }
         else if (targetType instanceof DateType dateType) {
-            String dateString = (String) value;
             try {
                 // Parse the date string using "YYYY-MM-DD" format
-                LocalDate localDate = LocalDate.parse(dateString);
+                LocalDate localDate = LocalDate.parse(value);
                 // Convert LocalDate to days since epoch where LocalDate#toEpochDay() returns a long
                 int daysSinceEpoch = toIntExact(localDate.toEpochDay());
                 dateType.writeInt(blockBuilder, daysSinceEpoch);
@@ -305,13 +304,13 @@ public class SynthesizedColumnHandler
                 // Handle parsing error
                 throw new TrinoException(GENERIC_INTERNAL_ERROR,
                         format("Invalid date string format for DATE type: '%s'. Expected format like YYYY-MM-DD. Details: %s",
-                                dateString, e.getMessage()), e);
+                                value, e.getMessage()), e);
             }
             catch (ArithmeticException e) {
                 // Handle potential overflow if toEpochDay() result is outside int range
                 throw new TrinoException(GENERIC_INTERNAL_ERROR,
                         format("Date string '%s' results in a day count out of integer range for DATE type. Details: %s",
-                                dateString, e.getMessage()), e);
+                                value, e.getMessage()), e);
             }
         }
         else {

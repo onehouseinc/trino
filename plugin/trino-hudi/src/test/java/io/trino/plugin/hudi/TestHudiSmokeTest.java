@@ -64,7 +64,7 @@ import static io.trino.plugin.hive.HiveColumnHandle.ColumnType.REGULAR;
 import static io.trino.plugin.hive.HiveColumnHandle.createBaseColumn;
 import static io.trino.plugin.hudi.HudiPageSourceProvider.createPageSource;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_PT_TBL;
-import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_PT_v8_MOR;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_PT_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_MOR;
@@ -926,7 +926,7 @@ public class TestHudiSmokeTest
     public void testHudiPartitionFieldsWithMultipleTypes()
     {
         Session session = getSession();
-        @Language("SQL") String actualQuery = "SELECT part_str, part_int, part_date, part_bigint, part_bool FROM " + HUDI_MULTI_PT_v8_MOR;
+        @Language("SQL") String actualQuery = "SELECT part_str, part_int, part_date, part_bigint, part_bool FROM " + HUDI_MULTI_PT_V8_MOR;
         @Language("SQL") String expectedQuery = "VALUES " +
                 "('apparel', 2024, DATE '2024-01-05', 20000000001, false), " +
                 "('books', 2023, DATE '2023-01-15', 10000000001, true), " +
