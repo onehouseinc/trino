@@ -22,6 +22,7 @@ import io.trino.metastore.Table;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hive.HivePartitionKey;
 import io.trino.spi.TrinoException;
+import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
 
 import java.util.Collections;
@@ -40,7 +41,7 @@ public class HiveHudiPartitionInfo
 {
     public static final String NON_PARTITION = "";
 
-    private final Table table;
+    private final SchemaTableName tableName;
     private final List<HiveColumnHandle> partitionColumnHandles;
     private final TupleDomain<HiveColumnHandle> constraintSummary;
     private final String hivePartitionName;
@@ -48,21 +49,22 @@ public class HiveHudiPartitionInfo
     private List<HivePartitionKey> hivePartitionKeys;
 
     public HiveHudiPartitionInfo(
+            Location tableLocation,
+            SchemaTableName tableName,
             String hivePartitionName,
             Partition metastorePartition,
             List<HiveColumnHandle> partitionColumnHandles,
-            TupleDomain<HiveColumnHandle> constraintSummary,
-            Table table)
+            TupleDomain<HiveColumnHandle> constraintSummary)
     {
-        this.table = table;
+        this.tableName = tableName;
         this.partitionColumnHandles = partitionColumnHandles;
         this.constraintSummary = constraintSummary;
         this.hivePartitionName = hivePartitionName;
         this.relativePartitionPath = getRelativePartitionPath(
-                Location.of(table.getStorage().getLocation()),
+                tableLocation,
                 Location.of(metastorePartition.getStorage().getLocation()));
         this.hivePartitionKeys = buildPartitionKeys(
-                table.getPartitionColumns(), metastorePartition.getValues());
+                partitionColumnHandles, metastorePartition.getValues());
     }
 
     @Override
@@ -84,7 +86,7 @@ public class HiveHudiPartitionInfo
             hivePartitionKeys = ImmutableList.of();
             return true;
         }
-        return partitionMatchesPredicates(table.getSchemaTableName(), hivePartitionName, partitionColumnHandles, constraintSummary);
+        return partitionMatchesPredicates(tableName, hivePartitionName, partitionColumnHandles, constraintSummary);
     }
 
     public String getHivePartitionName()

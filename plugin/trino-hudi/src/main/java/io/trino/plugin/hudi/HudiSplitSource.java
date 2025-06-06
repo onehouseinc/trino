@@ -21,6 +21,7 @@ import io.airlift.log.Logger;
 import io.airlift.units.DataSize;
 import io.airlift.units.Duration;
 import io.trino.filesystem.TrinoFileSystemFactory;
+import io.trino.metastore.Column;
 import io.trino.metastore.HiveMetastore;
 import io.trino.metastore.Partition;
 import io.trino.metastore.Table;
@@ -44,6 +45,8 @@ import io.trino.spi.predicate.NullableValue;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
+import org.apache.hudi.common.util.collection.Pair;
+import org.apache.hudi.util.Lazy;
 
 import java.util.HashMap;
 import java.util.List;
@@ -55,6 +58,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
@@ -84,16 +88,13 @@ public class HudiSplitSource
 
     public HudiSplitSource(
             ConnectorSession session,
-            HiveMetastore metastore,
-            Table table,
             HudiTableHandle tableHandle,
             TrinoFileSystemFactory fileSystemFactory,
-            Map<String, HiveColumnHandle> partitionColumnHandleMap,
             ExecutorService executor,
             ScheduledExecutorService splitLoaderExecutorService,
             int maxSplitsPerSecond,
             int maxOutstandingSplits,
-            Map<String, Partition> partitions,
+            Lazy<Pair<List<HiveColumnHandle>, Map<String, Partition>>> partitions,
             DynamicFilter dynamicFilter,
             Duration dynamicFilteringWaitTimeoutMillis)
     {
@@ -105,16 +106,13 @@ public class HudiSplitSource
                 .lastInstant()
                 .map(HoodieInstant::requestedTime)
                 .orElseThrow(() -> new TrinoException(HudiErrorCode.HUDI_NO_VALID_COMMIT, "Table has no valid commits"));
-        List<HiveColumnHandle> partitionColumnHandles = table.getPartitionColumns().stream()
-                .map(column -> partitionColumnHandleMap.get(column.getName())).collect(toList());
+        //List<HiveColumnHandle> partitionColumnHandles = table.getPartitionColumns().stream()
+        //        .map(column -> partitionColumnHandleMap.get(column.getName())).collect(toList());
 
         HudiDirectoryLister hudiDirectoryLister = new HudiSnapshotDirectoryLister(
                 tableHandle,
                 metaClient,
                 enableMetadataTable,
-                metastore,
-                table,
-                partitionColumnHandles,
                 partitions,
                 latestCommitTime);
 
@@ -132,7 +130,7 @@ public class HudiSplitSource
                 metaClient,
                 throwable -> {
                     trinoException.compareAndSet(null, new TrinoException(HUDI_CANNOT_OPEN_SPLIT,
-                            "Failed to generate splits for " + table.getSchemaTableName(), throwable));
+                            "Failed to generate splits for " + tableHandle.getSchemaTableName(), throwable));
                     queue.finish();
                 });
         this.splitLoaderFuture = splitLoaderExecutorService.schedule(splitLoader, 0, TimeUnit.MILLISECONDS);

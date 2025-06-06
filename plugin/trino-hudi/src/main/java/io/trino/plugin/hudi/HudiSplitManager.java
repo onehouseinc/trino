@@ -14,6 +14,8 @@
 package io.trino.plugin.hudi;
 
 import org.apache.hudi.common.util.HoodieTimer;
+import org.apache.hudi.common.util.collection.Pair;
+import org.apache.hudi.util.Lazy;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -45,6 +47,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
@@ -91,32 +94,30 @@ public class HudiSplitManager
             DynamicFilter dynamicFilter,
             Constraint constraint)
     {
-        log.info("Generating splits for table %s.%s", ((HudiTableHandle) tableHandle).getSchemaName(), ((HudiTableHandle) tableHandle).getTableName());
         HudiTableHandle hudiTableHandle = (HudiTableHandle) tableHandle;
-        HiveMetastore metastore = metastoreProvider.apply(session.getIdentity(), (HiveTransactionHandle) transaction);
-        Table table = metastore.getTable(hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName())
-                .orElseThrow(() -> new TableNotFoundException(schemaTableName(hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName())));
+        log.info("Generating splits for table %s.%s", hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName());
+        Lazy<Pair<List<HiveColumnHandle>, Map<String, Partition>>> allPartitionsProvider = Lazy.lazily(() -> {
+            HiveMetastore metastore = metastoreProvider.apply(session.getIdentity(), (HiveTransactionHandle) transaction);
+            Table table = metastore.getTable(hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName())
+                    .orElseThrow(() -> new TableNotFoundException(schemaTableName(hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName())));
 
-        List<HiveColumnHandle> partitionColumns = getPartitionKeyColumnHandles(table, typeManager);
-        Map<String, HiveColumnHandle> partitionColumnHandles = partitionColumns.stream()
-                .collect(toImmutableMap(HiveColumnHandle::getName, identity()));
-        HoodieTimer timer = HoodieTimer.start();
-        Map<String, Partition> allPartitions = getPartitions(metastore, hudiTableHandle, table, partitionColumns);
-        log.info("Found %s partitions for table %s.%s in %s ms",
-                allPartitions.size(), hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName(), timer.endTimer());
+            List<HiveColumnHandle> partitionColumns = getPartitionKeyColumnHandles(table, typeManager);
+            HoodieTimer timer = HoodieTimer.start();
+            Map<String, Partition> allPartitions = getPartitions(metastore, hudiTableHandle, table, partitionColumns);
+            log.info("Found %s partitions for table %s.%s in %s ms",
+                    allPartitions.size(), hudiTableHandle.getSchemaName(), hudiTableHandle.getTableName(), timer.endTimer());
+            return Pair.of(partitionColumns, allPartitions);
+        });
 
         HudiSplitSource splitSource = new HudiSplitSource(
                 session,
-                metastore,
-                table,
-                hudiTableHandle,
+                (HudiTableHandle) tableHandle,
                 fileSystemFactory,
-                partitionColumnHandles,
                 executor,
                 splitLoaderExecutorService,
                 getMaxSplitsPerSecond(session),
                 getMaxOutstandingSplits(session),
-                allPartitions,
+                allPartitionsProvider,
                 dynamicFilter,
                 getDynamicFilteringWaitTimeout(session));
         return new ClassLoaderSafeConnectorSplitSource(splitSource, HudiSplitManager.class.getClassLoader());

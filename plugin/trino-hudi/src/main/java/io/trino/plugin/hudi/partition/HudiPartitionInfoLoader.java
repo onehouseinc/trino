@@ -77,7 +77,7 @@ public class HudiPartitionInfoLoader
         HoodieTimer timer = HoodieTimer.start();
         while (isRunning || !partitionQueue.isEmpty()) {
             String partitionName = partitionQueue.poll();
-            // log.info("Generating splits for partition %s", partitionName);
+            log.info("Generating splits for partition %s", partitionName);
 
             if (partitionName != null) {
                 generateSplitsFromPartition(partitionName);

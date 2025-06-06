@@ -311,6 +311,8 @@ public class HudiMetadata
     @Override
     public TableStatistics getTableStatistics(ConnectorSession session, ConnectorTableHandle tableHandle)
     {
+        log.info("Getting table statistics for %s.%s",
+                ((HudiTableHandle) tableHandle).getSchemaName(), ((HudiTableHandle) tableHandle).getTableName());
         if (!isTableStatisticsEnabled(session) || !isHudiMetadataTableEnabled(session)) {
             return TableStatistics.empty();
         }

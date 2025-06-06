@@ -35,7 +35,9 @@ import org.apache.hudi.common.engine.HoodieEngineContext;
 import org.apache.hudi.common.engine.HoodieLocalEngineContext;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.util.HoodieTimer;
+import org.apache.hudi.common.util.collection.Pair;
 import org.apache.hudi.metadata.HoodieTableMetadata;
+import org.apache.hudi.util.Lazy;
 
 import java.util.ArrayList;
 import java.util.Deque;
@@ -62,14 +64,14 @@ public class HudiBackgroundSplitLoader
     private final Executor splitGeneratorExecutor;
     private final int splitGeneratorNumThreads;
     private final HudiSplitFactory hudiSplitFactory;
-    private final Map<String, Partition> partitions;
+    private final Lazy<Pair<List<HiveColumnHandle>, Map<String, Partition>>> partitions;
     private final String commitTime;
     private final Consumer<Throwable> errorListener;
     private final boolean enableMetadataTable;
     private final TupleDomain<HiveColumnHandle> regularPredicates;
-    private final HoodieTableMetadata metadataTable;
-    private final Optional<HudiIndexSupport> indexSupportOpt;
-    private final Optional<HudiPartitionStatsIndexSupport> partitionIndexSupportOpt;
+    private final Lazy<HoodieTableMetadata> metadataTable;
+    private final Lazy<Optional<HudiIndexSupport>> indexSupportOpt;
+    private final Lazy<Optional<HudiPartitionStatsIndexSupport>> partitionIndexSupportOpt;
 
     public HudiBackgroundSplitLoader(
             ConnectorSession session,
@@ -78,7 +80,7 @@ public class HudiBackgroundSplitLoader
             AsyncQueue<ConnectorSplit> asyncQueue,
             Executor splitGeneratorExecutor,
             HudiSplitWeightProvider hudiSplitWeightProvider,
-            Map<String, Partition> partitions,
+            Lazy<Pair<List<HiveColumnHandle>, Map<String, Partition>>> partitions,
             String commitTime,
             boolean enableMetadataTable,
             HoodieTableMetaClient metaClient,
@@ -97,15 +99,15 @@ public class HudiBackgroundSplitLoader
         HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
         HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
         HoodieTimer timer = HoodieTimer.start();
-        this.metadataTable = HoodieTableMetadata.create(
+        this.metadataTable = Lazy.lazily(() -> HoodieTableMetadata.create(
                 engineContext,
-                metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true);
+                metaClient.getStorage(), metadataConfig, metaClient.getBasePath().toString(), true));
         log.info("Loaded metadata table in constructor in %s ms", timer.endTimer());
         timer = HoodieTimer.start();
-        this.indexSupportOpt = enableMetadataTable ?
-                IndexSupportFactory.createIndexSupport(metaClient, metadataTable, regularPredicates, session) : Optional.empty();
-        this.partitionIndexSupportOpt = enableMetadataTable ?
-                IndexSupportFactory.createPartitionStatsIndexSupport(metaClient, metadataTable, regularPredicates, session) : Optional.empty();
+        this.indexSupportOpt = Lazy.lazily(() -> enableMetadataTable ?
+                IndexSupportFactory.createIndexSupport(metaClient, metadataTable, regularPredicates, session) : Optional.empty());
+        this.partitionIndexSupportOpt = Lazy.lazily(() -> enableMetadataTable ?
+                IndexSupportFactory.createPartitionStatsIndexSupport(metaClient, metadataTable, regularPredicates, session) : Optional.empty());
         log.info("Loaded index support in constructor in %s ms", timer.endTimer());
     }
 
@@ -115,7 +117,7 @@ public class HudiBackgroundSplitLoader
         if (enableMetadataTable) {
             // Wrap entire logic so that ANY error will be thrown out and not cause program to get stuck
             try {
-                generateSplits(indexSupportOpt);
+                generateSplits(indexSupportOpt.get());
                 return;
             }
             catch (Exception e) {
@@ -131,9 +133,9 @@ public class HudiBackgroundSplitLoader
     {
         // TODO(yihua): refactor split loader/directory lister API for maintainability
         // Attempt to apply partition pruning using partition stats index
-        List<String> partitionList = partitions.keySet().stream().toList();
-        Optional<List<String>> effectivePartitionsOpt = partitionIndexSupportOpt.isPresent() ? partitionIndexSupportOpt.get().prunePartitions(
-                partitionList, metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
+        List<String> partitionList = partitions.get().getRight().keySet().stream().toList();
+        Optional<List<String>> effectivePartitionsOpt = partitionIndexSupportOpt.get().isPresent() ? partitionIndexSupportOpt.get().get().prunePartitions(
+                partitionList, metadataTable.get(), regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
 
         Deque<String> partitionQueue = new ConcurrentLinkedDeque<>(effectivePartitionsOpt.orElse(partitionList));
         List<HudiPartitionInfoLoader> splitGenerators = new ArrayList<>();

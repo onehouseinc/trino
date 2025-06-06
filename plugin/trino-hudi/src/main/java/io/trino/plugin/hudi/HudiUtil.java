@@ -131,7 +131,7 @@ public final class HudiUtil
         return true;
     }
 
-    public static List<HivePartitionKey> buildPartitionKeys(List<Column> keys, List<String> values)
+    public static List<HivePartitionKey> buildPartitionKeys(List<HiveColumnHandle> keys, List<String> values)
     {
         checkCondition(keys.size() == values.size(), HIVE_INVALID_METADATA,
                 "Expected %s partition key values, but got %s. Keys: %s, Values: %s.",
