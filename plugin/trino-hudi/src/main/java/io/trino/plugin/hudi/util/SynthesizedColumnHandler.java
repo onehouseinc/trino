@@ -266,7 +266,7 @@ public class SynthesizedColumnHandler
         }
 
         if (targetType instanceof VarcharType varcharType) {
-            varcharType.writeSlice(blockBuilder, utf8Slice(value.toString()));
+            varcharType.writeSlice(blockBuilder, utf8Slice(value));
         }
         else if (targetType instanceof IntegerType integerType) {
             integerType.writeInt(blockBuilder, Integer.parseInt(value));
