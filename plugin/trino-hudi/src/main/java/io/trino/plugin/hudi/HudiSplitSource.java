@@ -82,20 +82,15 @@ public class HudiSplitSource
             ScheduledExecutorService splitLoaderExecutorService,
             int maxSplitsPerSecond,
             int maxOutstandingSplits,
-            List<HiveColumnHandle> partitionColumnHandles,
             Lazy<Map<String, Partition>> lazyPartitions,
             DynamicFilter dynamicFilter,
             Duration dynamicFilteringWaitTimeoutMillis)
     {
         boolean enableMetadataTable = isHudiMetadataTableEnabled(session);
-        Lazy<String> latestCommitTime = Lazy.lazily(tableHandle::latestCommitTime);
-
         HudiDirectoryLister hudiDirectoryLister = new HudiSnapshotDirectoryLister(
                 tableHandle,
                 enableMetadataTable,
-                partitionColumnHandles,
-                lazyPartitions,
-                latestCommitTime);
+                lazyPartitions);
 
         this.queue = new ThrottledAsyncQueue<>(maxSplitsPerSecond, maxOutstandingSplits, executor);
         HudiBackgroundSplitLoader splitLoader = new HudiBackgroundSplitLoader(
@@ -106,7 +101,6 @@ public class HudiSplitSource
                 new BoundedExecutor(executor, getSplitGeneratorParallelism(session)),
                 createSplitWeightProvider(session),
                 lazyPartitions,
-                latestCommitTime,
                 enableMetadataTable,
                 throwable -> {
                     trinoException.compareAndSet(null, new TrinoException(HUDI_CANNOT_OPEN_SPLIT,

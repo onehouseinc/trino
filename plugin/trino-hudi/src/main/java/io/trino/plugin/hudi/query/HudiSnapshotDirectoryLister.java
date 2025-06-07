@@ -17,7 +17,6 @@ import com.google.common.collect.ImmutableList;
 import io.airlift.log.Logger;
 import io.trino.filesystem.Location;
 import io.trino.metastore.Partition;
-import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.partition.HiveHudiPartitionInfo;
 import io.trino.plugin.hudi.partition.HudiPartitionInfo;
@@ -42,22 +41,20 @@ public class HudiSnapshotDirectoryLister
         implements HudiDirectoryLister
 {
     private static final Logger log = Logger.get(HudiSnapshotDirectoryLister.class);
-    private final Lazy<String> commitTime;
+    private final HudiTableHandle tableHandle;
     private final Lazy<HoodieTableFileSystemView> lazyFileSystemView;
     private final Lazy<Map<String, HudiPartitionInfo>> lazyAllPartitionInfoMap;
 
     public HudiSnapshotDirectoryLister(
             HudiTableHandle tableHandle,
             boolean enableMetadataTable,
-            List<HiveColumnHandle> partitionColumnHandles,
-            Lazy<Map<String, Partition>> lazyAllPartitions,
-            Lazy<String> commitTime)
+            Lazy<Map<String, Partition>> lazyAllPartitions)
     {
+        this.tableHandle = tableHandle;
         HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder()
                 .enable(enableMetadataTable)
                 .build();
         SchemaTableName schemaTableName = tableHandle.getSchemaTableName();
-        this.commitTime = commitTime;
         this.lazyFileSystemView = Lazy.lazily(() -> {
             HoodieTimer timer = HoodieTimer.start();
             HoodieTableFileSystemView fileSystemView = FileSystemViewManager.createInMemoryFileSystemView(
@@ -76,7 +73,7 @@ public class HudiSnapshotDirectoryLister
                                 Location.of(tableHandle.getBasePath()),
                                 e.getKey(),
                                 e.getValue(),
-                                partitionColumnHandles,
+                                tableHandle.getPartitionColumns(),
                                 tableHandle.getPartitionPredicates()))));
     }
 
@@ -84,7 +81,7 @@ public class HudiSnapshotDirectoryLister
     public List<FileSlice> listStatus(HudiPartitionInfo partitionInfo)
     {
         ImmutableList<FileSlice> collect = lazyFileSystemView.get()
-                .getLatestFileSlicesBeforeOrOn(partitionInfo.getRelativePartitionPath(), commitTime.get(), false)
+                .getLatestFileSlicesBeforeOrOn(partitionInfo.getRelativePartitionPath(), tableHandle.getLatestCommitTime(), false)
                 .collect(toImmutableList());
         return collect;
     }

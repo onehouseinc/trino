@@ -49,8 +49,9 @@ public class HudiTableHandle
     private final TupleDomain<HiveColumnHandle> partitionPredicates;
     private final TupleDomain<HiveColumnHandle> regularPredicates;
     // Coordinator-only
-    private final Optional<Table> table;
-    private final Optional<Lazy<HoodieTableMetaClient>> lazyMetaClient;
+    private final transient Optional<Table> table;
+    private final transient Optional<Lazy<HoodieTableMetaClient>> lazyMetaClient;
+    private final transient Optional<Lazy<String>> lazyLatestCommitTime;
 
     @JsonCreator
     public HudiTableHandle(
@@ -79,6 +80,13 @@ public class HudiTableHandle
     {
         this.table = requireNonNull(table, "table is null");
         this.lazyMetaClient = requireNonNull(lazyMetaClient, "lazyMetaClient is null");
+        this.lazyLatestCommitTime = Optional.of(Lazy.lazily(() ->
+                getMetaClient().getActiveTimeline()
+                        .getCommitsTimeline()
+                        .filterCompletedInstants()
+                        .lastInstant()
+                        .map(HoodieInstant::requestedTime)
+                        .orElseThrow(() -> new TrinoException(HudiErrorCode.HUDI_NO_VALID_COMMIT, "Table has no valid commits"))));
         this.schemaName = requireNonNull(schemaName, "schemaName is null");
         this.tableName = requireNonNull(tableName, "tableName is null");
         this.basePath = requireNonNull(basePath, "basePath is null");
@@ -105,14 +113,12 @@ public class HudiTableHandle
         return lazyMetaClient.get().get();
     }
 
-    public String latestCommitTime()
+    public String getLatestCommitTime()
     {
-        return getMetaClient().getActiveTimeline()
-                .getCommitsTimeline()
-                .filterCompletedInstants()
-                .lastInstant()
-                .map(HoodieInstant::requestedTime)
-                .orElseThrow(() -> new TrinoException(HudiErrorCode.HUDI_NO_VALID_COMMIT, "Table has no valid commits"));
+        checkArgument(lazyLatestCommitTime.isPresent(),
+                "getLatestCommitTime() called on a table handle that has no Hudi meta-client; "
+                        + "this is likely because it is called on the worker.");
+        return lazyLatestCommitTime.get().get();
     }
 
     @JsonProperty

@@ -60,13 +60,13 @@ import static java.util.Objects.requireNonNull;
 public class HudiBackgroundSplitLoader
         implements Runnable
 {
+    private final HudiTableHandle tableHandle;
     private final HudiDirectoryLister hudiDirectoryLister;
     private final AsyncQueue<ConnectorSplit> asyncQueue;
     private final Executor splitGeneratorExecutor;
     private final int splitGeneratorNumThreads;
     private final HudiSplitFactory hudiSplitFactory;
     private final Lazy<List<String>> lazyPartitions;
-    private final Lazy<String> lazyCommitTime;
     private final Consumer<Throwable> errorListener;
     private final boolean enableMetadataTable;
     private final Lazy<HoodieTableMetaClient> lazyMetaClient;
@@ -82,17 +82,16 @@ public class HudiBackgroundSplitLoader
             Executor splitGeneratorExecutor,
             HudiSplitWeightProvider hudiSplitWeightProvider,
             Lazy<Map<String, Partition>> lazyPartitionMap,
-            Lazy<String> lazyCommitTime,
             boolean enableMetadataTable,
             Consumer<Throwable> errorListener)
     {
+        this.tableHandle = requireNonNull(tableHandle, "tableHandle is null");
         this.hudiDirectoryLister = requireNonNull(hudiDirectoryLister, "hudiDirectoryLister is null");
         this.asyncQueue = requireNonNull(asyncQueue, "asyncQueue is null");
         this.splitGeneratorExecutor = requireNonNull(splitGeneratorExecutor, "splitGeneratorExecutorService is null");
         this.splitGeneratorNumThreads = getSplitGeneratorParallelism(session);
         this.hudiSplitFactory = new HudiSplitFactory(tableHandle, hudiSplitWeightProvider);
         this.lazyPartitions = Lazy.lazily(() -> requireNonNull(lazyPartitionMap, "partitions is null").get().keySet().stream().toList());
-        this.lazyCommitTime = requireNonNull(lazyCommitTime, "commitTime is null");
         this.enableMetadataTable = enableMetadataTable;
         this.lazyMetaClient = Lazy.lazily(tableHandle::getMetaClient);
         this.regularPredicates = tableHandle.getRegularPredicates();
@@ -156,7 +155,7 @@ public class HudiBackgroundSplitLoader
         prunedFiles.entrySet().stream()
                 .flatMap(entry -> entry.getValue().stream().flatMap(slice ->
                         hudiSplitFactory.createSplits(
-                                partitionToPartitionKeyMap.get(entry.getKey()), slice, lazyCommitTime.get()).stream()))
+                                partitionToPartitionKeyMap.get(entry.getKey()), slice, tableHandle.getLatestCommitTime()).stream()))
                 .map(asyncQueue::offer)
                 .forEachOrdered(MoreFutures::getFutureValue);
         asyncQueue.finish();
@@ -170,7 +169,7 @@ public class HudiBackgroundSplitLoader
 
         // Start a number of partition split generators to generate the splits in parallel
         for (int i = 0; i < splitGeneratorNumThreads; i++) {
-            HudiPartitionInfoLoader generator = new HudiPartitionInfoLoader(hudiDirectoryLister, lazyCommitTime.get(), hudiSplitFactory, asyncQueue, partitionQueue);
+            HudiPartitionInfoLoader generator = new HudiPartitionInfoLoader(hudiDirectoryLister, tableHandle.getLatestCommitTime(), hudiSplitFactory, asyncQueue, partitionQueue);
             splitGeneratorList.add(generator);
             ListenableFuture<Void> future = Futures.submit(generator, splitGeneratorExecutor);
             addExceptionCallback(future, errorListener);
