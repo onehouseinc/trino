@@ -49,8 +49,8 @@ public class HudiTableHandle
     private final TupleDomain<HiveColumnHandle> partitionPredicates;
     private final TupleDomain<HiveColumnHandle> regularPredicates;
     // Coordinator-only
-    private final Optional<Table> table;
-    private final Optional<Lazy<HoodieTableMetaClient>> lazyMetaClient;
+    private transient final Optional<Table> table;
+    private transient final Optional<Lazy<HoodieTableMetaClient>> lazyMetaClient;
 
     @JsonCreator
     public HudiTableHandle(
