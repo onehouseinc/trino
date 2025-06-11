@@ -20,6 +20,7 @@ import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieIndexDefinition;
 import org.apache.hudi.common.model.HoodieRecordGlobalLocation;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadataUtil;
 import org.apache.hudi.util.Lazy;
@@ -49,13 +50,17 @@ public class HudiSecondaryIndexSupport
             Map<String, List<FileSlice>> inputFileSlices,
             TupleDomain<String> regularColumnPredicates)
     {
+        HoodieTimer timer = HoodieTimer.start();
+
         if (regularColumnPredicates.isAll() || lazyMetaClient.get().getIndexMetadata().isEmpty()) {
+            timer.endTimer();
             log.debug("Predicates cover all data, skipping secondary index lookup.");
             return inputFileSlices;
         }
 
         Optional<Map.Entry<String, HoodieIndexDefinition>> firstApplicableIndex = findFirstApplicableSecondaryIndex(regularColumnPredicates);
         if (firstApplicableIndex.isEmpty()) {
+            timer.endTimer();
             log.debug("No secondary index definition found matching the query's referenced columns.");
             return inputFileSlices;
         }
@@ -69,6 +74,7 @@ public class HudiSecondaryIndexSupport
 
         List<String> secondaryKeys = constructRecordKeys(indexPredicates, indexedColumns);
         if (secondaryKeys.isEmpty()) {
+            timer.endTimer();
             log.warn(String.format("Could not construct secondary keys for index '%s' from predicates. Skipping pruning.", indexName));
             return inputFileSlices;
         }
@@ -78,6 +84,7 @@ public class HudiSecondaryIndexSupport
         // TODO: document here what this map is keyed by
         Map<String, HoodieRecordGlobalLocation> recordKeyLocationsMap = metadataTable.readSecondaryIndex(secondaryKeys, indexName);
         if (recordKeyLocationsMap.isEmpty()) {
+            timer.endTimer();
             log.debug("Secondary index lookup returned no locations for the given keys.");
             // Return all original fileSlices
             return inputFileSlices;
@@ -102,7 +109,7 @@ public class HudiSecondaryIndexSupport
         // Remove partitions where no files remain after filtering
         candidateFileSlices.entrySet().removeIf(entry -> entry.getValue().isEmpty());
 
-        printDebugMessage(candidateFileSlices, inputFileSlices);
+        printDebugMessage(candidateFileSlices, inputFileSlices, timer.endTimer());
         return candidateFileSlices;
     }
 

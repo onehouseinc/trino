@@ -32,6 +32,7 @@ import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieIndexDefinition;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.HoodieTableVersion;
+import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.common.util.hash.ColumnIndexID;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadataUtil;
@@ -73,7 +74,10 @@ public class HudiColumnStatsIndexSupport
             HoodieTableMetadata metadataTable, Map<String, List<FileSlice>> inputFileSlices,
             TupleDomain<String> regularColumnPredicates)
     {
+        HoodieTimer timer = HoodieTimer.start();
+
         if (regularColumnPredicates.isAll() || !regularColumnPredicates.getDomains().isPresent()) {
+            timer.endTimer();
             return inputFileSlices;
         }
 
@@ -103,7 +107,7 @@ public class HudiColumnStatsIndexSupport
                                 .filter(fileSlice -> shouldKeepFileSlice(fileSlice, statsByFileName, regularColumnPredicates, regularColumns))
                                 .collect(Collectors.toList())));
 
-        this.printDebugMessage(candidateFileSlices, inputFileSlices);
+        this.printDebugMessage(candidateFileSlices, inputFileSlices, timer.endTimer());
         return candidateFileSlices;
     }
 

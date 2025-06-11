@@ -36,16 +36,17 @@ public abstract class HudiBaseIndexSupport
         this.lazyMetaClient = requireNonNull(lazyMetaClient, "metaClient is null");
     }
 
-    public void printDebugMessage(Map<String, List<FileSlice>> candidateFileSlices, Map<String, List<FileSlice>> inputFileSlices)
+    public void printDebugMessage(Map<String, List<FileSlice>> candidateFileSlices, Map<String, List<FileSlice>> inputFileSlices, long lookupDurationMs)
     {
         if (log.isDebugEnabled()) {
             int candidateFileSize = candidateFileSlices.values().stream().mapToInt(List::size).sum();
             int totalFiles = inputFileSlices.values().stream().mapToInt(List::size).sum();
             double skippingPercent = totalFiles == 0 ? 0.0d : (totalFiles - candidateFileSize) / (totalFiles * 1.0d);
-            log.info("Total files: %s; files after data skipping: %s; skipping percent %s",
+            log.info("Total files: %s; files after data skipping: %s; skipping percent %s; time taken: %s ms",
                     totalFiles,
                     candidateFileSize,
-                    skippingPercent);
+                    skippingPercent,
+                    lookupDurationMs);
         }
     }
 
