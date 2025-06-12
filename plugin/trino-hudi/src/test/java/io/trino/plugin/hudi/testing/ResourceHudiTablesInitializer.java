@@ -345,7 +345,8 @@ public class ResourceHudiTablesInitializer
         HUDI_COMPREHENSIVE_TYPES_V8_MOR(hudiComprehensiveTypesColumns(), hudiComprehensiveTypesPartitionColumns(), hudiComprehensiveTypesPartitions(), true),
         HUDI_MULTI_PT_V8_MOR(hudiMultiPtMorColumns(), hudiMultiPtMorPartitionColumns(), hudiMultiPtMorPartitions(), false),
         HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR(hudiTimestampKeygenColumns(), hudiTimestampKeygenPartitionColumns(), hudiTimestampKeygenPartitions("EPOCHMILLISECONDS"), true),
-        HUDI_TIMESTAMP_KEYGEN_PT_SCALAR_TO_YYYY_MM_DD_HH_V8_MOR(hudiTimestampKeygenColumns(), hudiTimestampKeygenPartitionColumns(), hudiTimestampKeygenPartitions("SCALAR"), true)
+        HUDI_TIMESTAMP_KEYGEN_PT_SCALAR_TO_YYYY_MM_DD_HH_V8_MOR(hudiTimestampKeygenColumns(), hudiTimestampKeygenPartitionColumns(), hudiTimestampKeygenPartitions("SCALAR"), true),
+        HUDI_CUSTOM_KEYGEN_PT_V8_MOR(hudiCustomKeyGenColumns(), hudiCustomKeyGenPartitionColumns(), hudiCustomKeyGenPartitions(), false),
         /**/;
 
         private static final List<Column> HUDI_META_COLUMNS = ImmutableList.of(
@@ -713,6 +714,28 @@ public class ResourceHudiTablesInitializer
                         "partition_field=2024-10-04 12", "2024-10-04 12");
                 default -> ImmutableMap.of();
             };
+        }
+
+        private static List<Column> hudiCustomKeyGenColumns()
+        {
+            return hudiMultiFgRegularColumns();
+        }
+
+        private static List<Column> hudiCustomKeyGenPartitionColumns()
+        {
+            return ImmutableList.of(
+                    column("part_country", HIVE_STRING),
+                    column("part_date", HIVE_STRING));
+        }
+
+        private static Map<String, String> hudiCustomKeyGenPartitions()
+        {
+            return ImmutableMap.of(
+                    "part_country=US/part_date=2025-06-06", "part_country=US/part_date=2025-06-06",
+                    "part_country=CN/part_date=2025-06-05", "part_country=CN/part_date=2025-06-05",
+                    "part_country=MY/part_date=2025-05-13", "part_country=MY/part_date=2025-05-13",
+                    "part_country=SG/part_date=2025-06-06", "part_country=SG/part_date=2025-06-06",
+                    "part_country=SG/part_date=2025-06-07", "part_country=SG/part_date=2025-06-07");
         }
     }
 

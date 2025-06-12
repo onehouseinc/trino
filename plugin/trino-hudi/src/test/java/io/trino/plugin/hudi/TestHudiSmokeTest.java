@@ -72,6 +72,7 @@ import static io.trino.plugin.hudi.HudiPageSourceProvider.createPageSource;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_V6_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_PT_TBL;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_CUSTOM_KEYGEN_PT_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_PT_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_COW;
@@ -544,6 +545,32 @@ public class TestHudiSmokeTest
         testTimestampMicros(HiveTimestampPrecision.MILLISECONDS, LocalDateTime.parse("2020-10-12T16:26:02.907"));
         testTimestampMicros(HiveTimestampPrecision.MICROSECONDS, LocalDateTime.parse("2020-10-12T16:26:02.906668"));
         testTimestampMicros(HiveTimestampPrecision.NANOSECONDS, LocalDateTime.parse("2020-10-12T16:26:02.906668"));
+    }
+
+    @Test
+    public void testHudiCustomKeygenEpochMillisPartitionedTables()
+    {
+        // NOTE: As of now, the partition_path value that is synced to metastore will be returned instead of the raw value that is used by the keygen
+        Session session = SessionBuilder.from(getSession()).build();
+        @Language("SQL") String actualQuery = "SELECT _hoodie_partition_path, part_country, part_date FROM " + HUDI_CUSTOM_KEYGEN_PT_V8_MOR;
+        @Language("SQL") String expectedQuery = "VALUES ('part_country=MY/part_date=2025-05-13', 'MY', '2025-05-13')," +
+                "('part_country=CN/part_date=2025-06-05', 'CN', '2025-06-05')," +
+                "('part_country=US/part_date=2025-06-06', 'US', '2025-06-06')," +
+                "('part_country=SG/part_date=2025-06-06', 'SG', '2025-06-06')," +
+                "('part_country=SG/part_date=2025-06-06', 'SG', '2025-06-06')," +
+                "('part_country=SG/part_date=2025-06-07', 'SG', '2025-06-07')," +
+                "('part_country=SG/part_date=2025-06-07', 'SG', '2025-06-07')";
+        assertQuery(session, actualQuery, expectedQuery);
+
+        // Ensure that partition pruning is working (using partition_path value) of level 3 partition_path value
+        @Language("SQL") String actualPartPruningQuery = actualQuery + " WHERE part_date='2025-06-06'";
+        MaterializedResult partPruneRes = getQueryRunner().execute(session, actualPartPruningQuery);
+        // Only one split in the partition, hence, only one split processed
+        assertThat(partPruneRes.getStatementStats().get().getTotalSplits()).isEqualTo(2);
+        // 2 splits/filegroups, but 3 rows
+        assertQuery(actualPartPruningQuery, "VALUES ('part_country=US/part_date=2025-06-06', 'US', '2025-06-06'), " +
+                "('part_country=SG/part_date=2025-06-06', 'SG', '2025-06-06'), " +
+                "('part_country=SG/part_date=2025-06-06', 'SG', '2025-06-06')");
     }
 
     @ParameterizedTest
