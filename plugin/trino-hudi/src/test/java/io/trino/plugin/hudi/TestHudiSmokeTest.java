@@ -570,6 +570,7 @@ public class TestHudiSmokeTest
         Session session = SessionBuilder.from(getSession())
                 .withMdtEnabled(true)
                 .withColStatsIndexEnabled(true)
+                .withColumnStatsTimeout("1s")
                 .withRecordLevelIndexEnabled(false)
                 .withSecondaryIndexEnabled(false)
                 .withPartitionStatsIndexEnabled(false)
@@ -595,6 +596,7 @@ public class TestHudiSmokeTest
                 .withRecordLevelIndexEnabled(true)
                 .withSecondaryIndexEnabled(false)
                 .withPartitionStatsIndexEnabled(false)
+                .withColumnStatsTimeout("1s")
                 .build();
         MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + table);
         MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + table
@@ -669,7 +671,9 @@ public class TestHudiSmokeTest
             names = {"HUDI_MULTI_FG_PT_V6_MOR", "HUDI_MULTI_FG_PT_V8_MOR"})
     public void testDynamicFilterEnabledPredicatePushdown(ResourceHudiTablesInitializer.TestingTable table)
     {
-        Session session = getSession();
+        Session session = SessionBuilder.from(getSession())
+                .withDynamicFilterTimeout("1s")
+                .build();
         final String tableIdentifier = "hudi:tests." + table.getRoTableName();
 
         @Language("SQL") String query = "SELECT t1.id, t1.name, t1.price, t1.ts FROM " +

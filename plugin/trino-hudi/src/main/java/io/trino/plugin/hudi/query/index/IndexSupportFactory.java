@@ -18,6 +18,7 @@ import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.util.Lazy;
 
 import java.util.List;
@@ -53,14 +54,14 @@ public class IndexSupportFactory
      * @return An Optional containing the chosen HudiIndexSupport strategy, or empty if none are applicable or enabled.
      */
     public static Optional<HudiIndexSupport> createIndexSupport(
-            Lazy<HoodieTableMetaClient> lazyMetaClient, TupleDomain<HiveColumnHandle> tupleDomain, ConnectorSession session)
+            Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> tupleDomain, ConnectorSession session)
     {
         // Define strategies as Suppliers paired with their config (isEnabled) flag
         // IMPORTANT: Order of strategy here determines which index implementation is preferred first
         List<StrategyProvider> strategyProviders = List.of(
-                new StrategyProvider(() -> isRecordLevelIndexEnabled(session), () -> new HudiRecordLevelIndexSupport(lazyMetaClient)),
-                new StrategyProvider(() -> isSecondaryIndexEnabled(session), () -> new HudiSecondaryIndexSupport(lazyMetaClient)),
-                new StrategyProvider(() -> isColumnStatsIndexEnabled(session), () -> new HudiColumnStatsIndexSupport(lazyMetaClient)),
+                new StrategyProvider(() -> isRecordLevelIndexEnabled(session), () -> new HudiRecordLevelIndexSupport(session, lazyMetaClient, lazyTableMetadata, tupleDomain)),
+                new StrategyProvider(() -> isSecondaryIndexEnabled(session), () -> new HudiSecondaryIndexSupport(session, lazyMetaClient, lazyTableMetadata, tupleDomain)),
+                new StrategyProvider(() -> isColumnStatsIndexEnabled(session), () -> new HudiColumnStatsIndexSupport(session, lazyMetaClient, lazyTableMetadata, tupleDomain)),
                 new StrategyProvider(() -> isNoOpIndexEnabled(session), () -> new HudiNoOpIndexSupport(lazyMetaClient)));
 
         TupleDomain<String> transformedTupleDomain = tupleDomain.transformKeys(HiveColumnHandle::getName);
@@ -90,10 +91,10 @@ public class IndexSupportFactory
     }
 
     public static Optional<HudiPartitionStatsIndexSupport> createPartitionStatsIndexSupport(
-            Lazy<HoodieTableMetaClient> lazyMetaClient, TupleDomain<HiveColumnHandle> tupleDomain, ConnectorSession session)
+            Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> tupleDomain, ConnectorSession session)
     {
         StrategyProvider partitionStatsStrategy = new StrategyProvider(
-                () -> isPartitionStatsIndexEnabled(session), () -> new HudiPartitionStatsIndexSupport(lazyMetaClient));
+                () -> isPartitionStatsIndexEnabled(session), () -> new HudiPartitionStatsIndexSupport(lazyMetaClient, session, lazyTableMetadata, tupleDomain));
 
         TupleDomain<String> transformedTupleDomain = tupleDomain.transformKeys(HiveColumnHandle::getName);
         if (partitionStatsStrategy.isEnabled() && partitionStatsStrategy.getStrategy().canApply(transformedTupleDomain)) {
