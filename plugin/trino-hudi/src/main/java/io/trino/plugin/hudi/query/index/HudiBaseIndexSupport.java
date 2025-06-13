@@ -42,11 +42,14 @@ public abstract class HudiBaseIndexSupport
             int candidateFileSize = candidateFileSlices.values().stream().mapToInt(List::size).sum();
             int totalFiles = inputFileSlices.values().stream().mapToInt(List::size).sum();
             double skippingPercent = totalFiles == 0 ? 0.0d : (totalFiles - candidateFileSize) / (totalFiles * 1.0d);
-            log.info("Total files: %s; files after data skipping: %s; skipping percent %s; time taken: %s ms",
+
+            log.info("Total files: %s; files after data skipping: %s; skipping percent %s; time taken: %s ms; table name: %s.%s",
                     totalFiles,
                     candidateFileSize,
                     skippingPercent,
-                    lookupDurationMs);
+                    lookupDurationMs,
+                    getDatabaseName(),
+                    getTableName());
         }
     }
 
@@ -57,5 +60,15 @@ public abstract class HudiBaseIndexSupport
         }
 
         return lazyMetaClient.get().getIndexMetadata().get().getIndexDefinitions();
+    }
+
+    protected String getDatabaseName()
+    {
+        return lazyMetaClient.get().getTableConfig().getDatabaseName();
+    }
+
+    protected String getTableName()
+    {
+        return lazyMetaClient.get().getTableConfig().getTableName();
     }
 }

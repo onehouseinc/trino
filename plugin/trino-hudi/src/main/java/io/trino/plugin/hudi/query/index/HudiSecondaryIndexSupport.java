@@ -50,18 +50,17 @@ public class HudiSecondaryIndexSupport
             Map<String, List<FileSlice>> inputFileSlices,
             TupleDomain<String> regularColumnPredicates)
     {
-        HoodieTimer timer = HoodieTimer.start();
-
         if (regularColumnPredicates.isAll() || lazyMetaClient.get().getIndexMetadata().isEmpty()) {
-            timer.endTimer();
             log.debug("Predicates cover all data, skipping secondary index lookup.");
             return inputFileSlices;
         }
 
+        HoodieTimer timer = HoodieTimer.start();
+
         Optional<Map.Entry<String, HoodieIndexDefinition>> firstApplicableIndex = findFirstApplicableSecondaryIndex(regularColumnPredicates);
         if (firstApplicableIndex.isEmpty()) {
-            timer.endTimer();
-            log.debug("No secondary index definition found matching the query's referenced columns.");
+            log.debug("Took %s ms but no secondary index definition found matching the query's referenced columns for table %s.%s",
+                    timer.endTimer(), getDatabaseName(), getTableName());
             return inputFileSlices;
         }
 
@@ -74,8 +73,8 @@ public class HudiSecondaryIndexSupport
 
         List<String> secondaryKeys = constructRecordKeys(indexPredicates, indexedColumns);
         if (secondaryKeys.isEmpty()) {
-            timer.endTimer();
-            log.warn(String.format("Could not construct secondary keys for index '%s' from predicates. Skipping pruning.", indexName));
+            log.warn(String.format("Took %s ms, but could not construct secondary keys for index '%s' from predicates. Skipping pruning for table %s.%s",
+                    timer.endTimer(), indexName, getDatabaseName(), getTableName()));
             return inputFileSlices;
         }
         log.debug(String.format("Constructed %d secondary keys for index lookup.", secondaryKeys.size()));
@@ -84,8 +83,7 @@ public class HudiSecondaryIndexSupport
         // TODO: document here what this map is keyed by
         Map<String, HoodieRecordGlobalLocation> recordKeyLocationsMap = metadataTable.readSecondaryIndex(secondaryKeys, indexName);
         if (recordKeyLocationsMap.isEmpty()) {
-            timer.endTimer();
-            log.debug("Secondary index lookup returned no locations for the given keys.");
+            log.debug("Took %s ms, but secondary index lookup returned no locations for the given keys for table %s.%s", timer.endTimer(), getDatabaseName(), getTableName());
             // Return all original fileSlices
             return inputFileSlices;
         }

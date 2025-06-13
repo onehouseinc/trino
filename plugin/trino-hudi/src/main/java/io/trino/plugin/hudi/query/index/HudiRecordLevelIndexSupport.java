@@ -59,14 +59,13 @@ public class HudiRecordLevelIndexSupport
             Map<String, List<FileSlice>> inputFileSlices,
             TupleDomain<String> regularColumnPredicates)
     {
-        HoodieTimer timer = HoodieTimer.start();
-
         // Should not happen since canApply checks for this, include for safety
         if (regularColumnPredicates.isAll()) {
-            timer.endTimer();
             log.debug("Predicates cover all data, skipping record level index lookup.");
             return inputFileSlices;
         }
+
+        HoodieTimer timer = HoodieTimer.start();
 
         Option<String[]> recordKeyFieldsOpt = lazyMetaClient.get().getTableConfig().getRecordKeyFields();
         if (recordKeyFieldsOpt.isEmpty() || recordKeyFieldsOpt.get().length == 0) {
@@ -83,9 +82,9 @@ public class HudiRecordLevelIndexSupport
         List<String> recordKeys = constructRecordKeys(filteredDomains, recordKeyFields);
 
         if (recordKeys.isEmpty()) {
-            timer.endTimer();
             // If key construction fails (e.g., incompatible predicates not caught by canApply, or placeholder issue)
-            log.warn("Could not construct record keys from predicates. Skipping record index pruning.");
+            log.warn("Took %s ms, but could not construct record keys from predicates. Skipping record index pruning for table %s.%s",
+                    timer.endTimer(), getDatabaseName(), getTableName());
             return inputFileSlices;
         }
         log.debug(String.format("Constructed %d record keys for index lookup.", recordKeys.size()));
@@ -94,8 +93,8 @@ public class HudiRecordLevelIndexSupport
         // TODO: document here what this map is keyed by
         Map<String, HoodieRecordGlobalLocation> recordIndex = metadataTable.readRecordIndex(recordKeys);
         if (recordIndex.isEmpty()) {
-            timer.endTimer();
-            log.debug("Record level index lookup returned no locations for the given keys.");
+            log.debug("Record level index lookup took %s ms but returned no locations for the given keys %s for table %s.%s",
+                    timer.endTimer(), recordKeys, getDatabaseName(), getTableName());
             // Return all original fileSlices
             return inputFileSlices;
         }

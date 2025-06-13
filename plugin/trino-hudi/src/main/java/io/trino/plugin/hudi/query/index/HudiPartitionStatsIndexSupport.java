@@ -103,7 +103,7 @@ public class HudiPartitionStatsIndexSupport
                 })
                 .collect(Collectors.toList());
 
-        log.info("Took %s ms to prune partitions using Partition Stats Index", timer.endTimer());
+        log.info("Took %s ms to prune partitions using Partition Stats Index for table %s.%s", timer.endTimer(), getDatabaseName(), getTableName());
         return Optional.of(prunedPartitions);
     }
 
