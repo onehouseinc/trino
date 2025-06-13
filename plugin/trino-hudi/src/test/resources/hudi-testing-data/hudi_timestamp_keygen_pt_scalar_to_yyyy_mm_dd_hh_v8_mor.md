@@ -9,7 +9,7 @@ Structure of table:
 ```scala
 test("Create MOR table with timestamp keygen partition field (SCALAR -> yyyy-mm-dd hh)") {
     withTempDir { tmp =>
-        val tableName = "hudi_timestamp_keygen_pt_s_to_yyyy_mm_dd_hh_v8_mor"
+        val tableName = "hudi_timestamp_keygen_pt_scalar_to_yyyy_mm_dd_hh_v8_mor"
 
         spark.sql(
             s"""
@@ -19,7 +19,7 @@ test("Create MOR table with timestamp keygen partition field (SCALAR -> yyyy-mm-
                |  price DOUBLE,
                |  ts LONG,
                |  -- Partition Source Fields --
-               |  part_source bigint
+               |  partition_field bigint
                |) USING hudi
                | LOCATION '${tmp.getCanonicalPath}'
                | TBLPROPERTIES (
@@ -35,8 +35,12 @@ test("Create MOR table with timestamp keygen partition field (SCALAR -> yyyy-mm-
                |  hoodie.keygen.timebased.output.dateformat = 'yyyy-MM-dd hh',
                |  hoodie.keygen.timebased.timezone = 'UTC',
                |  hoodie.keygen.timebased.timestamp.scalar.time.unit = 'DAYS'
-               | ) PARTITIONED BY (part_source)
+               | ) PARTITIONED BY (partition_field)
      """.stripMargin)
+
+        // To not trigger compaction scheduling, and compaction
+        spark.sql(s"set hoodie.compact.inline.max.delta.commits=9999")
+        spark.sql(s"set hoodie.compact.inline=false")
 
         // Configure Hudi properties
         spark.sql(s"SET hoodie.parquet.small.file.limit=0") // Write to a new parquet file for each commit

@@ -46,6 +46,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.File;
 import java.time.LocalDateTime;
@@ -68,8 +69,8 @@ import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.Testing
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_MOR;
-import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TIMESTAMP_KEYGEN_PT_E_TO_YYYY_MM_DD_HH_V8_MOR;
-import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TIMESTAMP_KEYGEN_PT_S_TO_YYYY_MM_DD_HH_V8_MOR;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TIMESTAMP_KEYGEN_PT_SCALAR_TO_YYYY_MM_DD_HH_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TRIPS_COW_V8;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.STOCK_TICKS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.STOCK_TICKS_MOR;
@@ -489,47 +490,42 @@ public class TestHudiSmokeTest
         testTimestampMicros(HiveTimestampPrecision.NANOSECONDS, LocalDateTime.parse("2020-10-12T16:26:02.906668"));
     }
 
-    @Test
-    public void testHudiTimestampKeygenEpochMillisPartitionedTables()
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void testHudiTimestampKeygenEpochMillisPartitionedTables(boolean isRtTable)
     {
+        String tableName = isRtTable ? HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR.getRtTableName()
+                : HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR.getRoTableName();
         // NOTE: As of now, the partition_path value that is synced to metastore will be returned instead of the raw value that is used by the keygen
-        // Expected:
-        // ('2025-06-07 08', '1749284360000'), ('2025-06-06 10', '1749204000000'), ('2025-06-06 09', '1749202000000'), ('2025-06-05 05', '1749102000000'),
-        // ('2025-05-13 02', '1747102000000')
-        // Actual:
-        // ('2025-06-07 08', '2025-06-07 08'), ('2025-06-06 10', '2025-06-06 10'), ('2025-06-06 09', '2025-06-06 09'), ('2025-06-05 05', '2025-06-05 05'),
-        // ('2025-05-13 02', '2025-05-13 02')
         Session session = SessionBuilder.from(getSession()).build();
-        @Language("SQL") String actualQuery = "SELECT _hoodie_partition_path, part_source FROM " + HUDI_TIMESTAMP_KEYGEN_PT_E_TO_YYYY_MM_DD_HH_V8_MOR;
+        @Language("SQL") String actualQuery = "SELECT _hoodie_partition_path, partition_field FROM " + tableName;
         @Language("SQL") String expectedQuery = "VALUES ('2025-06-07 08', '2025-06-07 08'), ('2025-06-06 10', '2025-06-06 10'), ('2025-06-06 09', '2025-06-06 09'), " +
                 "('2025-06-05 05', '2025-06-05 05'), ('2025-05-13 02', '2025-05-13 02')";
         assertQuery(session, actualQuery, expectedQuery);
 
         // Ensure that partition pruning is working (using partition_path value)
-        @Language("SQL") String actualPartPruningQuery = actualQuery + " WHERE part_source='2025-06-07 08'";
+        @Language("SQL") String actualPartPruningQuery = actualQuery + " WHERE partition_field='2025-06-07 08'";
         MaterializedResult partPruneRes = getQueryRunner().execute(session, actualPartPruningQuery);
         // Only one split in the partition, hence, only one split processed
         assertThat(partPruneRes.getStatementStats().get().getTotalSplits()).isEqualTo(1);
     }
 
-    @Test
-    public void testHudiTimestampKeygenScalarPartitionedTables()
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    public void testHudiTimestampKeygenScalarPartitionedTables(boolean isRtTable)
     {
+        String tableName = isRtTable ? HUDI_TIMESTAMP_KEYGEN_PT_SCALAR_TO_YYYY_MM_DD_HH_V8_MOR.getRtTableName()
+                : HUDI_TIMESTAMP_KEYGEN_PT_SCALAR_TO_YYYY_MM_DD_HH_V8_MOR.getRoTableName();
         // NOTE: As of now, the partition_path value that is synced to metastore will be returned instead of the raw value that is used by the keygen
-        // Expected:
-        // ('2024-10-04 12', '20000'), ('2024-10-05 12', '20001'), ('2024-10-06 12', '20002'), ('2024-10-07 12', '20003'), ('2024-10-08 12', '20004')
-        // Actual:
-        // ('2024-10-04 12', '2024-10-04 12'), ('2024-10-05 12', '2024-10-05 12'), ('2024-10-06 12', '2024-10-06 12'), ('2024-10-07 12', '2024-10-07 12'),
-        // ('2024-10-08 12', '2024-10-08 12')
         Session session = SessionBuilder.from(getSession()).build();
-        @Language("SQL") String actualQuery = "SELECT _hoodie_partition_path, part_source FROM "
-                + HUDI_TIMESTAMP_KEYGEN_PT_S_TO_YYYY_MM_DD_HH_V8_MOR;
+        @Language("SQL") String actualQuery = "SELECT _hoodie_partition_path, partition_field FROM "
+                + tableName;
         @Language("SQL") String expectedQuery = "VALUES ('2024-10-04 12', '2024-10-04 12'), ('2024-10-05 12', '2024-10-05 12'), ('2024-10-06 12', '2024-10-06 12'), " +
                 "('2024-10-07 12', '2024-10-07 12'), ('2024-10-08 12', '2024-10-08 12')";
         assertQuery(session, actualQuery, expectedQuery);
 
         // Ensure that partition pruning is working (using partition_path value)
-        @Language("SQL") String actualPartPruningQuery = actualQuery + " WHERE part_source='2024-10-04 12'";
+        @Language("SQL") String actualPartPruningQuery = actualQuery + " WHERE partition_field='2024-10-04 12'";
         MaterializedResult partPruneRes = getQueryRunner().execute(session, actualPartPruningQuery);
         // Only one split in the partition, hence, only one split processed
         assertThat(partPruneRes.getStatementStats().get().getTotalSplits()).isEqualTo(1);

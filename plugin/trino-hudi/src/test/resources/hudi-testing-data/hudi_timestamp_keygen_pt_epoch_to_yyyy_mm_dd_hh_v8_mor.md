@@ -9,7 +9,7 @@ Structure of table:
 ```scala
 test("Create MOR table with timestamp keygen partition field (EPOCHMILLISECONDS -> yyyy-mm-dd hh)") {
 withTempDir { tmp =>
-val tableName = "hudi_timestamp_keygen_pt_e_to_yyyy_mm_dd_hh_v8_mor"
+val tableName = "hudi_timestamp_keygen_pt_epoch_to_yyyy_mm_dd_hh_v8_mor"
 
       spark.sql(
         s"""
@@ -19,7 +19,7 @@ val tableName = "hudi_timestamp_keygen_pt_e_to_yyyy_mm_dd_hh_v8_mor"
            |  price DOUBLE,
            |  ts LONG,
            |  -- Partition Source Fields --
-           |  part_source bigint
+           |  partition_field bigint
            |) USING hudi
            | LOCATION '${tmp.getCanonicalPath}'
            | TBLPROPERTIES (
@@ -30,12 +30,16 @@ val tableName = "hudi_timestamp_keygen_pt_e_to_yyyy_mm_dd_hh_v8_mor"
            |  hoodie.datasource.write.hive_style_partitioning = 'false',
            |  -- Timestamp Keygen and Partition Configs --
            |  hoodie.table.keygenerator.class = 'org.apache.hudi.keygen.TimestampBasedKeyGenerator',
-           |  hoodie.datasource.write.partitionpath.field = 'part_source',
+           |  hoodie.datasource.write.partitionpath.field = 'partition_field',
            |  hoodie.keygen.timebased.timestamp.type = 'EPOCHMILLISECONDS',
            |  hoodie.keygen.timebased.output.dateformat = 'yyyy-MM-dd hh',
            |  hoodie.keygen.timebased.timezone = 'UTC'
-           | ) PARTITIONED BY (part_source)
+           | ) PARTITIONED BY (partition_field)
      """.stripMargin)
+
+      // To not trigger compaction scheduling, and compaction
+      spark.sql(s"set hoodie.compact.inline.max.delta.commits=9999")
+      spark.sql(s"set hoodie.compact.inline=false")
 
       // Configure Hudi properties
       spark.sql(s"SET hoodie.parquet.small.file.limit=0") // Write to a new parquet file for each commit
