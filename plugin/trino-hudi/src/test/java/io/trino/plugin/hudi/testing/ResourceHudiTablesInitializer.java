@@ -724,18 +724,18 @@ public class ResourceHudiTablesInitializer
         private static List<Column> hudiCustomKeyGenPartitionColumns()
         {
             return ImmutableList.of(
-                    column("part_country", HIVE_STRING),
-                    column("part_date", HIVE_STRING));
+                    column("partition_field_country", HIVE_STRING),
+                    column("partition_field_date", HIVE_STRING));
         }
 
         private static Map<String, String> hudiCustomKeyGenPartitions()
         {
             return ImmutableMap.of(
-                    "part_country=US/part_date=2025-06-06", "part_country=US/part_date=2025-06-06",
-                    "part_country=CN/part_date=2025-06-05", "part_country=CN/part_date=2025-06-05",
-                    "part_country=MY/part_date=2025-05-13", "part_country=MY/part_date=2025-05-13",
-                    "part_country=SG/part_date=2025-06-06", "part_country=SG/part_date=2025-06-06",
-                    "part_country=SG/part_date=2025-06-07", "part_country=SG/part_date=2025-06-07");
+                    "partition_field_country=US/partition_field_date=2025-06-06", "partition_field_country=US/partition_field_date=2025-06-06",
+                    "partition_field_country=CN/partition_field_date=2025-06-05", "partition_field_country=CN/partition_field_date=2025-06-05",
+                    "partition_field_country=MY/partition_field_date=2025-05-13", "partition_field_country=MY/partition_field_date=2025-05-13",
+                    "partition_field_country=SG/partition_field_date=2025-06-06", "partition_field_country=SG/partition_field_date=2025-06-06",
+                    "partition_field_country=SG/partition_field_date=2025-06-07", "partition_field_country=SG/partition_field_date=2025-06-07");
         }
     }
 

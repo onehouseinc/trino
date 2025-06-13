@@ -7,7 +7,7 @@ Structure of table:
 
 
 ```scala
-  test("Create MOR table with custom keygen partition field") {
+test("Create MOR table with custom keygen partition field") {
     withTempDir { tmp =>
         val tableName = "hudi_custom_keygen_pt_v8_mor"
 
@@ -19,8 +19,8 @@ Structure of table:
                |  price DOUBLE,
                |  ts LONG,
                |  -- Partition Source Fields --
-               |  part_country STRING,
-               |  part_date BIGINT
+               |  partition_field_country STRING,
+               |  partition_field_date BIGINT
                |) USING hudi
                | LOCATION '${tmp.getCanonicalPath}'
                | TBLPROPERTIES (
@@ -29,11 +29,11 @@ Structure of table:
                |  preCombineField = 'ts',
                |  -- Timestamp Keygen and Partition Configs --
                |  hoodie.table.keygenerator.class = 'org.apache.hudi.keygen.CustomKeyGenerator',
-               |  hoodie.datasource.write.partitionpath.field = 'part_country:SIMPLE,part_date:TIMESTAMP',
+               |  hoodie.datasource.write.partitionpath.field = 'partition_field_country:SIMPLE,partition_field_date:TIMESTAMP',
                |  hoodie.keygen.timebased.timestamp.type = 'EPOCHMILLISECONDS',
                |  hoodie.keygen.timebased.output.dateformat = 'yyyy-MM-dd',
                |  hoodie.keygen.timebased.timezone = 'UTC'
-               | ) PARTITIONED BY (part_country, part_date)
+               | ) PARTITIONED BY (partition_field_country, partition_field_date)
      """.stripMargin)
 
         // To not trigger compaction scheduling, and compaction
@@ -41,7 +41,6 @@ Structure of table:
         spark.sql(s"set hoodie.compact.inline=false")
 
         // Configure Hudi properties
-        spark.sql(s"SET hoodie.metadata.compact.max.delta.commits=1")
         spark.sql(s"SET hoodie.metadata.enable=true")
         spark.sql(s"SET hoodie.metadata.index.column.stats.enable=true")
 
