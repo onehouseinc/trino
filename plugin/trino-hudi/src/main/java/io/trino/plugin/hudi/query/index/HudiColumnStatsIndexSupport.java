@@ -19,6 +19,7 @@ import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 import io.trino.parquet.predicate.TupleDomainParquetPredicate;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
+import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.Range;
 import io.trino.spi.predicate.TupleDomain;
@@ -59,14 +60,14 @@ public class HudiColumnStatsIndexSupport
 {
     private static final Logger log = Logger.get(HudiColumnStatsIndexSupport.class);
 
-    public HudiColumnStatsIndexSupport(Lazy<HoodieTableMetaClient> lazyMetaClient)
+    public HudiColumnStatsIndexSupport(SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient)
     {
-        super(log, lazyMetaClient);
+        super(log, schemaTableName, lazyMetaClient);
     }
 
-    public HudiColumnStatsIndexSupport(Logger log, Lazy<HoodieTableMetaClient> lazyMetaClient)
+    public HudiColumnStatsIndexSupport(Logger log, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient)
     {
-        super(log, lazyMetaClient);
+        super(log, schemaTableName, lazyMetaClient);
     }
 
     @Override

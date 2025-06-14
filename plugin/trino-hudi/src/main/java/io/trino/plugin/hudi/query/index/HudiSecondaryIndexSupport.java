@@ -15,6 +15,7 @@ package io.trino.plugin.hudi.query.index;
 
 import io.airlift.log.Logger;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
+import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieIndexDefinition;
@@ -39,9 +40,9 @@ public class HudiSecondaryIndexSupport
 {
     private static final Logger log = Logger.get(HudiSecondaryIndexSupport.class);
 
-    public HudiSecondaryIndexSupport(Lazy<HoodieTableMetaClient> lazyMetaClient)
+    public HudiSecondaryIndexSupport(SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient)
     {
-        super(log, lazyMetaClient);
+        super(log, schemaTableName, lazyMetaClient);
     }
 
     @Override
@@ -59,8 +60,8 @@ public class HudiSecondaryIndexSupport
 
         Optional<Map.Entry<String, HoodieIndexDefinition>> firstApplicableIndex = findFirstApplicableSecondaryIndex(regularColumnPredicates);
         if (firstApplicableIndex.isEmpty()) {
-            log.debug("Took %s ms but no secondary index definition found matching the query's referenced columns for table %s.%s",
-                    timer.endTimer(), getDatabaseName(), getTableName());
+            log.debug("Took %s ms but no secondary index definition found matching the query's referenced columns for table %s",
+                    timer.endTimer(), schemaTableName);
             return inputFileSlices;
         }
 
@@ -73,8 +74,8 @@ public class HudiSecondaryIndexSupport
 
         List<String> secondaryKeys = constructRecordKeys(indexPredicates, indexedColumns);
         if (secondaryKeys.isEmpty()) {
-            log.warn(String.format("Took %s ms, but could not construct secondary keys for index '%s' from predicates. Skipping pruning for table %s.%s",
-                    timer.endTimer(), indexName, getDatabaseName(), getTableName()));
+            log.warn("Took %s ms, but could not construct secondary keys for index '%s' from predicates. Skipping pruning for table %s",
+                    timer.endTimer(), indexName, schemaTableName);
             return inputFileSlices;
         }
         log.debug(String.format("Constructed %d secondary keys for index lookup.", secondaryKeys.size()));
@@ -83,7 +84,7 @@ public class HudiSecondaryIndexSupport
         // TODO: document here what this map is keyed by
         Map<String, HoodieRecordGlobalLocation> recordKeyLocationsMap = metadataTable.readSecondaryIndex(secondaryKeys, indexName);
         if (recordKeyLocationsMap.isEmpty()) {
-            log.debug("Took %s ms, but secondary index lookup returned no locations for the given keys for table %s.%s", timer.endTimer(), getDatabaseName(), getTableName());
+            log.debug("Took %s ms, but secondary index lookup returned no locations for the given keys for table %s", timer.endTimer(), schemaTableName);
             // Return all original fileSlices
             return inputFileSlices;
         }

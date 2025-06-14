@@ -15,6 +15,7 @@ package io.trino.plugin.hudi.query.index;
 
 import io.airlift.log.Logger;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
+import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.avro.model.HoodieMetadataColumnStats;
 import org.apache.hudi.common.model.FileSlice;
@@ -39,9 +40,9 @@ public class HudiPartitionStatsIndexSupport
 {
     private static final Logger log = Logger.get(HudiColumnStatsIndexSupport.class);
 
-    public HudiPartitionStatsIndexSupport(Lazy<HoodieTableMetaClient> lazyMetaClient)
+    public HudiPartitionStatsIndexSupport(SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient)
     {
-        super(log, lazyMetaClient);
+        super(log, schemaTableName, lazyMetaClient);
     }
 
     @Override
@@ -103,7 +104,7 @@ public class HudiPartitionStatsIndexSupport
                 })
                 .collect(Collectors.toList());
 
-        log.info("Took %s ms to prune partitions using Partition Stats Index for table %s.%s", timer.endTimer(), getDatabaseName(), getTableName());
+        log.info("Took %s ms to prune partitions using Partition Stats Index for table %s", timer.endTimer(), schemaTableName);
         return Optional.of(prunedPartitions);
     }
 

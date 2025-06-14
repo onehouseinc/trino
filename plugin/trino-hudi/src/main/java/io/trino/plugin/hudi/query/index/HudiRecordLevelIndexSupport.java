@@ -17,6 +17,7 @@ import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
 import io.trino.spi.TrinoException;
+import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.model.FileSlice;
@@ -48,9 +49,9 @@ public class HudiRecordLevelIndexSupport
     public static final String DEFAULT_COLUMN_VALUE_SEPARATOR = ":";
     public static final String DEFAULT_RECORD_KEY_PARTS_SEPARATOR = ",";
 
-    public HudiRecordLevelIndexSupport(Lazy<HoodieTableMetaClient> lazyMetaClient)
+    public HudiRecordLevelIndexSupport(SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient)
     {
-        super(log, lazyMetaClient);
+        super(log, schemaTableName, lazyMetaClient);
     }
 
     @Override
@@ -83,8 +84,8 @@ public class HudiRecordLevelIndexSupport
 
         if (recordKeys.isEmpty()) {
             // If key construction fails (e.g., incompatible predicates not caught by canApply, or placeholder issue)
-            log.warn("Took %s ms, but could not construct record keys from predicates. Skipping record index pruning for table %s.%s",
-                    timer.endTimer(), getDatabaseName(), getTableName());
+            log.warn("Took %s ms, but could not construct record keys from predicates. Skipping record index pruning for table %s",
+                    timer.endTimer(), schemaTableName);
             return inputFileSlices;
         }
         log.debug(String.format("Constructed %d record keys for index lookup.", recordKeys.size()));
@@ -93,8 +94,8 @@ public class HudiRecordLevelIndexSupport
         // TODO: document here what this map is keyed by
         Map<String, HoodieRecordGlobalLocation> recordIndex = metadataTable.readRecordIndex(recordKeys);
         if (recordIndex.isEmpty()) {
-            log.debug("Record level index lookup took %s ms but returned no locations for the given keys %s for table %s.%s",
-                    timer.endTimer(), recordKeys, getDatabaseName(), getTableName());
+            log.debug("Record level index lookup took %s ms but returned no locations for the given keys %s for table %s",
+                    timer.endTimer(), recordKeys, schemaTableName);
             // Return all original fileSlices
             return inputFileSlices;
         }
