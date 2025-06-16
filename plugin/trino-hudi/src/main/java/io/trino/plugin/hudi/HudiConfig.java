@@ -59,6 +59,7 @@ public class HudiConfig
     private boolean isSecondaryIndexEnabled = true;
     private boolean isColumnStatsIndexEnabled = true;
     private boolean isPartitionStatsIndexEnabled = true;
+    private boolean metadataCacheEnabled = true;
 
     public List<String> getColumnsToHide()
     {
@@ -332,5 +333,18 @@ public class HudiConfig
     public Duration getDynamicFilteringWaitTimeout()
     {
         return dynamicFilteringWaitTimeout;
+    }
+
+    public boolean isMetadataCacheEnabled()
+    {
+        return metadataCacheEnabled;
+    }
+
+    @Config("hudi.metadata.cache.enabled")
+    @ConfigDescription("Enables in-memory caching of Hudi metadata files on coordinator if fs.cache.enabled is not set to true")
+    public HudiConfig setMetadataCacheEnabled(boolean metadataCacheEnabled)
+    {
+        this.metadataCacheEnabled = metadataCacheEnabled;
+        return this;
     }
 }
