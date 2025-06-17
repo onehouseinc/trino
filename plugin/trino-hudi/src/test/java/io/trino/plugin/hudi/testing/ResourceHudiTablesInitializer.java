@@ -739,7 +739,8 @@ public class ResourceHudiTablesInitializer
                     "partition_field_country=SG/partition_field_date=2025-06-07", "partition_field_country=SG/partition_field_date=2025-06-07");
         }
 
-        private static List<Column> hudiDateDimColumns() {
+        private static List<Column> hudiDateDimColumns()
+        {
             return ImmutableList.of(
                     column("d_date_sk", HIVE_INT),
                     column("d_date_id", HIVE_STRING),
