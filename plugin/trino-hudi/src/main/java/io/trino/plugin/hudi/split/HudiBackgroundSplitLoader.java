@@ -119,7 +119,7 @@ public class HudiBackgroundSplitLoader
                     return;
                 }
             }
-            catch (Exception e) {
+            catch (Throwable e) {
                 errorListener.accept(e);
             }
         }

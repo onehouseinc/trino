@@ -265,7 +265,7 @@ public class HudiColumnStatsIndexSupport
             }
             return Domain.create(ValueSet.all(type), hasNullValue);
         }
-        catch (Exception e) {
+        catch (Throwable e) {
             log.warn("failed to create Domain for column: %s which type is: %s", colName, type.toString());
             return Domain.create(ValueSet.all(type), hasNullValue);
         }
