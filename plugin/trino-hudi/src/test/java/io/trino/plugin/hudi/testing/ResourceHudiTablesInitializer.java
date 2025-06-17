@@ -347,6 +347,7 @@ public class ResourceHudiTablesInitializer
         HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR(hudiTimestampKeygenColumns(), hudiTimestampKeygenPartitionColumns(), hudiTimestampKeygenPartitions("EPOCHMILLISECONDS"), true),
         HUDI_TIMESTAMP_KEYGEN_PT_SCALAR_TO_YYYY_MM_DD_HH_V8_MOR(hudiTimestampKeygenColumns(), hudiTimestampKeygenPartitionColumns(), hudiTimestampKeygenPartitions("SCALAR"), true),
         HUDI_CUSTOM_KEYGEN_PT_V8_MOR(hudiCustomKeyGenColumns(), hudiCustomKeyGenPartitionColumns(), hudiCustomKeyGenPartitions(), false),
+        DATE_DIM(hudiDateDimColumns(), ImmutableList.of(), ImmutableMap.of(), false),
         /**/;
 
         private static final List<Column> HUDI_META_COLUMNS = ImmutableList.of(
@@ -736,6 +737,38 @@ public class ResourceHudiTablesInitializer
                     "partition_field_country=MY/partition_field_date=2025-05-13", "partition_field_country=MY/partition_field_date=2025-05-13",
                     "partition_field_country=SG/partition_field_date=2025-06-06", "partition_field_country=SG/partition_field_date=2025-06-06",
                     "partition_field_country=SG/partition_field_date=2025-06-07", "partition_field_country=SG/partition_field_date=2025-06-07");
+        }
+
+        private static List<Column> hudiDateDimColumns() {
+            return ImmutableList.of(
+                    column("d_date_sk", HIVE_INT),
+                    column("d_date_id", HIVE_STRING),
+                    column("d_date", HIVE_DATE),
+                    column("d_month_seq", HIVE_INT),
+                    column("d_week_seq", HIVE_INT),
+                    column("d_quarter_seq", HIVE_INT),
+                    column("d_year", HIVE_INT),
+                    column("d_dow", HIVE_INT),
+                    column("d_moy", HIVE_INT),
+                    column("d_dom", HIVE_INT),
+                    column("d_qoy", HIVE_INT),
+                    column("d_fy_year", HIVE_INT),
+                    column("d_fy_quarter_seq", HIVE_INT),
+                    column("d_fy_week_seq", HIVE_INT),
+                    column("d_day_name", HIVE_STRING),
+                    column("d_quarter_name", HIVE_STRING),
+                    column("d_holiday", HIVE_STRING),
+                    column("d_weekend", HIVE_STRING),
+                    column("d_following_holiday", HIVE_STRING),
+                    column("d_first_dom", HIVE_INT),
+                    column("d_last_dom", HIVE_INT),
+                    column("d_same_day_ly", HIVE_INT),
+                    column("d_same_day_lq", HIVE_INT),
+                    column("d_current_day", HIVE_STRING),
+                    column("d_current_week", HIVE_STRING),
+                    column("d_current_month", HIVE_STRING),
+                    column("d_current_quarter", HIVE_STRING),
+                    column("d_current_year", HIVE_STRING));
         }
     }
 

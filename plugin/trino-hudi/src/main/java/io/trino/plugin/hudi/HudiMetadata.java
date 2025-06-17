@@ -474,6 +474,8 @@ public class HudiMetadata
                         return;
                     }
 
+                    log.info("Starting table statistics calculation for table: %s, commit: %s",
+                            tableHandle.getSchemaTableName(), latestCommit);
                     TableStatistics newStatistics = TableStatisticsReader.create(metaClient)
                             .getTableStatistics(latestCommit, columnHandles);
                     HudiTableStatistics newValue = new HudiTableStatistics(latestCommit, newStatistics);
@@ -481,7 +483,7 @@ public class HudiMetadata
                     log.info("Async table statistics calculation finished in %s ms for table: %s, commit: %s",
                             refreshTimer.endTimer(), tableHandle.getSchemaTableName(), latestCommit);
                 }
-                catch (Exception e) {
+                catch (Throwable e) {
                     log.error(e, "Error calculating table statistics asynchronously for table %s", tableHandle.getSchemaTableName());
                 }
                 finally {

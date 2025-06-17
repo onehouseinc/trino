@@ -73,6 +73,7 @@ import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.Testing
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_PT_TBL;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_CUSTOM_KEYGEN_PT_V8_MOR;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.DATE_DIM;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_PT_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_COW;
@@ -326,6 +327,12 @@ public class TestHudiSmokeTest
         assertThat(distributionDetails).isNotNull();
         String distribution = distributionDetails.split(":")[1].trim();
         assertThat(distribution).isEqualTo(tableStatisticsEnabled ? "REPLICATED" : "PARTITIONED");
+
+        @Language("SQL") String query2 = "EXPLAIN (FORMAT JSON) SELECT d_date_sk, d_date_id FROM " + DATE_DIM;
+        String jsonPlanString2 = (String) queryRunner.execute(session, query2).getOnlyValue();
+        Thread.sleep(2000);
+        jsonPlanString2 = (String) queryRunner.execute(session, query2).getOnlyValue();
+        String tableName2 = "tests.hudi_date_dim_v8";
     }
 
     @Test
