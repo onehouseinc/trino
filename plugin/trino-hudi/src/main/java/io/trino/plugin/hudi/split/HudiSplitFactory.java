@@ -40,7 +40,7 @@ import static java.util.Objects.requireNonNull;
 public class HudiSplitFactory
 {
     private static final double SPLIT_SLOP = 1.1;   // 10% slop/overflow allowed in bytes per split while generating splits
-    private static final long MIN_BLOCK_SIZE = DataSize.of(32, MEGABYTE).toBytes();
+    private static final long MIN_BLOCK_SIZE = DataSize.of(128, MEGABYTE).toBytes();
 
     private final HudiTableHandle hudiTableHandle;
     private final HudiSplitWeightProvider hudiSplitWeightProvider;
