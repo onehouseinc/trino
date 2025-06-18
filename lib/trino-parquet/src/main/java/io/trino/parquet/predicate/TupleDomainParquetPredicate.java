@@ -16,6 +16,7 @@ package io.trino.parquet.predicate;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.VerifyException;
 import com.google.common.collect.ImmutableList;
+import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 import io.trino.parquet.BloomFilterStore;
@@ -88,6 +89,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 
 public class TupleDomainParquetPredicate
 {
+    private static final Logger log = Logger.get(TupleDomainParquetPredicate.class);
     private final TupleDomain<ColumnDescriptor> effectivePredicate;
     private final List<ColumnDescriptor> columns;
     private final DateTimeZone timeZone;
@@ -204,17 +206,24 @@ public class TupleDomainParquetPredicate
                 .orElseThrow(() -> new IllegalStateException("Effective predicate other than none should have domains"));
 
         for (ColumnDescriptor column : columns) {
+            log.info("Start checking column %s in %s", column, id);
             Domain effectivePredicateDomain = effectivePredicateDomains.get(column);
             if (effectivePredicateDomain == null) {
+                log.info("Skipping column %s in %s since it is not in effective predicate", column, id);
                 continue;
             }
 
             // ParquetMetadataConverter#fromParquetColumnIndex returns null if the parquet primitive type does not support min/max stats
             if (!isMinMaxStatsSupported(column.getPrimitiveType())) {
+                log.info("Skipping column %s in %s since it does not support min/max stats", column, id);
                 continue;
             }
+            log.info("Checking column %s in %s by getting column index", column, id);
+            long start = System.currentTimeMillis();
             ColumnIndex columnIndex = columnIndexStore.getColumnIndex(ColumnPath.get(column.getPath()));
+            log.info("Column index loaded in %s ms for column %s in %s", System.currentTimeMillis() - start, column, id);
             if (columnIndex == null) {
+                log.info("Skipping column %s in %s since it does not have column index", column, id);
                 continue;
             }
 
@@ -224,6 +233,7 @@ public class TupleDomainParquetPredicate
             }
             Domain domain = getDomain(effectivePredicateDomain.getType(), columnValueCount, columnIndex, id, column, timeZone);
             if (!effectivePredicateDomain.overlaps(domain)) {
+                log.info("Skipping column %s in %s since it does not overlap with effective predicate", column, id);
                 return false;
             }
         }
