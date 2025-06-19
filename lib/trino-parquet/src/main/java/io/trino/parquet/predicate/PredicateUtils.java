@@ -16,7 +16,6 @@ package io.trino.parquet.predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.airlift.slice.SliceInput;
 import io.trino.parquet.BloomFilterStore;
@@ -73,7 +72,6 @@ import static java.util.Objects.requireNonNull;
 
 public final class PredicateUtils
 {
-    private static final Logger log = Logger.get(PredicateUtils.class);
     // Maximum size of dictionary that we will read for row-group pruning.
     // Reading larger dictionaries is typically not beneficial. Before checking
     // the dictionary, the row-group, page indexes and bloomfilters have already been checked
@@ -163,8 +161,7 @@ public final class PredicateUtils
         // This prevents unnecessary filesystem reads and decoding work when the predicate on a column comes from
         // file-level min/max stats or more generally when the predicate selects a range equal to or wider than row-group min/max.
         TupleDomainParquetPredicate indexPredicate = new TupleDomainParquetPredicate(parquetTupleDomain, candidateColumns.get(), timeZone);
-        log.info("columnIndexStore present: %s", columnIndexStore.isPresent());
-        log.info("bloomFilterStore present: %s", bloomFilterStore.isPresent());
+
         // Page stats is finer grained but relatively more expensive, so we do the filtering after above block filtering.
         if (columnIndexStore.isPresent() && !indexPredicate.matches(columnValueCounts, columnIndexStore.get(), dataSource.getId())) {
             return false;
