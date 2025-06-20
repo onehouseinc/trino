@@ -22,14 +22,10 @@ import io.trino.plugin.hudi.partition.HiveHudiPartitionInfo;
 import io.trino.plugin.hudi.partition.HudiPartitionInfo;
 import io.trino.plugin.hudi.query.index.HudiIndexSupport;
 import io.trino.plugin.hudi.query.index.IndexSupportFactory;
-import io.trino.plugin.hudi.storage.TrinoStorageConfiguration;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.SchemaTableName;
-import org.apache.hudi.common.config.HoodieMetadataConfig;
-import org.apache.hudi.common.engine.HoodieLocalEngineContext;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
-import org.apache.hudi.common.table.view.FileSystemViewManager;
 import org.apache.hudi.common.table.view.HoodieTableFileSystemView;
 import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.metadata.HoodieTableMetadata;
@@ -42,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static io.trino.plugin.hudi.HudiUtil.getFileSystemView;
 
 public class HudiSnapshotDirectoryLister
         implements HudiDirectoryLister
@@ -60,14 +57,11 @@ public class HudiSnapshotDirectoryLister
             Lazy<Map<String, Partition>> lazyAllPartitions)
     {
         this.tableHandle = tableHandle;
-        HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder()
-                .enable(enableMetadataTable)
-                .build();
         SchemaTableName schemaTableName = tableHandle.getSchemaTableName();
         this.lazyFileSystemView = Lazy.lazily(() -> {
             HoodieTimer timer = HoodieTimer.start();
-            HoodieTableFileSystemView fileSystemView = FileSystemViewManager.createInMemoryFileSystemView(
-                    new HoodieLocalEngineContext(new TrinoStorageConfiguration()), tableHandle.getMetaClient(), metadataConfig);
+            HoodieTableMetaClient metaClient = tableHandle.getMetaClient();
+            HoodieTableFileSystemView fileSystemView = getFileSystemView(lazyTableMetadata.get(), metaClient);
             if (enableMetadataTable) {
                 fileSystemView.loadAllPartitions();
             }
