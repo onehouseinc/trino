@@ -15,6 +15,7 @@ package io.trino.plugin.hudi.query.index;
 
 import io.airlift.log.Logger;
 import io.trino.plugin.hive.HiveColumnHandle;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
@@ -26,6 +27,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static io.trino.plugin.hudi.HudiSessionProperties.isColumnStatsIndexEnabled;
+import static io.trino.plugin.hudi.HudiSessionProperties.isExpressionIndexEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.isNoOpIndexEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.isPartitionStatsIndexEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.isRecordLevelIndexEnabled;
@@ -50,6 +52,7 @@ public class IndexSupportFactory
      *
      * @param schemaTableName The table schema and name
      * @param lazyMetaClient The Hudi table metadata client that is lazily instantiated.
+     * @param tableHandle The Hudi table handle.
      * @param tupleDomain The query predicates.
      * @param session Session containing session properties, which is required to control index behaviours for testing/debugging
      * @return An Optional containing the chosen HudiIndexSupport strategy, or empty if none are applicable or enabled.
@@ -57,9 +60,12 @@ public class IndexSupportFactory
     public static Optional<HudiIndexSupport> createIndexSupport(
             SchemaTableName schemaTableName,
             Lazy<HoodieTableMetaClient> lazyMetaClient,
+            HudiTableHandle tableHandle,
             TupleDomain<HiveColumnHandle> tupleDomain,
             ConnectorSession session)
     {
+        log.info("Expression Index candidates: %s", tableHandle.getExpressionIndexCandidates());
+
         // Define strategies as Suppliers paired with their config (isEnabled) flag
         // IMPORTANT: Order of strategy here determines which index implementation is preferred first
         List<StrategyProvider> strategyProviders = List.of(
@@ -72,6 +78,9 @@ public class IndexSupportFactory
                 new StrategyProvider(
                         () -> isColumnStatsIndexEnabled(session),
                         () -> new HudiColumnStatsIndexSupport(schemaTableName, lazyMetaClient)),
+                new StrategyProvider(
+                        () -> isExpressionIndexEnabled(session),
+                        () -> new HudiExpressionIndexSupport(schemaTableName, lazyMetaClient, tableHandle.getExpressionIndexCandidates())),
                 new StrategyProvider(
                         () -> isNoOpIndexEnabled(session),
                         () -> new HudiNoOpIndexSupport(schemaTableName, lazyMetaClient)));

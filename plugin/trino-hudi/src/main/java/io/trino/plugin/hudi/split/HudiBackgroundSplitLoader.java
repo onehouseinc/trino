@@ -69,7 +69,7 @@ public class HudiBackgroundSplitLoader
     private final Executor splitGeneratorExecutor;
     private final int splitGeneratorNumThreads;
     private final HudiSplitFactory hudiSplitFactory;
-    private final Lazy<List<String>> lazyPartitions;
+    private Lazy<List<String>> lazyPartitions;
     private final Consumer<Throwable> errorListener;
     private final boolean enableMetadataTable;
     private final Lazy<HoodieTableMetaClient> lazyMetaClient;
@@ -101,7 +101,7 @@ public class HudiBackgroundSplitLoader
         this.errorListener = requireNonNull(errorListener, "errorListener is null");
         SchemaTableName schemaTableName = tableHandle.getSchemaTableName();
         this.indexSupportOpt = IndexSupportFactory.createIndexSupport(
-                schemaTableName, lazyMetaClient, regularPredicates, session);
+                schemaTableName, lazyMetaClient, tableHandle, regularPredicates, session);
         this.partitionIndexSupportOpt = IndexSupportFactory.createPartitionStatsIndexSupport(
                 schemaTableName, lazyMetaClient, regularPredicates, session);
     }
@@ -112,8 +112,17 @@ public class HudiBackgroundSplitLoader
         // Wrap entire logic so that ANY error will be thrown out and not cause program to get stuck
         try {
             if (enableMetadataTable) {
+                HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
+                HoodieEngineContext engineContext = new HoodieLocalEngineContext(lazyMetaClient.get().getStorage().getConf());
+                HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
+                        engineContext, lazyMetaClient.get().getStorage(), metadataConfig, lazyMetaClient.get().getBasePath().toString(), true);
+
+                if (partitionIndexSupportOpt.isPresent()) {
+                    doIndexEnabledPartitionPruning(metadataTable);
+                }
+
                 if (indexSupportOpt.isPresent()) {
-                    indexEnabledSplitGenerator(indexSupportOpt.get());
+                    indexEnabledSplitGenerator(metadataTable, indexSupportOpt.get());
                     return;
                 }
             }
@@ -126,26 +135,27 @@ public class HudiBackgroundSplitLoader
         }
     }
 
-    private void indexEnabledSplitGenerator(HudiIndexSupport hudiIndexSupport)
+    private void doIndexEnabledPartitionPruning(HoodieTableMetadata metadataTable)
     {
         log.info("Start split generation with index support on table %s.%s", tableHandle.getSchemaName(), tableHandle.getTableName());
-        // Data Skipping based on column stats
-        HoodieMetadataConfig metadataConfig = HoodieMetadataConfig.newBuilder().enable(true).build();
-        HoodieEngineContext engineContext = new HoodieLocalEngineContext(lazyMetaClient.get().getStorage().getConf());
-        HoodieTableMetadata metadataTable = HoodieTableMetadata.create(
-                engineContext,
-                lazyMetaClient.get().getStorage(), metadataConfig, lazyMetaClient.get().getBasePath().toString(), true);
 
         // Attempt to apply partition pruning using partition stats index
         Optional<List<String>> effectivePartitionsOpt = partitionIndexSupportOpt.isPresent() ? partitionIndexSupportOpt.get().prunePartitions(
                 lazyPartitions.get(), metadataTable, regularPredicates.transformKeys(HiveColumnHandle::getName)) : Optional.empty();
 
+        // Updates the partitions attribute with an ImmutableList of prunedPartitions
+        effectivePartitionsOpt.ifPresent(prunedPartitions -> lazyPartitions = Lazy.lazily(() -> prunedPartitions));
+    }
+
+    private void indexEnabledSplitGenerator(HoodieTableMetadata metadataTable, HudiIndexSupport hudiIndexSupport)
+    {
         // For MDT the file listing is already loaded in memory
         // TODO(yihua): refactor split loader/directory lister API for maintainability
         Map<String, List<FileSlice>> partitionFileSliceMap = new HashMap<>();
         Map<String, List<HivePartitionKey>> partitionToPartitionKeyMap = new HashMap<>();
+
         // non-partitioned tables have empty strings
-        for (String partitionName : effectivePartitionsOpt.orElse(lazyPartitions.get())) {
+        for (String partitionName : lazyPartitions.get()) {
             Optional<HudiPartitionInfo> partitionInfo = hudiDirectoryLister.getPartitionInfo(partitionName);
             partitionInfo.ifPresent(hudiPartitionInfo -> {
                 if (hudiPartitionInfo.doesMatchPredicates() || partitionName.equals(NON_PARTITION)) {
