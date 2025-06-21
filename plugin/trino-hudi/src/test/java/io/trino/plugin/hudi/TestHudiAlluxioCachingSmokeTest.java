@@ -1,0 +1,44 @@
+package io.trino.plugin.hudi;
+
+import com.google.common.collect.ImmutableMap;
+import com.google.common.io.Closer;
+import org.junit.jupiter.api.AfterAll;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static com.google.common.io.MoreFiles.deleteRecursively;
+import static com.google.common.io.RecursiveDeleteOption.ALLOW_INSECURE;
+
+public class TestHudiAlluxioCachingSmokeTest
+        extends TestHudiSmokeTest
+{
+    private final Path cacheDirectory;
+    private final Closer closer = Closer.create();
+
+    TestHudiAlluxioCachingSmokeTest()
+            throws IOException
+    {
+        super();
+        cacheDirectory = Files.createTempDirectory("cache");
+        closer.register(() -> deleteRecursively(cacheDirectory, ALLOW_INSECURE));
+    }
+
+    @AfterAll
+    public void tearDown()
+            throws Exception
+    {
+        closer.close();
+    }
+
+    @Override
+    public ImmutableMap<String, String> getAdditionalHudiProperties()
+    {
+        return ImmutableMap.<String, String>builder()
+                .put("fs.cache.enabled", "true")
+                .put("fs.cache.directories", cacheDirectory.toAbsolutePath().toString())
+                .put("fs.cache.max-sizes", "1GB")
+                .buildOrThrow();
+    }
+}

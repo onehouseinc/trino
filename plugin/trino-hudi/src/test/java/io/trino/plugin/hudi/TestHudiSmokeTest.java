@@ -14,6 +14,7 @@
 package io.trino.plugin.hudi;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import io.trino.Session;
 import io.trino.filesystem.Location;
@@ -93,9 +94,15 @@ public class TestHudiSmokeTest
     protected QueryRunner createQueryRunner()
             throws Exception
     {
-        return HudiQueryRunner.builder()
-                .setDataLoader(new ResourceHudiTablesInitializer())
-                .build();
+        HudiQueryRunner.Builder builder = HudiQueryRunner.builder()
+                .setDataLoader(new ResourceHudiTablesInitializer());
+        getAdditionalHudiProperties().forEach(builder::addConnectorProperty);
+        return builder.build();
+    }
+
+    protected ImmutableMap<String, String> getAdditionalHudiProperties()
+    {
+        return ImmutableMap.of();
     }
 
     @Test
