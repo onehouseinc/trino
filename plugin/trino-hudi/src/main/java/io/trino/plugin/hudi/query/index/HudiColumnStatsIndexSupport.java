@@ -101,6 +101,7 @@ public class HudiColumnStatsIndexSupport
                     return Optional.empty();
                 }
 
+                // {fileName -> {columnName -> HoodieMetadataColumnStats}}
                 Map<String, Map<String, HoodieMetadataColumnStats>> statsByFileName =
                         lazyTableMetadata.get().getRecordsByKeyPrefixes(encodedTargetColumnNames,
                                         HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS, true)

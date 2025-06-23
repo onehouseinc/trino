@@ -29,7 +29,13 @@ public class HudiTrinoMonthFunctionExpression
 
     public HudiTrinoMonthFunctionExpression(List<Expression> arguments, Type returnType)
     {
-        super(HUDI_FN_NAME, arguments, returnType);
+        super(arguments, returnType);
+    }
+
+    @Override
+    public String getName()
+    {
+        return HUDI_FN_NAME;
     }
 
     @Override
@@ -50,5 +56,10 @@ public class HudiTrinoMonthFunctionExpression
     public Object castToTrinoType(Object stat)
     {
         return ((Integer) stat).longValue();
+    }
+
+    public static String getTrinoFunctionName()
+    {
+        return TRINO_FN_NAME;
     }
 }

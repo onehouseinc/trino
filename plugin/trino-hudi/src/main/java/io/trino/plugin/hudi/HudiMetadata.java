@@ -221,8 +221,7 @@ public class HudiMetadata
         HudiTableHandle handle = (HudiTableHandle) tableHandle;
 
         // Convert ConnectorExpression and extract candidate expressions for use in Expression index
-        ExpressionConverter expressionConverter = new ExpressionConverter(constraint.getExpression());
-        List<org.apache.hudi.expression.Predicate> expressionIndexCandidates = expressionConverter.getCandidateExpressions();
+        List<org.apache.hudi.expression.Predicate> expressionIndexCandidates = ExpressionConverter.getInstance().convert(constraint.getExpression());
 
         // Process TupleDomain predicates from constraint.getSummary()
         HudiPredicates predicates = HudiPredicates.from(constraint.getSummary());

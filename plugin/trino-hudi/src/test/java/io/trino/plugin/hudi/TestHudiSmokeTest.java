@@ -719,6 +719,7 @@ public class TestHudiSmokeTest
                 .withSecondaryIndexEnabled(false)
                 .withExpressionIndexEnabled(true)
                 .withPartitionStatsIndexEnabled(false)
+                .withExpressionIndexTimeout("5s")
                 .build();
 
         @Language("SQL") String monthIdxFileSkippingSql = "SELECT id FROM " + HUDI_EI_PT_V8_MOR +

@@ -13,6 +13,7 @@
  */
 package io.trino.plugin.hudi.expression;
 
+import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.BigintType;
 import io.trino.spi.type.BooleanType;
 import io.trino.spi.type.DateType;
@@ -42,6 +43,7 @@ public class HudiTypeConverter
             case VarcharType _ -> Types.StringType.get();
             case TimestampType _, TimestampWithTimeZoneType _ -> Types.TimestampType.get();
             case DateType _ -> Types.DateType.get();
+            case ArrayType arrayType -> Types.ArrayType.get(-1, true, getType(arrayType.getElementType()));
             default -> throw new IllegalStateException("Unsupported type: " + trinoType);
         };
     }

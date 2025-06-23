@@ -23,13 +23,13 @@ import java.util.List;
 public class HudiTrinoHourFunctionExpression
         extends HudiTrinoFunctionExpression
 {
-    static final String TRINO_FN_NAME = "month";
+    static final String TRINO_FN_NAME = "hour";
 
-    private static final String HUDI_FN_NAME = "month";
+    private static final String HUDI_FN_NAME = "hour";
 
     public HudiTrinoHourFunctionExpression(List<Expression> arguments, Type returnType)
     {
-        super(HUDI_FN_NAME, arguments, returnType);
+        super(arguments, returnType);
     }
 
     @Override
@@ -52,5 +52,10 @@ public class HudiTrinoHourFunctionExpression
             // Function does not accept arguments, do not need to check for it
         }
         return false;
+    }
+
+    public static String getTrinoFunctionName()
+    {
+        return TRINO_FN_NAME;
     }
 }

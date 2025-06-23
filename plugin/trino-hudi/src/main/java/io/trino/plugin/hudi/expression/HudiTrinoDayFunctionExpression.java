@@ -27,9 +27,9 @@ public class HudiTrinoDayFunctionExpression
 
     private static final String HUDI_FN_NAME = "day";
 
-    public HudiTrinoDayFunctionExpression(String name, List<Expression> arguments, Type returnType)
+    public HudiTrinoDayFunctionExpression(List<Expression> arguments, Type returnType)
     {
-        super(name, arguments, returnType);
+        super(arguments, returnType);
     }
 
     @Override
@@ -58,5 +58,10 @@ public class HudiTrinoDayFunctionExpression
     public Object castToTrinoType(Object stat)
     {
         return ((Integer) stat).longValue();
+    }
+
+    public static String getTrinoFunctionName()
+    {
+        return TRINO_FN_NAME;
     }
 }

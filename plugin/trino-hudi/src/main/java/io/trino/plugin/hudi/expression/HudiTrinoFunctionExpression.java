@@ -24,13 +24,11 @@ import java.util.stream.Collectors;
 public class HudiTrinoFunctionExpression
         implements HudiTrinoExpression
 {
-    private final String name;
     private final List<Expression> arguments;
     private final Type returnType;
 
-    public HudiTrinoFunctionExpression(String name, List<Expression> arguments, Type returnType)
+    public HudiTrinoFunctionExpression(List<Expression> arguments, Type returnType)
     {
-        this.name = name;
         // Store an immutable copy or an unmodifiable view
         this.arguments = arguments != null ? List.copyOf(arguments) : Collections.emptyList();
         this.returnType = returnType;
@@ -38,7 +36,7 @@ public class HudiTrinoFunctionExpression
 
     public String getName()
     {
-        return name;
+        return HudiTrinoFunctionExpression.class.getSimpleName();
     }
 
     @Override
@@ -62,7 +60,7 @@ public class HudiTrinoFunctionExpression
     @Override
     public String toString()
     {
-        return name + arguments.stream().map(Object::toString).collect(Collectors.joining(", ", "(", ")"));
+        return getName() + arguments.stream().map(Object::toString).collect(Collectors.joining(", ", "(", ")"));
     }
 
     public boolean canUseIndex(HoodieIndexDefinition indexDefinition)

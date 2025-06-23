@@ -14,8 +14,11 @@
 package io.trino.plugin.hudi.query.index;
 
 import io.airlift.log.Logger;
+import io.airlift.units.Duration;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.expression.HudiColumnStatsIndexEvaluator;
 import io.trino.plugin.hudi.expression.HudiTrinoFunctionExpression;
+import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.avro.model.HoodieMetadataColumnStats;
@@ -25,7 +28,6 @@ import org.apache.hudi.common.model.HoodieIndexDefinition;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.common.util.hash.ColumnIndexID;
-import org.apache.hudi.common.util.hash.PartitionIndexID;
 import org.apache.hudi.expression.Expression;
 import org.apache.hudi.expression.Literal;
 import org.apache.hudi.expression.Predicate;
@@ -34,11 +36,18 @@ import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadataUtil;
 import org.apache.hudi.util.Lazy;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static io.trino.plugin.hudi.HudiSessionProperties.getExpressionIndexWaitTimeout;
 
 public class HudiExpressionIndexSupport
         extends HudiBaseIndexSupport
@@ -46,71 +55,81 @@ public class HudiExpressionIndexSupport
     private static final Logger log = Logger.get(HudiExpressionIndexSupport.class);
     private final List<Predicate> predicates;
     private final Map<HoodieIndexDefinition, Expression> applicableIndexDefinitions;
+    private final CompletableFuture<Optional<ExpressionIndexStats>> expressionIndexStatsFuture;
+    private final Duration expressionIndexWaitTimeout;
+    private final long futureStartTimeMs;
 
-    public HudiExpressionIndexSupport(SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, List<Predicate> predicates)
+    public HudiExpressionIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, HudiTableHandle tableHandle)
     {
         super(log, schemaTableName, lazyMetaClient);
-        this.predicates = predicates;
-        applicableIndexDefinitions = getApplicableIndexDefinitions();
+        this.predicates = tableHandle.getExpressionIndexCandidates();
+        this.applicableIndexDefinitions = getApplicableIndexDefinitions();
+        this.expressionIndexWaitTimeout = getExpressionIndexWaitTimeout(session);
+
+        this.expressionIndexStatsFuture = CompletableFuture.supplyAsync(() -> {
+            HoodieTimer timer = HoodieTimer.start();
+            for (Map.Entry<HoodieIndexDefinition, Expression> defExprEntry : this.applicableIndexDefinitions.entrySet()) {
+                List<String> encodedTargetColumnNames = defExprEntry.getKey().getSourceFields()
+                        .stream()
+                        .map(col -> new ColumnIndexID(col).asBase64EncodedString()).toList();
+
+                // HoodieMetadataColumnStats from all partitions (including PartitionStats) will be read out
+                // If partition pruning is handled before index is called, this will be fine for now
+                // TODO: Figure out how we can pass in LazyPartitions to reduce number of HoodieMetadataColumnStats loaded
+                String indexName = defExprEntry.getKey().getIndexName();
+                Map<String, List<HoodieMetadataColumnStats>> statsByFileName = lazyTableMetadata.get()
+                        .getRecordsByKeyPrefixes(encodedTargetColumnNames, indexName, true)
+                        .collectAsList()
+                        .stream()
+                        .filter(f -> f.getData().getColumnStatMetadata().isPresent())
+                        .map(f -> f.getData().getColumnStatMetadata().get())
+                        .collect(Collectors.groupingBy(HoodieMetadataColumnStats::getFileName));
+
+                log.debug("Expression stats lookup took %s ms and identified %d relevant file IDs.", timer.endTimer(), statsByFileName.size());
+
+                // TODO: Use all applicable Expressions
+                return Optional.of(ExpressionIndexStats.of(statsByFileName, defExprEntry.getValue()));
+            }
+            return Optional.empty();
+        });
+
+        this.futureStartTimeMs = System.currentTimeMillis();
     }
 
     @Override
-    public Map<String, List<FileSlice>> lookupCandidateFilesInMetadataTable(HoodieTableMetadata metadataTable, Map<String, List<FileSlice>> inputFileSlices, TupleDomain<String> regularColumnPredicates)
+    public boolean shouldSkipFileSlice(FileSlice slice)
     {
-        HoodieTimer timer = HoodieTimer.start();
+        try {
+            HudiColumnStatsIndexEvaluator columnStatsIndexEvaluator = new HudiColumnStatsIndexEvaluator();
 
-        HudiColumnStatsIndexEvaluator columnStatsIndexEvaluator = new HudiColumnStatsIndexEvaluator();
-        List<String> prunedPartitions = new ArrayList<>(inputFileSlices.keySet());
-        Map<HoodieIndexDefinition, Expression> indexDefinitions = getApplicableIndexDefinitions();
-        for (Map.Entry<HoodieIndexDefinition, Expression> defExprEntry : indexDefinitions.entrySet()) {
-            List<String> encodedTargetColumnNames = defExprEntry.getKey().getSourceFields()
-                    .stream()
-                    .map(col -> new ColumnIndexID(col).asBase64EncodedString()).toList();
-
-            List<String> finalEncodedTargetColumnNames;
-            if (!prunedPartitions.isEmpty()) {
-                // Embed partition information concat(columnName, partitionPath) if possible
-                finalEncodedTargetColumnNames = prunedPartitions.stream().map(partitionPath ->
-                                new PartitionIndexID(HoodieTableMetadataUtil.getPartitionIdentifier(partitionPath)).asBase64EncodedString())
-                        .flatMap(encodedPartition -> encodedTargetColumnNames.stream()
-                                .map(encodedTargetColumn -> encodedTargetColumn.concat(encodedPartition)))
-                        .toList();
-            }
-            else {
-                finalEncodedTargetColumnNames = encodedTargetColumnNames;
+            if (expressionIndexStatsFuture.isDone()) {
+                Optional<ExpressionIndexStats> expressionIndexStatsOpt = expressionIndexStatsFuture.get();
+                return expressionIndexStatsOpt
+                        .map(stats -> shouldSkipFileSlice(slice, stats.getStatsByFileName(), columnStatsIndexEvaluator, stats.getExpression()))
+                        .orElse(false);
             }
 
-            String indexName = defExprEntry.getKey().getIndexName();
-            Map<String, List<HoodieMetadataColumnStats>> statsByFileName = metadataTable
-                    .getRecordsByKeyPrefixes(finalEncodedTargetColumnNames, indexName, true)
-                    .collectAsList()
-                    .stream()
-                    .filter(f -> f.getData().getColumnStatMetadata().isPresent())
-                    .map(f -> f.getData().getColumnStatMetadata().get())
-                    .collect(Collectors.groupingBy(HoodieMetadataColumnStats::getFileName));
+            long elapsedMs = System.currentTimeMillis() - futureStartTimeMs;
+            if (elapsedMs > expressionIndexWaitTimeout.toMillis()) {
+                // Took too long; skip decision
+                return false;
+            }
 
-            // Prune files
-            Map<String, List<FileSlice>> candidateFileSlices = inputFileSlices
-                    .entrySet()
-                    .stream()
-                    .collect(Collectors
-                            .toMap(entry -> entry.getKey(), entry -> entry
-                                    .getValue()
-                                    .stream()
-                                    .filter(fileSlice -> shouldKeepFileSlice(fileSlice, statsByFileName, columnStatsIndexEvaluator, defExprEntry.getValue()))
-                                    .collect(Collectors.toList())));
+            // If still within the timeout window, wait up to the remaining time
+            long remainingMs = Math.max(0, expressionIndexWaitTimeout.toMillis() - elapsedMs);
+            Optional<ExpressionIndexStats> expressionIndexStatsOpt =
+                    expressionIndexStatsFuture.get(remainingMs, TimeUnit.MILLISECONDS);
 
-            this.printDebugMessage(candidateFileSlices, inputFileSlices, timer.endTimer());
-
-            // Only use first applicable Expression for now (returns on first iteration)
-            // TODO: Use all applicable Expressions
-            return candidateFileSlices;
+            return expressionIndexStatsOpt
+                    .map(stats -> shouldSkipFileSlice(slice, stats.getStatsByFileName(), columnStatsIndexEvaluator, stats.getExpression()))
+                    .orElse(false);
         }
-
-        return inputFileSlices;
+        catch (TimeoutException | InterruptedException | ExecutionException e) {
+            return false;
+        }
     }
 
-    private boolean shouldKeepFileSlice(FileSlice fileSlice,
+    private boolean shouldSkipFileSlice(FileSlice fileSlice,
             Map<String, List<HoodieMetadataColumnStats>> statsByFileName,
             HudiColumnStatsIndexEvaluator columnStatsIndexEvaluator,
             Expression expression)
@@ -122,12 +141,11 @@ public class HudiExpressionIndexSupport
             return true;
         }
 
-        // List should only have one element (All expressions supported only use one column as an argument)
         List<HoodieMetadataColumnStats> stats = statsByFileName.get(fileSliceName);
-        HoodieMetadataColumnStats currentColumnStats = stats.getFirst();
+        checkArgument(stats.size() == 1, "Map should only have one element (All expressions supported only use one column as an argument)");
         // Ensure that the column stats to be used for evaluation is set
-        columnStatsIndexEvaluator.setStats(currentColumnStats);
-        return expression.accept(columnStatsIndexEvaluator);
+        columnStatsIndexEvaluator.setStats(stats.getFirst());
+        return !expression.accept(columnStatsIndexEvaluator);
     }
 
     @Override
@@ -189,5 +207,32 @@ public class HudiExpressionIndexSupport
             return false;
         }
         return false;
+    }
+
+    static class ExpressionIndexStats
+    {
+        private final Map<String, List<HoodieMetadataColumnStats>> statsByFileName;
+        private final Expression expression;
+
+        private ExpressionIndexStats(Map<String, List<HoodieMetadataColumnStats>> statsByFileName, Expression expression)
+        {
+            this.statsByFileName = statsByFileName;
+            this.expression = expression;
+        }
+
+        public static ExpressionIndexStats of(Map<String, List<HoodieMetadataColumnStats>> statsByFileName, Expression expression)
+        {
+            return new ExpressionIndexStats(statsByFileName, expression);
+        }
+
+        public Map<String, List<HoodieMetadataColumnStats>> getStatsByFileName()
+        {
+            return statsByFileName;
+        }
+
+        public Expression getExpression()
+        {
+            return expression;
+        }
     }
 }

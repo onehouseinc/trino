@@ -53,8 +53,8 @@ public class IndexSupportFactory
      *
      * @param schemaTableName The table schema and name
      * @param lazyMetaClient The Hudi table metadata client that is lazily instantiated.
+     * @param lazyTableMetadata The Hudi table metadata table that is lazily instantiated.
      * @param tableHandle The Hudi table handle.
-     * @param tupleDomain The query predicates.
      * @param session Session containing session properties, which is required to control index behaviours for testing/debugging
      * @return An Optional containing the chosen HudiIndexSupport strategy, or empty if none are applicable or enabled.
      */
@@ -63,10 +63,10 @@ public class IndexSupportFactory
             Lazy<HoodieTableMetaClient> lazyMetaClient,
             Lazy<HoodieTableMetadata> lazyTableMetadata,
             HudiTableHandle tableHandle,
-            TupleDomain<HiveColumnHandle> tupleDomain,
             ConnectorSession session)
     {
         log.info("Expression Index candidates: %s", tableHandle.getExpressionIndexCandidates());
+        TupleDomain<HiveColumnHandle> tupleDomain = tableHandle.getRegularPredicates();
 
         // Define strategies as Suppliers paired with their config (isEnabled) flag
         // IMPORTANT: Order of strategy here determines which index implementation is preferred first
@@ -82,7 +82,7 @@ public class IndexSupportFactory
                         () -> new HudiColumnStatsIndexSupport(session, schemaTableName, lazyMetaClient, lazyTableMetadata, tupleDomain)),
                 new StrategyProvider(
                         () -> isExpressionIndexEnabled(session),
-                        () -> new HudiExpressionIndexSupport(session, schemaTableName, lazyMetaClient, lazyTableMetadata, tableHandle.getExpressionIndexCandidates())),
+                        () -> new HudiExpressionIndexSupport(session, schemaTableName, lazyMetaClient, lazyTableMetadata, tableHandle)),
                 new StrategyProvider(
                         () -> isNoOpIndexEnabled(session),
                         () -> new HudiNoOpIndexSupport(schemaTableName, lazyMetaClient)));

@@ -29,7 +29,13 @@ public class HudiTrinoFromUnixFunctionExpression
 
     public HudiTrinoFromUnixFunctionExpression(List<Expression> arguments, Type returnType)
     {
-        super(HUDI_FN_NAME, arguments, returnType);
+        super(arguments, returnType);
+    }
+
+    @Override
+    public String getName()
+    {
+        return HUDI_FN_NAME;
     }
 
     @Override
@@ -47,5 +53,10 @@ public class HudiTrinoFromUnixFunctionExpression
         }
 
         return false;
+    }
+
+    public static String getTrinoFunctionName()
+    {
+        return TRINO_FN_NAME;
     }
 }

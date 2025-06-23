@@ -73,6 +73,7 @@ public class HudiSessionProperties
     static final String COLUMN_STATS_WAIT_TIMEOUT = "column_stats_wait_timeout";
     static final String RECORD_INDEX_WAIT_TIMEOUT = "record_index_wait_timeout";
     static final String SECONDARY_INDEX_WAIT_TIMEOUT = "secondary_index_wait_timeout";
+    static final String EXPRESSION_INDEX_WAIT_TIMEOUT = "expression_index_wait_timeout";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -235,6 +236,11 @@ public class HudiSessionProperties
                         hudiConfig.getSecondaryIndexWaitTimeout(),
                         false),
                 durationProperty(
+                        EXPRESSION_INDEX_WAIT_TIMEOUT,
+                        "Maximum timeout to wait for loading expression index",
+                        hudiConfig.getExpressionIndexWaitTimeout(),
+                        false),
+                durationProperty(
                         DYNAMIC_FILTERING_WAIT_TIMEOUT,
                         "Duration to wait for completion of dynamic filters during split generation",
                         hudiConfig.getDynamicFilteringWaitTimeout(),
@@ -395,5 +401,10 @@ public class HudiSessionProperties
     public static Duration getSecondaryIndexWaitTimeout(ConnectorSession session)
     {
         return session.getProperty(SECONDARY_INDEX_WAIT_TIMEOUT, Duration.class);
+    }
+
+    public static Duration getExpressionIndexWaitTimeout(ConnectorSession session)
+    {
+        return session.getProperty(EXPRESSION_INDEX_WAIT_TIMEOUT, Duration.class);
     }
 }

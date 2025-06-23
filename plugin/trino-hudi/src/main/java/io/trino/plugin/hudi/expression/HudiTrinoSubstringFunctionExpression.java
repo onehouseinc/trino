@@ -40,7 +40,7 @@ public class HudiTrinoSubstringFunctionExpression
      */
     public HudiTrinoSubstringFunctionExpression(List<Expression> arguments, Type returnType)
     {
-        super(HUDI_FN_NAME, arguments, returnType);
+        super(arguments, returnType);
         if (arguments.size() == 2) {
             this.position = getLiteralVal(arguments.get(1));
             this.length = null;
@@ -100,5 +100,10 @@ public class HudiTrinoSubstringFunctionExpression
             }
         }
         return false;
+    }
+
+    public static String getTrinoFunctionName()
+    {
+        return TRINO_FN_NAME;
     }
 }

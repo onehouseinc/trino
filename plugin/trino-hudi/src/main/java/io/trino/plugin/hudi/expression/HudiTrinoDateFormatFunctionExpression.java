@@ -29,7 +29,13 @@ public class HudiTrinoDateFormatFunctionExpression
 
     public HudiTrinoDateFormatFunctionExpression(List<Expression> arguments, Type returnType)
     {
-        super(HUDI_FN_NAME, arguments, returnType);
+        super(arguments, returnType);
+    }
+
+    @Override
+    public String getName()
+    {
+        return HUDI_FN_NAME;
     }
 
     @Override
@@ -46,5 +52,10 @@ public class HudiTrinoDateFormatFunctionExpression
             // Function does not accept arguments, do not need to check for it
         }
         return false;
+    }
+
+    public static String getTrinoFunctionName()
+    {
+        return TRINO_FN_NAME;
     }
 }

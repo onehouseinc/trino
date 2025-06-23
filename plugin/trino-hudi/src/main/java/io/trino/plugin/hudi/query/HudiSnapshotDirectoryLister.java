@@ -81,7 +81,7 @@ public class HudiSnapshotDirectoryLister
                                 tableHandle.getPartitionPredicates()))));
         Lazy<HoodieTableMetaClient> lazyMetaClient = Lazy.lazily(tableHandle::getMetaClient);
         this.indexSupportOpt = enableMetadataTable ?
-                IndexSupportFactory.createIndexSupport(schemaTableName, lazyMetaClient, lazyTableMetadata, tableHandle.getRegularPredicates(), session) : Optional.empty();
+                IndexSupportFactory.createIndexSupport(schemaTableName, lazyMetaClient, lazyTableMetadata, tableHandle, session) : Optional.empty();
     }
 
     @Override

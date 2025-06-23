@@ -55,7 +55,7 @@ public class HudiConfig
     private boolean ignoreAbsentPartitions;
     private Duration dynamicFilteringWaitTimeout = new Duration(1, SECONDS);
 
-    // Internal configuration for debugging and testing
+    // Flag for debugging and testing
     private boolean isRecordLevelIndexEnabled = true;
     private boolean isSecondaryIndexEnabled = true;
     private boolean isExpressionIndexEnabled = true;
@@ -287,7 +287,7 @@ public class HudiConfig
     }
 
     @Config("hudi.index.record-level-index-enabled")
-    @ConfigDescription("Internal configuration to control whether record level index is enabled for debugging/testing.")
+    @ConfigDescription("Flag to control whether record level index is enabled for debugging/testing.")
     public HudiConfig setRecordLevelIndexEnabled(boolean isRecordLevelIndexEnabled)
     {
         this.isRecordLevelIndexEnabled = isRecordLevelIndexEnabled;
@@ -300,7 +300,7 @@ public class HudiConfig
     }
 
     @Config("hudi.index.secondary-index-enabled")
-    @ConfigDescription("Internal configuration to control whether secondary index is enabled for debugging/testing.")
+    @ConfigDescription("Flag to control whether secondary index is enabled for debugging/testing.")
     public HudiConfig setSecondaryIndexEnabled(boolean isSecondaryIndexEnabled)
     {
         this.isSecondaryIndexEnabled = isSecondaryIndexEnabled;
@@ -313,7 +313,7 @@ public class HudiConfig
     }
 
     @Config("hudi.index.expression-index-enabled")
-    @ConfigDescription("Internal configuration to control whether expression index is enabled for debugging/testing.")
+    @ConfigDescription("Flag to control whether expression index is enabled for debugging/testing.")
     public HudiConfig setExpressionIndexEnabled(boolean isExpressionIndexEnabled)
     {
         this.isExpressionIndexEnabled = isExpressionIndexEnabled;
@@ -326,7 +326,7 @@ public class HudiConfig
     }
 
     @Config("hudi.index.column-stats-index-enabled")
-    @ConfigDescription("Internal configuration to control whether column stats index is enabled for debugging/testing.")
+    @ConfigDescription("Flag to control whether column stats index is enabled for debugging/testing.")
     public HudiConfig setColumnStatsIndexEnabled(boolean isColumnStatsIndexEnabled)
     {
         this.isColumnStatsIndexEnabled = isColumnStatsIndexEnabled;
@@ -339,7 +339,7 @@ public class HudiConfig
     }
 
     @Config("hudi.index.partition-stats-index-enabled")
-    @ConfigDescription("Internal configuration to control whether partition stats index is enabled for debugging/testing.")
+    @ConfigDescription("Flag to control whether partition stats index is enabled for debugging/testing.")
     public HudiConfig setPartitionStatsIndexEnabled(boolean isPartitionStatsIndexEnabled)
     {
         this.isPartitionStatsIndexEnabled = isPartitionStatsIndexEnabled;
@@ -403,6 +403,20 @@ public class HudiConfig
 
     @NotNull
     public Duration getSecondaryIndexWaitTimeout()
+    {
+        return secondaryIndexWaitTimeout;
+    }
+
+    @Config("hudi.index.expression-index.wait-timeout")
+    @ConfigDescription("Maximum timeout to wait for loading expression index, e.g. 1000ms, 20s")
+    public HudiConfig setExpressionIndexWaitTimeout(Duration secondaryIndexWaitTimeout)
+    {
+        this.secondaryIndexWaitTimeout = secondaryIndexWaitTimeout;
+        return this;
+    }
+
+    @NotNull
+    public Duration getExpressionIndexWaitTimeout()
     {
         return secondaryIndexWaitTimeout;
     }
