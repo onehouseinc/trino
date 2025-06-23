@@ -14,15 +14,18 @@
 package io.trino.plugin.hudi.query.index;
 
 import io.airlift.log.Logger;
+import io.trino.spi.TrinoException;
 import io.trino.spi.connector.SchemaTableName;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieIndexDefinition;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
-import org.apache.hudi.util.Lazy;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_META_CLIENT_ERROR;
 import static java.util.Objects.requireNonNull;
 
 public abstract class HudiBaseIndexSupport
@@ -30,13 +33,13 @@ public abstract class HudiBaseIndexSupport
 {
     private final Logger log;
     protected final SchemaTableName schemaTableName;
-    protected final Lazy<HoodieTableMetaClient> lazyMetaClient;
+    protected final CompletableFuture<HoodieTableMetaClient> metaClientFuture;
 
-    public HudiBaseIndexSupport(Logger log, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient)
+    public HudiBaseIndexSupport(Logger log, SchemaTableName schemaTableName, CompletableFuture<HoodieTableMetaClient> metaClientFuture)
     {
         this.log = requireNonNull(log, "log is null");
         this.schemaTableName = requireNonNull(schemaTableName, "schemaTableName is null");
-        this.lazyMetaClient = requireNonNull(lazyMetaClient, "metaClient is null");
+        this.metaClientFuture = requireNonNull(metaClientFuture, "metaClient is null");
     }
 
     public void printDebugMessage(Map<String, List<FileSlice>> candidateFileSlices, Map<String, List<FileSlice>> inputFileSlices, long lookupDurationMs)
@@ -57,10 +60,15 @@ public abstract class HudiBaseIndexSupport
 
     protected Map<String, HoodieIndexDefinition> getAllIndexDefinitions()
     {
-        if (lazyMetaClient.get().getIndexMetadata().isEmpty()) {
-            return Map.of();
-        }
+        try {
+            if (metaClientFuture.get().getIndexMetadata().isEmpty()) {
+                return Map.of();
+            }
 
-        return lazyMetaClient.get().getIndexMetadata().get().getIndexDefinitions();
+            return metaClientFuture.get().getIndexMetadata().get().getIndexDefinitions();
+        }
+        catch (InterruptedException | ExecutionException e) {
+            throw new TrinoException(HUDI_META_CLIENT_ERROR, "Failed to get index definitions", e);
+        }
     }
 }
