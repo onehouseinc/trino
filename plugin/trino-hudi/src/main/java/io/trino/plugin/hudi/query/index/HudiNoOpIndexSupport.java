@@ -17,7 +17,8 @@ import io.airlift.log.Logger;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
-import org.apache.hudi.util.Lazy;
+
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Noop index support to ensure that MDT enabled split generation is entered.
@@ -27,9 +28,9 @@ public class HudiNoOpIndexSupport
 {
     private static final Logger log = Logger.get(HudiNoOpIndexSupport.class);
 
-    public HudiNoOpIndexSupport(SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient)
+    public HudiNoOpIndexSupport(SchemaTableName schemaTableName, CompletableFuture<HoodieTableMetaClient> metaClientFuture)
     {
-        super(log, schemaTableName, lazyMetaClient);
+        super(log, schemaTableName, metaClientFuture);
     }
 
     @Override

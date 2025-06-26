@@ -30,7 +30,6 @@ import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadataUtil;
-import org.apache.hudi.util.Lazy;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,6 +46,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_BAD_DATA;
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_META_CLIENT_ERROR;
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_META_DATA_ERROR;
 import static io.trino.plugin.hudi.HudiSessionProperties.getRecordIndexWaitTimeout;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -61,9 +62,9 @@ public class HudiRecordLevelIndexSupport
     private final Duration recordIndexWaitTimeout;
     private final long futureStartTimeMs;
 
-    public HudiRecordLevelIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiRecordLevelIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, CompletableFuture<HoodieTableMetaClient> metaClientFuture, CompletableFuture<HoodieTableMetadata> tableMetadataFuture, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        super(log, schemaTableName, lazyMetaClient);
+        super(log, schemaTableName, metaClientFuture);
         this.recordIndexWaitTimeout = getRecordIndexWaitTimeout(session);
         if (regularColumnPredicates.isAll()) {
             log.debug("Predicates cover all data, skipping record level index lookup.");
@@ -72,7 +73,14 @@ public class HudiRecordLevelIndexSupport
         else {
             this.relevantFileIdsFuture = CompletableFuture.supplyAsync(() -> {
                 HoodieTimer timer = HoodieTimer.start();
-                Option<String[]> recordKeyFieldsOpt = lazyMetaClient.get().getTableConfig().getRecordKeyFields();
+                Option<String[]> recordKeyFieldsOpt = null;
+                try {
+                    recordKeyFieldsOpt = metaClientFuture.get().getTableConfig().getRecordKeyFields();
+                }
+                catch (InterruptedException | ExecutionException e) {
+                    throw new TrinoException(HUDI_META_CLIENT_ERROR, String.format("Failed to get record key fields %s", schemaTableName), e);
+                }
+
                 if (recordKeyFieldsOpt.isEmpty() || recordKeyFieldsOpt.get().length == 0) {
                     // Should not happen since canApply checks for this, include for safety
                     throw new TrinoException(HUDI_BAD_DATA, "Record key fields must be defined to use Record Level Index.");
@@ -96,7 +104,14 @@ public class HudiRecordLevelIndexSupport
 
                 // Perform index lookup in metadataTable
                 // TODO: document here what this map is keyed by
-                Map<String, HoodieRecordGlobalLocation> recordIndex = lazyTableMetadata.get().readRecordIndex(recordKeys);
+                Map<String, HoodieRecordGlobalLocation> recordIndex = null;
+                try {
+                    recordIndex = tableMetadataFuture.get().readRecordIndex(recordKeys);
+                }
+                catch (InterruptedException | ExecutionException e) {
+                    throw new TrinoException(HUDI_META_DATA_ERROR, String.format("Failed to read record index for table %s", schemaTableName), e);
+                }
+
                 if (recordIndex.isEmpty()) {
                     log.debug("Record level index lookup took %s ms but returned no locations for the given keys %s for table %s",
                             timer.endTimer(), recordKeys, schemaTableName);
@@ -152,7 +167,14 @@ public class HudiRecordLevelIndexSupport
             return false;
         }
 
-        Option<String[]> recordKeyFieldsOpt = lazyMetaClient.get().getTableConfig().getRecordKeyFields();
+        Option<String[]> recordKeyFieldsOpt = null;
+        try {
+            recordKeyFieldsOpt = metaClientFuture.get().getTableConfig().getRecordKeyFields();
+        }
+        catch (InterruptedException | ExecutionException e) {
+            throw new TrinoException(HUDI_META_CLIENT_ERROR, String.format("Failed to get record key fields %s", schemaTableName), e);
+        }
+
         if (recordKeyFieldsOpt.isEmpty() || recordKeyFieldsOpt.get().length == 0) {
             log.debug("Record key fields are not defined in table config.");
             return false;
@@ -174,8 +196,13 @@ public class HudiRecordLevelIndexSupport
 
     private boolean isIndexSupportAvailable()
     {
-        return lazyMetaClient.get().getTableConfig().getMetadataPartitions()
-                .contains(HoodieTableMetadataUtil.PARTITION_NAME_RECORD_INDEX);
+        try {
+            return metaClientFuture.get().getTableConfig().getMetadataPartitions()
+                    .contains(HoodieTableMetadataUtil.PARTITION_NAME_RECORD_INDEX);
+        }
+        catch (InterruptedException | ExecutionException e) {
+            throw new TrinoException(HUDI_META_CLIENT_ERROR, String.format("Failed to get index definitions %s", schemaTableName), e);
+        }
     }
 
     /**

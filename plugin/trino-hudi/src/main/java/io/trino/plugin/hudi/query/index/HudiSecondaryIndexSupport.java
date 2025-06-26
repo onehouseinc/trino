@@ -17,6 +17,7 @@ import io.airlift.log.Logger;
 import io.airlift.units.Duration;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
+import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
@@ -27,7 +28,6 @@ import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadataUtil;
-import org.apache.hudi.util.Lazy;
 
 import java.util.List;
 import java.util.Map;
@@ -38,6 +38,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_META_DATA_ERROR;
 import static io.trino.plugin.hudi.HudiSessionProperties.getSecondaryIndexWaitTimeout;
 import static io.trino.plugin.hudi.query.index.HudiRecordLevelIndexSupport.constructRecordKeys;
 import static io.trino.plugin.hudi.query.index.HudiRecordLevelIndexSupport.extractPredicatesForColumns;
@@ -51,16 +52,21 @@ public class HudiSecondaryIndexSupport
     private final Duration secondaryIndexWaitTimeout;
     private final long futureStartTimeMs;
 
-    public HudiSecondaryIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiSecondaryIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, CompletableFuture<HoodieTableMetaClient> metaClientFuture, CompletableFuture<HoodieTableMetadata> tableMetadataFuture, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        super(log, schemaTableName, lazyMetaClient);
+        super(log, schemaTableName, metaClientFuture);
         this.secondaryIndexWaitTimeout = getSecondaryIndexWaitTimeout(session);
         TupleDomain<String> regularPredicatesTransformed = regularColumnPredicates.transformKeys(HiveColumnHandle::getName);
         this.relevantFileIdsFuture = CompletableFuture.supplyAsync(() -> {
             HoodieTimer timer = HoodieTimer.start();
-            if (regularColumnPredicates.isAll() || lazyMetaClient.get().getIndexMetadata().isEmpty()) {
-                log.debug("Predicates cover all data, skipping secondary index lookup.");
-                return Optional.empty();
+            try {
+                if (regularColumnPredicates.isAll() || metaClientFuture.get().getIndexMetadata().isEmpty()) {
+                    log.debug("Predicates cover all data, skipping secondary index lookup.");
+                    return Optional.empty();
+                }
+            }
+            catch (InterruptedException | ExecutionException e) {
+                throw new TrinoException(HUDI_META_DATA_ERROR, String.format("Failed to get index metadata for table %s", schemaTableName), e);
             }
 
             Optional<Map.Entry<String, HoodieIndexDefinition>> firstApplicableIndex = findFirstApplicableSecondaryIndex(regularPredicatesTransformed);
@@ -87,7 +93,14 @@ public class HudiSecondaryIndexSupport
 
             // Perform index lookup in metadataTable
             // TODO: document here what this map is keyed by
-            Map<String, HoodieRecordGlobalLocation> recordKeyLocationsMap = lazyTableMetadata.get().readSecondaryIndex(secondaryKeys, indexName);
+            Map<String, HoodieRecordGlobalLocation> recordKeyLocationsMap = null;
+            try {
+                recordKeyLocationsMap = tableMetadataFuture.get().readSecondaryIndex(secondaryKeys, indexName);
+            }
+            catch (InterruptedException | ExecutionException e) {
+                throw new TrinoException(HUDI_META_DATA_ERROR, "Failed to read secondary index for table " + schemaTableName, e);
+            }
+
             if (recordKeyLocationsMap.isEmpty()) {
                 log.debug("Took %s ms, but secondary index lookup returned no locations for the given keys for table %s", timer.endTimer(), schemaTableName);
                 // Return all original fileSlices

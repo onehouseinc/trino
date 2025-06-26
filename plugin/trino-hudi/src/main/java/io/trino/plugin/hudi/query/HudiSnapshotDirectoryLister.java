@@ -34,6 +34,8 @@ import org.apache.hudi.util.Lazy;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -53,7 +55,7 @@ public class HudiSnapshotDirectoryLister
             ConnectorSession session,
             HudiTableHandle tableHandle,
             boolean enableMetadataTable,
-            Lazy<HoodieTableMetadata> lazyTableMetadata,
+            CompletableFuture<HoodieTableMetadata> tableMetadataFuture,
             Lazy<Map<String, Partition>> lazyAllPartitions)
     {
         this.tableHandle = tableHandle;
@@ -61,7 +63,13 @@ public class HudiSnapshotDirectoryLister
         this.lazyFileSystemView = Lazy.lazily(() -> {
             HoodieTimer timer = HoodieTimer.start();
             HoodieTableMetaClient metaClient = tableHandle.getMetaClient();
-            HoodieTableFileSystemView fileSystemView = getFileSystemView(lazyTableMetadata.get(), metaClient);
+            HoodieTableFileSystemView fileSystemView = null;
+            try {
+                fileSystemView = getFileSystemView(tableMetadataFuture.get(), metaClient);
+            }
+            catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
             if (enableMetadataTable) {
                 fileSystemView.loadAllPartitions();
             }
@@ -79,9 +87,9 @@ public class HudiSnapshotDirectoryLister
                                 e.getValue(),
                                 tableHandle.getPartitionColumns(),
                                 tableHandle.getPartitionPredicates()))));
-        Lazy<HoodieTableMetaClient> lazyMetaClient = Lazy.lazily(tableHandle::getMetaClient);
+        CompletableFuture<HoodieTableMetaClient> metaClientFuture = CompletableFuture.supplyAsync(tableHandle::getMetaClient);
         this.indexSupportOpt = enableMetadataTable ?
-                IndexSupportFactory.createIndexSupport(schemaTableName, lazyMetaClient, lazyTableMetadata, tableHandle.getRegularPredicates(), session) : Optional.empty();
+                IndexSupportFactory.createIndexSupport(schemaTableName, metaClientFuture, tableMetadataFuture, tableHandle.getRegularPredicates(), session) : Optional.empty();
     }
 
     @Override
