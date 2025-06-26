@@ -66,13 +66,15 @@ public class HudiSessionProperties
     static final String DYNAMIC_FILTERING_WAIT_TIMEOUT = "dynamic_filtering_wait_timeout";
 
     // Internal configuration for debugging and testing
+    static final String COLUMN_STATS_INDEX_ENABLED = "column_stats_index_enabled";
     static final String RECORD_LEVEL_INDEX_ENABLED = "record_level_index_enabled";
     static final String SECONDARY_INDEX_ENABLED = "secondary_index_enabled";
-    static final String COLUMN_STATS_INDEX_ENABLED = "column_stats_index_enabled";
+    static final String EXPRESSION_INDEX_ENABLED = "expression_index_enabled";
     static final String PARTITION_STATS_INDEX_ENABLED = "partition_stats_index_enabled";
     static final String COLUMN_STATS_WAIT_TIMEOUT = "column_stats_wait_timeout";
     static final String RECORD_INDEX_WAIT_TIMEOUT = "record_index_wait_timeout";
     static final String SECONDARY_INDEX_WAIT_TIMEOUT = "secondary_index_wait_timeout";
+    static final String EXPRESSION_INDEX_WAIT_TIMEOUT = "expression_index_wait_timeout";
 
     private final List<PropertyMetadata<?>> sessionProperties;
 
@@ -200,6 +202,11 @@ public class HudiSessionProperties
                         hudiConfig.isIgnoreAbsentPartitions(),
                         false),
                 booleanProperty(
+                        COLUMN_STATS_INDEX_ENABLED,
+                        "Enable column stats index for file skipping",
+                        hudiConfig.isColumnStatsIndexEnabled(),
+                        true),
+                booleanProperty(
                         RECORD_LEVEL_INDEX_ENABLED,
                         "Enable record level index for file skipping",
                         hudiConfig.isRecordLevelIndexEnabled(),
@@ -210,9 +217,9 @@ public class HudiSessionProperties
                         hudiConfig.isSecondaryIndexEnabled(),
                         true),
                 booleanProperty(
-                        COLUMN_STATS_INDEX_ENABLED,
-                        "Enable column stats index for file skipping",
-                        hudiConfig.isColumnStatsIndexEnabled(),
+                        EXPRESSION_INDEX_ENABLED,
+                        "Enable expression index for file skipping",
+                        hudiConfig.isExpressionIndexEnabled(),
                         true),
                 booleanProperty(
                         PARTITION_STATS_INDEX_ENABLED,
@@ -233,6 +240,11 @@ public class HudiSessionProperties
                         SECONDARY_INDEX_WAIT_TIMEOUT,
                         "Maximum timeout to wait for loading secondary index",
                         hudiConfig.getSecondaryIndexWaitTimeout(),
+                        false),
+                durationProperty(
+                        EXPRESSION_INDEX_WAIT_TIMEOUT,
+                        "Maximum timeout to wait for loading expression index",
+                        hudiConfig.getExpressionIndexWaitTimeout(),
                         false),
                 durationProperty(
                         DYNAMIC_FILTERING_WAIT_TIMEOUT,
@@ -348,6 +360,11 @@ public class HudiSessionProperties
         return session.getProperty(IGNORE_ABSENT_PARTITIONS, Boolean.class);
     }
 
+    public static boolean isColumnStatsIndexEnabled(ConnectorSession session)
+    {
+        return session.getProperty(COLUMN_STATS_INDEX_ENABLED, Boolean.class);
+    }
+
     public static boolean isRecordLevelIndexEnabled(ConnectorSession session)
     {
         return session.getProperty(RECORD_LEVEL_INDEX_ENABLED, Boolean.class);
@@ -358,9 +375,9 @@ public class HudiSessionProperties
         return session.getProperty(SECONDARY_INDEX_ENABLED, Boolean.class);
     }
 
-    public static boolean isColumnStatsIndexEnabled(ConnectorSession session)
+    public static boolean isExpressionIndexEnabled(ConnectorSession session)
     {
-        return session.getProperty(COLUMN_STATS_INDEX_ENABLED, Boolean.class);
+        return session.getProperty(EXPRESSION_INDEX_ENABLED, Boolean.class);
     }
 
     public static boolean isPartitionStatsIndexEnabled(ConnectorSession session)
@@ -370,7 +387,11 @@ public class HudiSessionProperties
 
     public static boolean isNoOpIndexEnabled(ConnectorSession session)
     {
-        return !isRecordLevelIndexEnabled(session) && !isSecondaryIndexEnabled(session) && !isColumnStatsIndexEnabled(session);
+        // Only true if all other index are disabled explicitly
+        return !isRecordLevelIndexEnabled(session)
+                && !isSecondaryIndexEnabled(session)
+                && !isColumnStatsIndexEnabled(session)
+                && !isExpressionIndexEnabled(session);
     }
 
     public static Duration getDynamicFilteringWaitTimeout(ConnectorSession session)
@@ -391,5 +412,10 @@ public class HudiSessionProperties
     public static Duration getSecondaryIndexWaitTimeout(ConnectorSession session)
     {
         return session.getProperty(SECONDARY_INDEX_WAIT_TIMEOUT, Duration.class);
+    }
+
+    public static Duration getExpressionIndexWaitTimeout(ConnectorSession session)
+    {
+        return session.getProperty(EXPRESSION_INDEX_WAIT_TIMEOUT, Duration.class);
     }
 }

@@ -347,6 +347,7 @@ public class ResourceHudiTablesInitializer
         HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR(hudiTimestampKeygenColumns(), hudiTimestampKeygenPartitionColumns(), hudiTimestampKeygenPartitions("EPOCHMILLISECONDS"), true),
         HUDI_TIMESTAMP_KEYGEN_PT_SCALAR_TO_YYYY_MM_DD_HH_V8_MOR(hudiTimestampKeygenColumns(), hudiTimestampKeygenPartitionColumns(), hudiTimestampKeygenPartitions("SCALAR"), true),
         HUDI_CUSTOM_KEYGEN_PT_V8_MOR(hudiCustomKeyGenColumns(), hudiCustomKeyGenPartitionColumns(), hudiCustomKeyGenPartitions(), false),
+        HUDI_EI_PT_V8_MOR(hudiExpressionIndexMorColumns(), hudiExpressionIndexMorPartitionColumns(), hudiExpressionIndexMorPartitions(), false),
         /**/;
 
         private static final List<Column> HUDI_META_COLUMNS = ImmutableList.of(
@@ -736,6 +737,30 @@ public class ResourceHudiTablesInitializer
                     "partition_field_country=MY/partition_field_date=2025-05-13", "partition_field_country=MY/partition_field_date=2025-05-13",
                     "partition_field_country=SG/partition_field_date=2025-06-06", "partition_field_country=SG/partition_field_date=2025-06-06",
                     "partition_field_country=SG/partition_field_date=2025-06-07", "partition_field_country=SG/partition_field_date=2025-06-07");
+        }
+
+        private static List<Column> hudiExpressionIndexMorColumns()
+        {
+            return ImmutableList.of(
+                    column("id", HIVE_INT),
+                    column("col_date", HIVE_DATE),
+                    column("col_string", HIVE_STRING),
+                    column("col_bigint", HIVE_LONG),
+                    column("col_timestamp", HIVE_TIMESTAMP),
+                    column("ts", HIVE_LONG),
+                    column("day", HIVE_STRING));
+        }
+
+        private static List<Column> hudiExpressionIndexMorPartitionColumns()
+        {
+            return ImmutableList.of(column("country", HIVE_STRING));
+        }
+
+        private static Map<String, String> hudiExpressionIndexMorPartitions()
+        {
+            return ImmutableMap.of(
+                    "country=SG", "country=SG",
+                    "country=US", "country=US");
         }
     }
 

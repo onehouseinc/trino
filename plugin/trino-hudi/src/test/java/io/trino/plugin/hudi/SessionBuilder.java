@@ -20,6 +20,8 @@ import static io.trino.SystemSessionProperties.JOIN_DISTRIBUTION_TYPE;
 import static io.trino.plugin.hudi.HudiSessionProperties.COLUMN_STATS_INDEX_ENABLED;
 import static io.trino.plugin.hudi.HudiSessionProperties.COLUMN_STATS_WAIT_TIMEOUT;
 import static io.trino.plugin.hudi.HudiSessionProperties.DYNAMIC_FILTERING_WAIT_TIMEOUT;
+import static io.trino.plugin.hudi.HudiSessionProperties.EXPRESSION_INDEX_ENABLED;
+import static io.trino.plugin.hudi.HudiSessionProperties.EXPRESSION_INDEX_WAIT_TIMEOUT;
 import static io.trino.plugin.hudi.HudiSessionProperties.METADATA_TABLE_ENABLED;
 import static io.trino.plugin.hudi.HudiSessionProperties.PARTITION_STATS_INDEX_ENABLED;
 import static io.trino.plugin.hudi.HudiSessionProperties.QUERY_PARTITION_FILTER_REQUIRED;
@@ -120,6 +122,11 @@ public class SessionBuilder
         return setCatalogProperty(SECONDARY_INDEX_ENABLED, String.valueOf(enabled));
     }
 
+    public SessionBuilder withExpressionIndexEnabled(boolean enabled)
+    {
+        return setCatalogProperty(EXPRESSION_INDEX_ENABLED, String.valueOf(enabled));
+    }
+
     public SessionBuilder withPartitionStatsIndexEnabled(boolean enabled)
     {
         return setCatalogProperty(PARTITION_STATS_INDEX_ENABLED, String.valueOf(enabled));
@@ -133,5 +140,10 @@ public class SessionBuilder
     public SessionBuilder withSecondaryIndexTimeout(String durationProp)
     {
         return setCatalogProperty(SECONDARY_INDEX_WAIT_TIMEOUT, durationProp);
+    }
+
+    public SessionBuilder withExpressionIndexTimeout(String durationProp)
+    {
+        return setCatalogProperty(EXPRESSION_INDEX_WAIT_TIMEOUT, durationProp);
     }
 }

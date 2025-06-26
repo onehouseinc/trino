@@ -57,7 +57,7 @@ public class HudiBackgroundSplitLoader
     private final Executor splitGeneratorExecutor;
     private final int splitGeneratorNumThreads;
     private final HudiSplitFactory hudiSplitFactory;
-    private final Lazy<List<String>> lazyPartitions;
+    private Lazy<List<String>> lazyPartitions;
     private final Consumer<Throwable> errorListener;
     private final boolean enableMetadataTable;
     private final Optional<HudiPartitionStatsIndexSupport> partitionIndexSupportOpt;

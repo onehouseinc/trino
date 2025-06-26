@@ -51,12 +51,14 @@ public class TestHudiConfig
                 .setIgnoreAbsentPartitions(false)
                 .setRecordLevelIndexEnabled(true)
                 .setSecondaryIndexEnabled(true)
+                .setExpressionIndexEnabled(true)
                 .setColumnStatsIndexEnabled(true)
                 .setPartitionStatsIndexEnabled(true)
                 .setDynamicFilteringWaitTimeout(Duration.valueOf("1s"))
                 .setColumnStatsWaitTimeout(Duration.valueOf("1s"))
                 .setRecordIndexWaitTimeout(Duration.valueOf("2s"))
-                .setSecondaryIndexWaitTimeout(Duration.valueOf("2s")));
+                .setSecondaryIndexWaitTimeout(Duration.valueOf("2s"))
+                .setExpressionIndexWaitTimeout(Duration.valueOf("2s")));
     }
 
     @Test
@@ -82,12 +84,14 @@ public class TestHudiConfig
                 .put("hudi.ignore-absent-partitions", "true")
                 .put("hudi.index.record-level-index-enabled", "false")
                 .put("hudi.index.secondary-index-enabled", "false")
+                .put("hudi.index.expression-index-enabled", "false")
                 .put("hudi.index.column-stats-index-enabled", "false")
                 .put("hudi.index.partition-stats-index-enabled", "false")
                 .put("hudi.dynamic-filtering.wait-timeout", "2s")
                 .put("hudi.index.column-stats.wait-timeout", "2s")
                 .put("hudi.index.record-index.wait-timeout", "1s")
                 .put("hudi.index.secondary-index.wait-timeout", "1s")
+                .put("hudi.index.expression-index.wait-timeout", "1s")
                 .buildOrThrow();
 
         HudiConfig expected = new HudiConfig()
@@ -110,12 +114,14 @@ public class TestHudiConfig
                 .setIgnoreAbsentPartitions(true)
                 .setRecordLevelIndexEnabled(false)
                 .setSecondaryIndexEnabled(false)
+                .setExpressionIndexEnabled(false)
                 .setColumnStatsIndexEnabled(false)
                 .setPartitionStatsIndexEnabled(false)
                 .setDynamicFilteringWaitTimeout(Duration.valueOf("2s"))
                 .setColumnStatsWaitTimeout(Duration.valueOf("2s"))
                 .setRecordIndexWaitTimeout(Duration.valueOf("1s"))
-                .setSecondaryIndexWaitTimeout(Duration.valueOf("1s"));
+                .setSecondaryIndexWaitTimeout(Duration.valueOf("1s"))
+                .setExpressionIndexWaitTimeout(Duration.valueOf("1s"));
 
         assertFullMapping(properties, expected);
     }

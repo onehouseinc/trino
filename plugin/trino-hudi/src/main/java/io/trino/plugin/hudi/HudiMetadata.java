@@ -25,6 +25,7 @@ import io.trino.metastore.Table;
 import io.trino.metastore.TableInfo;
 import io.trino.plugin.base.classloader.ClassLoaderSafeSystemTable;
 import io.trino.plugin.hive.HiveColumnHandle;
+import io.trino.plugin.hudi.expression.ExpressionConverter;
 import io.trino.plugin.hudi.stats.HudiTableStatistics;
 import io.trino.plugin.hudi.stats.TableStatisticsReader;
 import io.trino.plugin.hudi.util.HudiTableTypeUtils;
@@ -169,7 +170,8 @@ public class HudiMetadata
                 getPartitionKeyColumnHandles(table, typeManager),
                 ImmutableSet.of(),
                 TupleDomain.all(),
-                TupleDomain.all());
+                TupleDomain.all(),
+                ImmutableList.of());
     }
 
     @Override
@@ -217,12 +219,17 @@ public class HudiMetadata
     public Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(ConnectorSession session, ConnectorTableHandle tableHandle, Constraint constraint)
     {
         HudiTableHandle handle = (HudiTableHandle) tableHandle;
+
+        // Convert ConnectorExpression and extract candidate expressions for use in Expression index
+        List<org.apache.hudi.expression.Predicate> expressionIndexCandidates = ExpressionConverter.getInstance().convert(constraint.getExpression());
+
+        // Process TupleDomain predicates from constraint.getSummary()
         HudiPredicates predicates = HudiPredicates.from(constraint.getSummary());
         TupleDomain<HiveColumnHandle> regularColumnPredicates = predicates.getRegularColumnPredicates();
         TupleDomain<HiveColumnHandle> partitionColumnPredicates = predicates.getPartitionColumnPredicates();
 
-        // TODO Since the constraint#predicate isn't utilized during split generation. So,
-        //  Let's not add constraint#predicateColumns to newConstraintColumns.
+        // TODO Since the constraint#predicate isn't utilized during split generation. So, let's not add constraint#predicateColumns to newConstraintColumns
+        // Gather all columns involved in constraints (from TupleDomains and existing handle)
         Set<HiveColumnHandle> newConstraintColumns = Stream.concat(
                         Stream.concat(
                                 regularColumnPredicates.getDomains().stream()
@@ -234,10 +241,12 @@ public class HudiMetadata
                         handle.getConstraintColumns().stream())
                 .collect(toImmutableSet());
 
+        // Create an intermediate HudiTableHandle by applying TupleDomain-based changes
         HudiTableHandle newHudiTableHandle = handle.applyPredicates(
                 newConstraintColumns,
                 partitionColumnPredicates,
-                regularColumnPredicates);
+                regularColumnPredicates,
+                expressionIndexCandidates);
 
         if (handle.getPartitionPredicates().equals(newHudiTableHandle.getPartitionPredicates())
                 && handle.getRegularPredicates().equals(newHudiTableHandle.getRegularPredicates())
@@ -245,6 +254,9 @@ public class HudiMetadata
             return Optional.empty();
         }
 
+        // The TupleDomain returned here tells Trino which parts of constraint.getSummary() it still needs to evaluate because the connector might not have fully handled them.
+        // The Expression returned tells Trino which parts of constraint.getExpression() it still needs to evaluate.
+        // The boolean `false` indicates that `constraint.getExpression()` was not fully "absorbed" by the connector's processing and Trino should re-evaluate it.
         return Optional.of(new ConstraintApplicationResult<>(
                 newHudiTableHandle,
                 newHudiTableHandle.getRegularPredicates().transformKeys(ColumnHandle.class::cast),

@@ -153,11 +153,6 @@ public class HudiSecondaryIndexSupport
     @Override
     public boolean canApply(TupleDomain<String> tupleDomain)
     {
-        if (!isIndexSupportAvailable()) {
-            log.debug("Secondary Index partition is not enabled in metadata.");
-            return false;
-        }
-
         Map<String, HoodieIndexDefinition> secondaryIndexDefinitions = getApplicableIndexDefinitions(tupleDomain, true);
         if (secondaryIndexDefinitions.isEmpty()) {
             log.debug("No applicable secondary index definitions found.");
@@ -179,17 +174,6 @@ public class HudiSecondaryIndexSupport
             log.debug("Although secondary indexes exist, none match the required fields and predicate types (IN/EQUAL) for the query.");
         }
         return atLeastOneIndexUsable;
-    }
-
-    private boolean isIndexSupportAvailable()
-    {
-        // Filter out definitions that are secondary indices
-        Map<String, HoodieIndexDefinition> secondaryIndexDefinitions = getAllIndexDefinitions()
-                .entrySet().stream()
-                .filter(e -> e.getKey().contains(HoodieTableMetadataUtil.PARTITION_NAME_SECONDARY_INDEX))
-                .collect(Collectors.toMap(e -> e.getValue().getIndexName(),
-                        Map.Entry::getValue));
-        return !secondaryIndexDefinitions.isEmpty();
     }
 
     private Map<String, HoodieIndexDefinition> getApplicableIndexDefinitions(TupleDomain<String> tupleDomain, boolean checkPredicateCompatibility)
