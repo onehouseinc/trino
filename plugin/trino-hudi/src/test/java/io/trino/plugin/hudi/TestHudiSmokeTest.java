@@ -94,10 +94,10 @@ public class TestHudiSmokeTest
     protected QueryRunner createQueryRunner()
             throws Exception
     {
-        HudiQueryRunner.Builder builder = HudiQueryRunner.builder()
-                .setDataLoader(new ResourceHudiTablesInitializer());
-        getAdditionalHudiProperties().forEach(builder::addConnectorProperty);
-        return builder.build();
+        return HudiQueryRunner.builder()
+                .setDataLoader(new ResourceHudiTablesInitializer())
+                .addConnectorProperties(getAdditionalHudiProperties())
+                .build();
     }
 
     protected ImmutableMap<String, String> getAdditionalHudiProperties()
