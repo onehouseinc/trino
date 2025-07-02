@@ -21,6 +21,7 @@ import io.airlift.units.Duration;
 import io.trino.parquet.predicate.TupleDomainParquetPredicate;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
+import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.Domain;
@@ -40,7 +41,6 @@ import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.common.util.hash.ColumnIndexID;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadataUtil;
-import org.apache.hudi.util.Lazy;
 
 import java.util.List;
 import java.util.Map;
@@ -53,6 +53,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.trino.parquet.predicate.PredicateUtils.isStatisticsOverflow;
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_META_CLIENT_ERROR;
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_META_DATA_ERROR;
 import static io.trino.plugin.hudi.HudiSessionProperties.getColumnStatsWaitTimeout;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
@@ -74,14 +76,14 @@ public class HudiColumnStatsIndexSupport
     private final Duration columnStatsWaitTimeout;
     private final long futureStartTimeMs;
 
-    public HudiColumnStatsIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiColumnStatsIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, CompletableFuture<HoodieTableMetaClient> metaClientFuture, CompletableFuture<HoodieTableMetadata> tableMetadataFuture, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        this(log, session, schemaTableName, lazyMetaClient, lazyTableMetadata, regularColumnPredicates);
+        this(log, session, schemaTableName, metaClientFuture, tableMetadataFuture, regularColumnPredicates);
     }
 
-    public HudiColumnStatsIndexSupport(Logger log, ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiColumnStatsIndexSupport(Logger log, ConnectorSession session, SchemaTableName schemaTableName, CompletableFuture<HoodieTableMetaClient> metaClientFuture, CompletableFuture<HoodieTableMetadata> tableMetadataFuture, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        super(log, schemaTableName, lazyMetaClient);
+        super(log, schemaTableName, metaClientFuture);
         this.columnStatsWaitTimeout = getColumnStatsWaitTimeout(session);
         this.regularColumnPredicates = regularColumnPredicates.transformKeys(HiveColumnHandle::getName);
         this.regularColumns = this.regularColumnPredicates
@@ -96,23 +98,33 @@ public class HudiColumnStatsIndexSupport
                     .map(col -> new ColumnIndexID(col).asBase64EncodedString()).collect(Collectors.toList());
             statsByFileNameFuture = CompletableFuture.supplyAsync(() -> {
                 HoodieTimer timer = HoodieTimer.start();
-                if (!lazyMetaClient.get().getTableConfig().getMetadataPartitions()
-                        .contains(HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS)) {
-                    return Optional.empty();
+                try {
+                    if (!metaClientFuture.get().getTableConfig().getMetadataPartitions()
+                            .contains(HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS)) {
+                        return Optional.empty();
+                    }
+                }
+                catch (InterruptedException | ExecutionException e) {
+                    throw new RuntimeException(e);
                 }
 
-                Map<String, Map<String, HoodieMetadataColumnStats>> statsByFileName =
-                        lazyTableMetadata.get().getRecordsByKeyPrefixes(encodedTargetColumnNames,
-                                        HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS, true)
-                                .collectAsList()
-                                .stream()
-                                .filter(f -> f.getData().getColumnStatMetadata().isPresent())
-                                .map(f -> f.getData().getColumnStatMetadata().get())
-                                .collect(Collectors.groupingBy(
-                                        HoodieMetadataColumnStats::getFileName,
-                                        Collectors.toMap(
-                                                HoodieMetadataColumnStats::getColumnName,
-                                                Function.identity())));
+                Map<String, Map<String, HoodieMetadataColumnStats>> statsByFileName = null;
+                try {
+                    statsByFileName = tableMetadataFuture.get().getRecordsByKeyPrefixes(encodedTargetColumnNames,
+                                    HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS, true)
+                            .collectAsList()
+                            .stream()
+                            .filter(f -> f.getData().getColumnStatMetadata().isPresent())
+                            .map(f -> f.getData().getColumnStatMetadata().get())
+                            .collect(Collectors.groupingBy(
+                                    HoodieMetadataColumnStats::getFileName,
+                                    Collectors.toMap(
+                                            HoodieMetadataColumnStats::getColumnName,
+                                            Function.identity())));
+                }
+                catch (InterruptedException | ExecutionException e) {
+                    throw new TrinoException(HUDI_META_DATA_ERROR, String.format("Failed to get column stats %s", schemaTableName), e);
+                }
                 log.debug("Column stats lookup took %s ms and identified %d relevant file IDs.", timer.endTimer(), statsByFileName.size());
 
                 return Optional.of(statsByFileName);
@@ -158,9 +170,14 @@ public class HudiColumnStatsIndexSupport
         boolean isIndexSupported = isIndexSupportAvailable();
         // indexDefinition is only available after table version EIGHT
         // For tables that have versions < EIGHT, column stats index is available as long as partition in metadata is available
-        if (!isIndexSupported || lazyMetaClient.get().getTableConfig().getTableVersion().lesserThan(HoodieTableVersion.EIGHT)) {
-            log.debug("Column Stats Index partition is not enabled in metadata.");
-            return isIndexSupported;
+        try {
+            if (!isIndexSupported || metaClientFuture.get().getTableConfig().getTableVersion().lesserThan(HoodieTableVersion.EIGHT)) {
+                log.debug("Column Stats Index partition is not enabled in metadata.");
+                return isIndexSupported;
+            }
+        }
+        catch (InterruptedException | ExecutionException e) {
+            throw new TrinoException(HUDI_META_CLIENT_ERROR, String.format("Failed to get table version %s", schemaTableName), e);
         }
 
         Map<String, HoodieIndexDefinition> indexDefinitions = getAllIndexDefinitions();
@@ -185,8 +202,13 @@ public class HudiColumnStatsIndexSupport
 
     public boolean isIndexSupportAvailable()
     {
-        return lazyMetaClient.get().getTableConfig().getMetadataPartitions()
-                .contains(HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS);
+        try {
+            return metaClientFuture.get().getTableConfig().getMetadataPartitions()
+                    .contains(HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS);
+        }
+        catch (InterruptedException | ExecutionException e) {
+            throw new TrinoException(HUDI_META_CLIENT_ERROR, String.format("Failed to get index definitions %s", schemaTableName), e);
+        }
     }
 
     // TODO: Move helper functions below to TupleDomain/DomainUtils
