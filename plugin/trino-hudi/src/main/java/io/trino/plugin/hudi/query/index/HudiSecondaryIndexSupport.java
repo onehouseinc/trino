@@ -35,6 +35,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -51,7 +52,7 @@ public class HudiSecondaryIndexSupport
     private final Duration secondaryIndexWaitTimeout;
     private final long futureStartTimeMs;
 
-    public HudiSecondaryIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiSecondaryIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates, ExecutorService executor)
     {
         super(log, schemaTableName, lazyMetaClient);
         this.secondaryIndexWaitTimeout = getSecondaryIndexWaitTimeout(session);
@@ -101,7 +102,7 @@ public class HudiSecondaryIndexSupport
             log.debug(String.format("Secondary index lookup identified %d relevant file IDs.", relevantFileIds.size()));
 
             return Optional.of(relevantFileIds);
-        });
+        }, executor);
 
         this.futureStartTimeMs = System.currentTimeMillis();
     }

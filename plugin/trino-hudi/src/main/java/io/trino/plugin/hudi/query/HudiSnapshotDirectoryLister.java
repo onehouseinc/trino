@@ -34,6 +34,7 @@ import org.apache.hudi.util.Lazy;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -54,7 +55,8 @@ public class HudiSnapshotDirectoryLister
             HudiTableHandle tableHandle,
             boolean enableMetadataTable,
             Lazy<HoodieTableMetadata> lazyTableMetadata,
-            Lazy<Map<String, Partition>> lazyAllPartitions)
+            Lazy<Map<String, Partition>> lazyAllPartitions,
+            ExecutorService executor)
     {
         this.tableHandle = tableHandle;
         SchemaTableName schemaTableName = tableHandle.getSchemaTableName();
@@ -81,7 +83,7 @@ public class HudiSnapshotDirectoryLister
                                 tableHandle.getPartitionPredicates()))));
         Lazy<HoodieTableMetaClient> lazyMetaClient = Lazy.lazily(tableHandle::getMetaClient);
         this.indexSupportOpt = enableMetadataTable ?
-                IndexSupportFactory.createIndexSupport(schemaTableName, lazyMetaClient, lazyTableMetadata, tableHandle.getRegularPredicates(), session) : Optional.empty();
+                IndexSupportFactory.createIndexSupport(schemaTableName, lazyMetaClient, lazyTableMetadata, tableHandle.getRegularPredicates(), session, executor) : Optional.empty();
     }
 
     @Override

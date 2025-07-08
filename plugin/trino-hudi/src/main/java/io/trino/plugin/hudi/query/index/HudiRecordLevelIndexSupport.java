@@ -43,6 +43,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -61,7 +62,7 @@ public class HudiRecordLevelIndexSupport
     private final Duration recordIndexWaitTimeout;
     private final long futureStartTimeMs;
 
-    public HudiRecordLevelIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiRecordLevelIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates, ExecutorService executor)
     {
         super(log, schemaTableName, lazyMetaClient);
         this.recordIndexWaitTimeout = getRecordIndexWaitTimeout(session);
@@ -111,7 +112,7 @@ public class HudiRecordLevelIndexSupport
                 log.debug("Record level index lookup took %s ms and identified %d relevant file IDs.", timer.endTimer(), relevantFiles.size());
 
                 return Optional.of(relevantFiles);
-            });
+            }, executor);
         }
         this.futureStartTimeMs = System.currentTimeMillis();
     }
