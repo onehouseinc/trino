@@ -123,7 +123,7 @@ public class HudiBackgroundSplitLoader
         int splitGeneratorParallelism = Math.min(splitGeneratorNumThreads, lazyPartitions.get().size());
         Executor splitGeneratorExecutor = new BoundedExecutor(executor, splitGeneratorParallelism);
 
-        for (int i = 0; i < Math.min(splitGeneratorNumThreads, partitionQueue.size()); i++) {
+        for (int i = 0; i < splitGeneratorParallelism; i++) {
             HudiPartitionInfoLoader generator = new HudiPartitionInfoLoader(hudiDirectoryLister, tableHandle.getLatestCommitTime(), hudiSplitFactory,
                     asyncQueue, partitionQueue, useIndex);
             splitGenerators.add(generator);
