@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -43,9 +44,9 @@ public class HudiPartitionStatsIndexSupport
     private static final Logger log = Logger.get(HudiColumnStatsIndexSupport.class);
     private final Lazy<HoodieTableMetadata> lazyMetadataTable;
 
-    public HudiPartitionStatsIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiPartitionStatsIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates, ExecutorService executor)
     {
-        super(log, session, schemaTableName, lazyMetaClient, lazyTableMetadata, regularColumnPredicates);
+        super(log, session, schemaTableName, lazyMetaClient, lazyTableMetadata, regularColumnPredicates, executor);
         this.lazyMetadataTable = lazyTableMetadata;
     }
 
