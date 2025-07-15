@@ -89,7 +89,7 @@ public class HudiBackgroundSplitLoader
         this.errorListener = requireNonNull(errorListener, "errorListener is null");
         SchemaTableName schemaTableName = tableHandle.getSchemaTableName();
         this.partitionIndexSupportOpt = enableMetadataTable ?
-                IndexSupportFactory.createPartitionStatsIndexSupport(schemaTableName, Lazy.lazily(tableHandle::getMetaClient), lazyTableMetadata, tableHandle.getRegularPredicates(), session) : Optional.empty();
+                IndexSupportFactory.createPartitionStatsIndexSupport(schemaTableName, Lazy.lazily(tableHandle::getMetaClient), lazyTableMetadata, tableHandle.getRegularPredicates(), session, executor) : Optional.empty();
     }
 
     @Override

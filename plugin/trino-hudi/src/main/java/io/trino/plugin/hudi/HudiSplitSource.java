@@ -108,7 +108,8 @@ public class HudiSplitSource
                 tableHandle,
                 enableMetadataTable,
                 lazyTableMetadata,
-                lazyPartitions);
+                lazyPartitions,
+                executor);
 
         this.queue = new ThrottledAsyncQueue<>(maxSplitsPerSecond, maxOutstandingSplits, executor);
         HudiBackgroundSplitLoader splitLoader = new HudiBackgroundSplitLoader(
