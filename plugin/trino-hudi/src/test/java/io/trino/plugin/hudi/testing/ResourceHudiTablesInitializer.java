@@ -347,6 +347,7 @@ public class ResourceHudiTablesInitializer
         HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR(hudiTimestampKeygenColumns(), hudiTimestampKeygenPartitionColumns(), hudiTimestampKeygenPartitions("EPOCHMILLISECONDS"), true),
         HUDI_TIMESTAMP_KEYGEN_PT_SCALAR_TO_YYYY_MM_DD_HH_V8_MOR(hudiTimestampKeygenColumns(), hudiTimestampKeygenPartitionColumns(), hudiTimestampKeygenPartitions("SCALAR"), true),
         HUDI_CUSTOM_KEYGEN_PT_V8_MOR(hudiCustomKeyGenColumns(), hudiCustomKeyGenPartitionColumns(), hudiCustomKeyGenPartitions(), false),
+        HUDI_UNPARSABLE_PT_TBL(multiPartitionRegularColumns(), multiPartitionColumns(), multiPartitionsWithSlashes(), false)
         /**/;
 
         private static final List<Column> HUDI_META_COLUMNS = ImmutableList.of(
@@ -525,6 +526,13 @@ public class ResourceHudiTablesInitializer
             return ImmutableMap.of(
                     "dt=2021-12-09/hh=10", "dt=2021-12-09/hh=10",
                     "dt=2021-12-09/hh=11", "dt=2021-12-09/hh=11");
+        }
+
+        private static Map<String, String> multiPartitionsWithSlashes()
+        {
+            return ImmutableMap.of(
+                    "dt=2018-10-05/hh=10", "2018/10/05/10",
+                    "dt=2018-10-06/hh=5", "2018/10/06/5");
         }
 
         private static List<Column> hudiMultiFgRegularColumns()
