@@ -149,3 +149,40 @@ jobs:
         if: always()
         run: |
           docker system prune -f || true
+
+
+  # ------------------------------------------------------------
+  # Combine amd64 + arm64 images into a multi-arch manifest list
+  # ------------------------------------------------------------
+  create-manifest:
+    name: Publish multi-arch manifest
+    needs: [build-amd, build-arm]        # wait for both images to be pushed
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fail if image tags is empty
+        if: inputs.tags == ''
+        run: exit 1
+
+      - name: Log in to Docker Hub
+        run: docker login --username ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_KEY }}
+
+      - name: Enable Buildx (just in case)
+        run: |
+          docker buildx install                # no-op if already available
+          docker buildx create --use --name builder || true
+
+      - name: Create & push manifest list
+        run: |
+          set -e
+          for tag in ${{ inputs.tags }}; do
+            # Compose a multi-arch manifest that points at the two images
+            docker buildx imagetools create \
+              -t onehouse/onehouse-trino:${tag} \
+              onehouse/onehouse-trino:amd-${tag} \
+              onehouse/onehouse-trino:arm-${tag}
+          done
+
+      - name: Cleanup
+        if: always()
+        run: docker system prune -f || true
