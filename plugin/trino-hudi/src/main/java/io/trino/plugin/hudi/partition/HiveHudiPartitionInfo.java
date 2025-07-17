@@ -89,7 +89,7 @@ public class HiveHudiPartitionInfo
         String fullPartitionPath = fullPartitionLocation.path();
 
         if (!fullPartitionPath.startsWith(basePath)) {
-            throw new IllegalArgumentException("Partition location does not belong to base-location");
+            throw new IllegalArgumentException("Partition [" + fullPartitionPath + "] does not belong to base-location " + basePath);
         }
 
         String baseLocationParent = baseLocation.parentDirectory().path();
