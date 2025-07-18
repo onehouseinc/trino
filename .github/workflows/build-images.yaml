@@ -70,19 +70,19 @@ jobs:
           chmod +x ./core/docker/build.sh
           ./core/docker/build.sh -a amd64 -x
 
-      - name: Tag and push amd image
+      - name: Tag and push amd64 image
         run: |
           for input_tag in ${{ inputs.tags }}; do
             docker tag trino:472-amd64 onehouse/onehouse-trino:${input_tag}-amd
             docker push onehouse/onehouse-trino:${input_tag}-amd
           done
 
-      - name: Build arm64docker image
+      - name: Build arm64 docker image
         run: |
             chmod +x ./core/docker/build.sh
             ./core/docker/build.sh -a arm64 -x
 
-      - name: Tag and push image
+      - name: Tag and push arm64 image
         run: |
             for input_tag in ${{ inputs.tags }}; do
               docker tag trino:472-arm64 onehouse/onehouse-trino:${input_tag}-arm
