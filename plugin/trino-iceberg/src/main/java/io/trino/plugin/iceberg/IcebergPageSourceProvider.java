@@ -982,7 +982,7 @@ public class IcebergPageSourceProvider
                     memoryContext,
                     options,
                     exception -> handleException(dataSourceId, exception),
-                    Optional.empty(),
+                    Optional.of(buildPredicate(requestedSchema, getParquetTupleDomain(descriptorsByPath, effectivePredicate), descriptorsByPath, UTC)),
                     Optional.empty());
             return new ReaderPageSourceWithRowPositions(
                     new ReaderPageSource(
