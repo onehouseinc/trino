@@ -73,8 +73,8 @@ jobs:
       - name: Tag and push image
         run: |
           for input_tag in ${{ inputs.tags }}; do
-            docker tag trino:472-amd64 onehouse/onehouse-trino:amd-$input_tag
-            docker push onehouse/onehouse-trino:amd-$input_tag
+            docker tag trino:472-amd64 onehouse/onehouse-trino:${input_tag}-amd
+            docker push onehouse/onehouse-trino:${input_tag}-amd
           done
 
       - name: Cleanup
@@ -141,8 +141,8 @@ jobs:
       - name: Tag and push image
         run: |
           for input_tag in ${{ inputs.tags }}; do
-            docker tag trino:472-arm64 onehouse/onehouse-trino:arm-$input_tag
-            docker push onehouse/onehouse-trino:arm-$input_tag
+            docker tag trino:472-arm64 onehouse/onehouse-trino:${input_tag}-arm
+            docker push onehouse/onehouse-trino:${input_tag}-arm
           done
 
       - name: Cleanup
@@ -179,8 +179,8 @@ jobs:
             # Compose a multi-arch manifest that points at the two images
             docker buildx imagetools create \
               -t onehouse/onehouse-trino:${tag} \
-              onehouse/onehouse-trino:amd-${tag} \
-              onehouse/onehouse-trino:arm-${tag}
+              onehouse/onehouse-trino:${tag}-amd \
+              onehouse/onehouse-trino:${tag}-arm
           done
 
       - name: Cleanup
