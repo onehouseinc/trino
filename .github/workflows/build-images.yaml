@@ -65,16 +65,44 @@ jobs:
       - name: Login to DockerHub
         run: docker login --username ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_KEY }}
 
-      - name: Build docker image
+      - name: Build amd64 docker image
         run: |
           chmod +x ./core/docker/build.sh
           ./core/docker/build.sh -a amd64 -x
 
-      - name: Tag and push image
+      - name: Tag and push amd64 image
         run: |
           for input_tag in ${{ inputs.tags }}; do
-            docker tag trino:472-amd64 onehouse/onehouse-trino:$input_tag
-            docker push onehouse/onehouse-trino:$input_tag
+            docker tag trino:472-amd64 onehouse/onehouse-trino:${input_tag}-amd
+            docker push onehouse/onehouse-trino:${input_tag}-amd
+          done
+
+      - name: Build arm64 docker image
+        run: |
+            chmod +x ./core/docker/build.sh
+            ./core/docker/build.sh -a arm64 -x
+
+      - name: Tag and push arm64 image
+        run: |
+            for input_tag in ${{ inputs.tags }}; do
+              docker tag trino:472-arm64 onehouse/onehouse-trino:${input_tag}-arm
+              docker push onehouse/onehouse-trino:${input_tag}-arm
+            done
+
+      - name: Enable Buildx (just in case)
+        run: |
+            docker buildx install                # no-op if already available
+            docker buildx create --use --name builder || true
+
+      - name: Create & push manifest list
+        run: |
+          set -e
+          for tag in ${{ inputs.tags }}; do
+            # Compose a multi-arch manifest that points at the two images
+            docker buildx imagetools create \
+              -t onehouse/onehouse-trino:${tag} \
+              onehouse/onehouse-trino:${tag}-amd \
+              onehouse/onehouse-trino:${tag}-arm
           done
 
       - name: Cleanup
