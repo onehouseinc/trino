@@ -15,7 +15,7 @@ on:
         required: true
 
 jobs:
-  build-amd:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Fail if image tags is empty
@@ -65,112 +65,34 @@ jobs:
       - name: Login to DockerHub
         run: docker login --username ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_KEY }}
 
-      - name: Build docker image
+      - name: Build amd64 docker image
         run: |
           chmod +x ./core/docker/build.sh
           ./core/docker/build.sh -a amd64 -x
 
-      - name: Tag and push image
+      - name: Tag and push amd image
         run: |
           for input_tag in ${{ inputs.tags }}; do
             docker tag trino:472-amd64 onehouse/onehouse-trino:${input_tag}-amd
             docker push onehouse/onehouse-trino:${input_tag}-amd
           done
 
-      - name: Cleanup
-        if: always()
+      - name: Build arm64docker image
         run: |
-          docker system prune -f || true
-
-
-  build-arm:
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - name: Fail if image tags is empty
-        if: inputs.tags == ''
-        run: exit 1
-      - name: Checkout self
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.CI_PAT }}
-
-      - name: Cleanup runner disk space
-        run: |
-          # Remove unused runtimes and SDKs
-          sudo rm -rf /usr/local/.ghcup /usr/local/julia* /usr/local/lib/android
-          sudo rm -rf /usr/local/share/chromium
-          sudo rm -rf /opt/microsoft /opt/google
-          sudo rm -rf /opt/az /usr/local/share/powershell /opt/hostedtoolcache
-          # Uninstall large pre-installed packages (optional; frees several GB)
-          sudo apt-get remove --auto-remove -y azure-cli google-cloud-cli microsoft-edge-stable \
-            google-chrome-stable firefox postgresql-* temurin-* llvm-* mysql* dotnet-sdk-* \
-          && sudo apt-get clean
-          # Prune Docker images and caches
-          docker system prune -af || true
-          docker builder prune -af || true
-          df -h
-
-      - name: Set up JDK 23
-        uses: actions/setup-java@v4
-        with:
-          java-version: '23'
-          distribution: 'temurin'
-        #   architecture: aarch64
-
-      - name: Cache Maven dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-
-      - name: Build app
-        run: |
-          echo "Building application..."
-          ./mvnw -T 1C clean install -DskipTests -Ddependency-scope.skip=true -Dmaven.javadoc.skip=true -Dair.check.skip-all=true
-
-      - name: Login to DockerHub
-        run: docker login --username ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_KEY }}
-
-      - name: Build docker image
-        run: |
-          chmod +x ./core/docker/build.sh
-          ./core/docker/build.sh -a arm64 -x
+            chmod +x ./core/docker/build.sh
+            ./core/docker/build.sh -a arm64 -x
 
       - name: Tag and push image
         run: |
-          for input_tag in ${{ inputs.tags }}; do
-            docker tag trino:472-arm64 onehouse/onehouse-trino:${input_tag}-arm
-            docker push onehouse/onehouse-trino:${input_tag}-arm
-          done
-
-      - name: Cleanup
-        if: always()
-        run: |
-          docker system prune -f || true
-
-
-  # ------------------------------------------------------------
-  # Combine amd64 + arm64 images into a multi-arch manifest list
-  # ------------------------------------------------------------
-  create-manifest:
-    name: Publish multi-arch manifest
-    needs: [build-amd, build-arm]        # wait for both images to be pushed
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Fail if image tags is empty
-        if: inputs.tags == ''
-        run: exit 1
-
-      - name: Log in to Docker Hub
-        run: docker login --username ${{ secrets.DOCKER_USERNAME }} --password ${{ secrets.DOCKER_KEY }}
+            for input_tag in ${{ inputs.tags }}; do
+              docker tag trino:472-arm64 onehouse/onehouse-trino:${input_tag}-arm
+              docker push onehouse/onehouse-trino:${input_tag}-arm
+            done
 
       - name: Enable Buildx (just in case)
         run: |
-          docker buildx install                # no-op if already available
-          docker buildx create --use --name builder || true
+            docker buildx install                # no-op if already available
+            docker buildx create --use --name builder || true
 
       - name: Create & push manifest list
         run: |
@@ -185,4 +107,5 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: docker system prune -f || true
+        run: |
+          docker system prune -f || true
