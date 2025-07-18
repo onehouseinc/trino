@@ -22,7 +22,7 @@ import io.airlift.units.MinDataSize;
 public class ExecutingStatementResourceConfig
 {
     static final String MIN_TARGET_RESULT_SIZE = "1MB";
-    static final String MAX_TARGET_RESULT_SIZE = "128MB";
+    static final String MAX_TARGET_RESULT_SIZE = "1024MB";
     private DataSize targetResultSize = DataSize.valueOf(MIN_TARGET_RESULT_SIZE);
 
     @MinDataSize(MIN_TARGET_RESULT_SIZE)
