@@ -300,7 +300,7 @@ public final class HudiUtil
                 tableHandle.getPartitionPredicates());
     }
 
-    public static Partition buildPartition(String partitionPath, HudiTableHandle tableHandle, PartitionValueExtractor partitionValueExtractor)
+    public static Partition buildPartition(String partitionPath, List<Column> partitionColumns, HudiTableHandle tableHandle, PartitionValueExtractor partitionValueExtractor)
     {
         if (partitionPath == null || partitionPath.isEmpty()) {
             return Partition.builder()
@@ -315,19 +315,10 @@ public final class HudiUtil
         }
         else {
             List<String> values = partitionValueExtractor.extractPartitionValuesInPath(partitionPath);
-            List<HiveColumnHandle> hiveColumnHandles = tableHandle.getPartitionColumns();
 
-            if (hiveColumnHandles.size() != values.size()) {
+            if (partitionColumns.size() != values.size()) {
                 throw new TrinoException(HUDI_INVALID_PARTITION_VALUE, "Invalid partition path: " + partitionPath);
             }
-
-            List<Column> columns = hiveColumnHandles.stream()
-                    .map(column -> new Column(
-                            column.getName(),
-                            column.getHiveType(),
-                            column.getComment(),
-                            Collections.emptyMap()))
-                    .toList();
 
             return Partition.builder()
                     .setDatabaseName(tableHandle.getSchemaName())
@@ -336,7 +327,7 @@ public final class HudiUtil
                             storageBuilder.setLocation(getFullPath(tableHandle.getBasePath(), partitionPath))
                                     // ToDo - set valid storage format
                                     .setStorageFormat(StorageFormat.NULL_STORAGE_FORMAT))
-                    .setColumns(columns)
+                    .setColumns(partitionColumns)
                     .setValues(values)
                     .build();
         }

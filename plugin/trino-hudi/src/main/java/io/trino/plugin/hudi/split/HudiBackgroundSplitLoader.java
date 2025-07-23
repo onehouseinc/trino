@@ -18,7 +18,9 @@ import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.concurrent.BoundedExecutor;
 import io.airlift.log.Logger;
 import io.trino.filesystem.cache.CachingHostAddressProvider;
+import io.trino.metastore.Column;
 import io.trino.metastore.Partition;
+import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hive.util.AsyncQueue;
 import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.HudiUtil;
@@ -37,6 +39,7 @@ import org.apache.hudi.sync.common.model.PartitionValueExtractor;
 import org.apache.hudi.util.Lazy;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +55,7 @@ import java.util.stream.Collectors;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static io.airlift.concurrent.MoreFutures.addExceptionCallback;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_CANNOT_OPEN_SPLIT;
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_INVALID_PARTITION_VALUE;
 import static io.trino.plugin.hudi.HudiSessionProperties.getSplitGeneratorParallelism;
 import static io.trino.plugin.hudi.HudiSessionProperties.getTargetSplitSize;
 import static io.trino.plugin.hudi.HudiSessionProperties.isMetadataPartitionListingEnabled;
@@ -180,11 +184,20 @@ public class HudiBackgroundSplitLoader
 
         PartitionValueExtractor partitionValueExtractor = getPartitionValueExtractor(lazyMetaClient.get().getTableConfig());
         try {
+            List<HiveColumnHandle> hivePartitionColumns = tableHandle.getPartitionColumns();
+
+            List<Column> partitionColumns = hivePartitionColumns.stream()
+                    .map(column -> new Column(
+                            column.getName(),
+                            column.getHiveType(),
+                            column.getComment(),
+                            Collections.emptyMap()))
+                    .toList();
             log.info("Listing partitions for %s.%s via metadata table using partition value extractor %s",
                     tableHandle.getSchemaName(), tableHandle.getTableName(), partitionValueExtractor.getClass().getSimpleName());
             Map<String, Partition> metadataPartitions = lazyTableMetadata.get()
                     .getAllPartitionPaths().stream()
-                    .map(partitionPath -> HudiUtil.buildPartition(partitionPath, tableHandle, partitionValueExtractor))
+                    .map(partitionPath -> HudiUtil.buildPartition(partitionPath, partitionColumns, tableHandle, partitionValueExtractor))
                     .collect(Collectors.toMap(
                             HudiUtil::getHivePartitionName,
                             Function.identity()));
