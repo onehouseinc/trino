@@ -55,7 +55,6 @@ import java.util.stream.Collectors;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static io.airlift.concurrent.MoreFutures.addExceptionCallback;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_CANNOT_OPEN_SPLIT;
-import static io.trino.plugin.hudi.HudiErrorCode.HUDI_INVALID_PARTITION_VALUE;
 import static io.trino.plugin.hudi.HudiSessionProperties.getSplitGeneratorParallelism;
 import static io.trino.plugin.hudi.HudiSessionProperties.getTargetSplitSize;
 import static io.trino.plugin.hudi.HudiSessionProperties.isMetadataPartitionListingEnabled;
