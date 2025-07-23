@@ -29,6 +29,7 @@ import org.apache.hudi.sync.common.model.PartitionValueExtractor;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -95,16 +96,24 @@ public class TestHudiUtil
         String partitionColumn1 = "year";
         String partitionColumn2 = "month";
 
-        List<HiveColumnHandle> partitionColumns = List.of(
+        List<HiveColumnHandle> hivePartitionColumns = List.of(
                 new HiveColumnHandle(partitionColumn1, 0, HIVE_STRING, VARCHAR, Optional.empty(), PARTITION_KEY, Optional.empty()),
                 new HiveColumnHandle(partitionColumn2, 1, HIVE_STRING, VARCHAR, Optional.empty(), PARTITION_KEY, Optional.empty()));
+
+        List<Column> partitionColumns = hivePartitionColumns.stream()
+                .map(column -> new Column(
+                        column.getName(),
+                        column.getHiveType(),
+                        column.getComment(),
+                        Collections.emptyMap()))
+                .toList();
 
         HudiTableHandle tableHandle = new HudiTableHandle(
                 "test_schema",
                 "test_table",
                 "s3://bucket/test_path",
                 HoodieTableType.MERGE_ON_READ,
-                partitionColumns,
+                hivePartitionColumns,
                 TupleDomain.all(),
                 TupleDomain.all());
 
@@ -113,7 +122,7 @@ public class TestHudiUtil
         // Simple extractor based on hive-style (split by '=' and '/')
         PartitionValueExtractor extractor = new MultiPartKeysValueExtractor();
 
-        Partition partition = buildPartition(partitionPath, tableHandle, extractor);
+        Partition partition = buildPartition(partitionPath, partitionColumns, tableHandle, extractor);
 
         assertThat(partition.getDatabaseName()).isEqualTo("test_schema");
         assertThat(partition.getTableName()).isEqualTo("test_table");
@@ -138,7 +147,7 @@ public class TestHudiUtil
 
         PartitionValueExtractor extractor = path -> List.of();
 
-        Partition partition = buildPartition("", tableHandle, extractor);
+        Partition partition = buildPartition("", Collections.emptyList(), tableHandle, extractor);
 
         assertThat(partition.getDatabaseName()).isEqualTo("test_schema");
         assertThat(partition.getTableName()).isEqualTo("test_table");
@@ -150,7 +159,7 @@ public class TestHudiUtil
     @Test
     public void testBuildPartition_withMismatchedPartitionValues_throws()
     {
-        List<HiveColumnHandle> partitionColumns = List.of(
+        List<HiveColumnHandle> hivePartitionColumns = List.of(
                 new HiveColumnHandle("year", 0, HIVE_STRING, VARCHAR, Optional.empty(), PARTITION_KEY, Optional.empty()));
 
         HudiTableHandle tableHandle = new HudiTableHandle(
@@ -158,9 +167,17 @@ public class TestHudiUtil
                 "test_table",
                 "s3://bucket/test_path",
                 HoodieTableType.COPY_ON_WRITE,
-                partitionColumns,
+                hivePartitionColumns,
                 TupleDomain.all(),
                 TupleDomain.all());
+
+        List<Column> partitionColumns = hivePartitionColumns.stream()
+                .map(column -> new Column(
+                        column.getName(),
+                        column.getHiveType(),
+                        column.getComment(),
+                        Collections.emptyMap()))
+                .toList();
 
         String invalidPartitionPath = "year=2024/month=07"; // 2 values, 1 column
 
@@ -168,7 +185,7 @@ public class TestHudiUtil
                 .map(p -> p.split("=")[1])
                 .toList();
 
-        assertThatThrownBy(() -> buildPartition(invalidPartitionPath, tableHandle, extractor))
+        assertThatThrownBy(() -> buildPartition(invalidPartitionPath, partitionColumns, tableHandle, extractor))
                 .isInstanceOf(TrinoException.class)
                 .hasMessageContaining("Invalid partition path");
     }
