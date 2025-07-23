@@ -182,8 +182,8 @@ public class HudiBackgroundSplitLoader
             return lazyPartitionMap.get();
         }
 
-        PartitionValueExtractor partitionValueExtractor = getPartitionValueExtractor(lazyMetaClient.get().getTableConfig());
         try {
+            PartitionValueExtractor partitionValueExtractor = getPartitionValueExtractor(lazyMetaClient.get().getTableConfig());
             List<HiveColumnHandle> hivePartitionColumns = tableHandle.getPartitionColumns();
 
             List<Column> partitionColumns = hivePartitionColumns.stream()
