@@ -333,6 +333,7 @@ public class ResourceHudiTablesInitializer
     public enum TestingTable
     {
         HUDI_NON_PART_COW(nonPartitionRegularColumns()),
+        HUDI_NON_PART_MOR(simpleRegularColumns(), ImmutableList.of(), ImmutableMap.of(), true),
         HUDI_TRIPS_COW_V8(tripsRegularColumns()),
         HUDI_COW_PT_TBL(multiPartitionRegularColumns(), multiPartitionColumns(), multiPartitions(), false),
         STOCK_TICKS_COW(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions(), false),
@@ -435,6 +436,14 @@ public class ResourceHudiTablesInitializer
                     column("ts", HIVE_LONG),
                     column("dt", HIVE_STRING),
                     column("hh", HIVE_STRING));
+        }
+
+        private static List<Column> simpleRegularColumns()
+        {
+            return ImmutableList.of(
+                    column("id", HIVE_STRING),
+                    column("name", HIVE_STRING),
+                    column("age", HIVE_INT));
         }
 
         private static List<Column> tripsRegularColumns()
