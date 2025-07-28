@@ -213,7 +213,7 @@ public class HudiColumnStatsIndexSupport
             fileSlice.getLogFiles().forEach(logFile -> filesToLookUp.add(logFile.getFileName()));
         }
 
-        return filesToLookUp.stream().anyMatch(file -> {
+        return filesToLookUp.stream().allMatch(file -> {
             // If no stats exist for this specific file, we cannot prune it.
             String fileSliceName = fileSlice.getBaseFile().map(BaseFile::getFileName).orElse("");
             // If no stats exist for this specific file, we cannot prune it.
