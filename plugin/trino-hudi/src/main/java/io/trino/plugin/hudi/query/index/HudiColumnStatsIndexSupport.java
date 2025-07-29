@@ -20,9 +20,9 @@ import io.airlift.slice.Slices;
 import io.airlift.units.Duration;
 import io.trino.parquet.predicate.TupleDomainParquetPredicate;
 import io.trino.plugin.hive.HiveColumnHandle;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
 import io.trino.spi.connector.ConnectorSession;
-import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.Range;
 import io.trino.spi.predicate.TupleDomain;
@@ -44,6 +44,7 @@ import org.apache.hudi.util.Lazy;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -54,6 +55,7 @@ import java.util.stream.Collectors;
 
 import static io.trino.parquet.predicate.PredicateUtils.isStatisticsOverflow;
 import static io.trino.plugin.hudi.HudiSessionProperties.getColumnStatsWaitTimeout;
+import static io.trino.plugin.hudi.HudiUtil.getColumnNamesFromTableSchema;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
 import static io.trino.spi.type.DateType.DATE;
@@ -75,14 +77,14 @@ public class HudiColumnStatsIndexSupport
     private final Duration columnStatsWaitTimeout;
     private final long futureStartTimeMs;
 
-    public HudiColumnStatsIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiColumnStatsIndexSupport(ConnectorSession session, HudiTableHandle hudiTableHandle, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        this(log, session, schemaTableName, lazyMetaClient, lazyTableMetadata, regularColumnPredicates);
+        this(log, session, hudiTableHandle, lazyMetaClient, lazyTableMetadata, regularColumnPredicates);
     }
 
-    public HudiColumnStatsIndexSupport(Logger log, ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiColumnStatsIndexSupport(Logger log, ConnectorSession session, HudiTableHandle hudiTableHandle, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        super(log, schemaTableName, lazyMetaClient);
+        super(log, hudiTableHandle, lazyMetaClient);
         this.columnStatsWaitTimeout = getColumnStatsWaitTimeout(session);
         this.regularColumnPredicates = regularColumnPredicates.transformKeys(HiveColumnHandle::getName);
         this.regularColumns = this.regularColumnPredicates.getDomains()
@@ -93,7 +95,7 @@ public class HudiColumnStatsIndexSupport
         }
         else {
             // Get filter columns
-            List<String> encodedTargetColumnNames = regularColumns
+            List<String> encodedTargetColumnNames = getColumnNamesFromTableSchema(regularColumns, hudiTableHandle.getTableSchema())
                     .stream()
                     .map(col -> new ColumnIndexID(col).asBase64EncodedString()).collect(Collectors.toList());
 
@@ -117,7 +119,7 @@ public class HudiColumnStatsIndexSupport
                                 .collect(Collectors.groupingBy(
                                         HoodieMetadataColumnStats::getFileName,
                                         Collectors.toMap(
-                                                HoodieMetadataColumnStats::getColumnName,
+                                                colStats -> colStats.getColumnName().toLowerCase(Locale.ENGLISH),
                                                 // Pre-compute the Domain object for each HoodieMetadataColumnStats
                                                 stats -> getDomainFromColumnStats(stats.getColumnName(), columnTypes.get(stats.getColumnName()), stats))));
 
@@ -223,7 +225,7 @@ public class HudiColumnStatsIndexSupport
         }
         for (String regularColumn : regularColumns) {
             Domain columnPredicate = regularColumnPredicates.getDomains().get().get(regularColumn);
-            Optional<Domain> currentColumnStats = Optional.ofNullable(domainsWithStats.get(regularColumn));
+            Optional<Domain> currentColumnStats = Optional.ofNullable(domainsWithStats.get(regularColumn.toLowerCase(Locale.ENGLISH)));
             if (currentColumnStats.isEmpty()) {
                 // No stats for column
             }

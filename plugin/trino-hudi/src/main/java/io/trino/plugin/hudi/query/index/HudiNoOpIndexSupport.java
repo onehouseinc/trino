@@ -14,7 +14,7 @@
 package io.trino.plugin.hudi.query.index;
 
 import io.airlift.log.Logger;
-import io.trino.spi.connector.SchemaTableName;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.util.Lazy;
@@ -27,9 +27,9 @@ public class HudiNoOpIndexSupport
 {
     private static final Logger log = Logger.get(HudiNoOpIndexSupport.class);
 
-    public HudiNoOpIndexSupport(SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient)
+    public HudiNoOpIndexSupport(HudiTableHandle hudiTableHandle, Lazy<HoodieTableMetaClient> lazyMetaClient)
     {
-        super(log, schemaTableName, lazyMetaClient);
+        super(log, hudiTableHandle, lazyMetaClient);
     }
 
     @Override

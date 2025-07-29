@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TupleDomainUtils
 {
@@ -35,7 +36,7 @@ public class TupleDomainUtils
         if (tupleDomain.getDomains().isEmpty()) {
             return List.of();
         }
-        return tupleDomain.getDomains().get().keySet().stream().toList();
+        return tupleDomain.getDomains().get().keySet().stream().map(String::toLowerCase).toList();
     }
 
     /**
@@ -44,7 +45,7 @@ public class TupleDomainUtils
     public static boolean areAllFieldsReferenced(TupleDomain<String> tupleDomain, List<String> sourceFields)
     {
         Set<String> referenceColSet = new HashSet<>(TupleDomainUtils.getReferencedColumns(tupleDomain));
-        Set<String> sourceFieldSet = new HashSet<>(sourceFields);
+        Set<String> sourceFieldSet = sourceFields.stream().map(String::toLowerCase).collect(Collectors.toSet());
 
         return referenceColSet.containsAll(sourceFieldSet);
     }
@@ -55,12 +56,7 @@ public class TupleDomainUtils
     public static boolean areSomeFieldsReferenced(TupleDomain<String> tupleDomain, List<String> sourceFields)
     {
         Set<String> referenceColSet = new HashSet<>(TupleDomainUtils.getReferencedColumns(tupleDomain));
-        for (String sourceField : sourceFields) {
-            if (referenceColSet.contains(sourceField)) {
-                return true;
-            }
-        }
-        return false;
+        return sourceFields.stream().map(String::toLowerCase).anyMatch(referenceColSet::contains);
     }
 
     /**
@@ -81,10 +77,21 @@ public class TupleDomainUtils
 
         boolean areReferencedInOrEqual = true;
         for (String sourceField : sourceFields) {
-            Domain domain = domainsOpt.get().get(sourceField);
             // For cases where sourceField does not exist in tupleDomain
+            Map<String, Domain> domains = domainsOpt.get();
+            Domain domain = domains.get(sourceField);
+
             if (domain == null) {
-                return false;
+                // Try case-insensitive match for sourceField if exact match is not found
+                domain = domains.entrySet().stream()
+                        .filter(entry -> entry.getKey().equalsIgnoreCase(sourceField))
+                        .map(Map.Entry::getValue)
+                        .findFirst()
+                        .orElse(null);
+
+                if (domain == null) {
+                    return false;
+                }
             }
             areReferencedInOrEqual &= (domain.isSingleValue() || domain.getValues().isDiscreteSet());
         }

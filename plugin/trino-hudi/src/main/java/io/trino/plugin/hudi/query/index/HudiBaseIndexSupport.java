@@ -14,6 +14,7 @@
 package io.trino.plugin.hudi.query.index;
 
 import io.airlift.log.Logger;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.spi.connector.SchemaTableName;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieIndexDefinition;
@@ -32,10 +33,10 @@ public abstract class HudiBaseIndexSupport
     protected final SchemaTableName schemaTableName;
     protected final Lazy<HoodieTableMetaClient> lazyMetaClient;
 
-    public HudiBaseIndexSupport(Logger log, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient)
+    public HudiBaseIndexSupport(Logger log, HudiTableHandle hudiTableHandle, Lazy<HoodieTableMetaClient> lazyMetaClient)
     {
         this.log = requireNonNull(log, "log is null");
-        this.schemaTableName = requireNonNull(schemaTableName, "schemaTableName is null");
+        this.schemaTableName = requireNonNull(hudiTableHandle.getSchemaTableName(), "schemaTableName is null");
         this.lazyMetaClient = requireNonNull(lazyMetaClient, "metaClient is null");
     }
 

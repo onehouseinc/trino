@@ -15,9 +15,9 @@ package io.trino.plugin.hudi.query.index;
 
 import io.airlift.log.Logger;
 import io.trino.plugin.hive.HiveColumnHandle;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
 import io.trino.spi.connector.ConnectorSession;
-import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.type.Type;
@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static io.trino.plugin.hudi.HudiUtil.getColumnNamesFromTableSchema;
 import static io.trino.plugin.hudi.util.TupleDomainUtils.hasSimpleNullCheck;
 
 public class HudiPartitionStatsIndexSupport
@@ -43,11 +44,13 @@ public class HudiPartitionStatsIndexSupport
 {
     private static final Logger log = Logger.get(HudiColumnStatsIndexSupport.class);
     private final Lazy<HoodieTableMetadata> lazyMetadataTable;
+    private final HudiTableHandle hudiTableHandle;
 
-    public HudiPartitionStatsIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiPartitionStatsIndexSupport(ConnectorSession session, HudiTableHandle hudiTableHandle, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        super(log, session, schemaTableName, lazyMetaClient, lazyTableMetadata, regularColumnPredicates);
+        super(log, session, hudiTableHandle, lazyMetaClient, lazyTableMetadata, regularColumnPredicates);
         this.lazyMetadataTable = lazyTableMetadata;
+        this.hudiTableHandle = hudiTableHandle;
     }
 
     public Optional<List<String>> prunePartitions(
@@ -67,7 +70,7 @@ public class HudiPartitionStatsIndexSupport
         List<String> regularColumns = new ArrayList<>(filteredRegularPredicates.getDomains().get().keySet());
 
         // Get columns to filter on
-        List<String> encodedTargetColumnNames = regularColumns
+        List<String> encodedTargetColumnNames = getColumnNamesFromTableSchema(regularColumns, hudiTableHandle.getTableSchema())
                 .stream()
                 .map(col -> new ColumnIndexID(col).asBase64EncodedString()).toList();
 
