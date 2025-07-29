@@ -16,6 +16,7 @@ package io.trino.plugin.hudi.partition;
 import io.airlift.concurrent.MoreFutures;
 import io.trino.plugin.hive.HivePartitionKey;
 import io.trino.plugin.hive.util.AsyncQueue;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.query.HudiDirectoryLister;
 import io.trino.plugin.hudi.split.HudiSplitFactory;
 import io.trino.spi.connector.ConnectorSplit;
@@ -23,7 +24,6 @@ import org.apache.hudi.common.model.FileSlice;
 
 import java.util.Deque;
 import java.util.List;
-import java.util.Optional;
 
 import static io.trino.plugin.hudi.partition.HiveHudiPartitionInfo.NON_PARTITION;
 
@@ -33,22 +33,22 @@ public class HudiPartitionInfoLoader
     private final HudiDirectoryLister hudiDirectoryLister;
     private final HudiSplitFactory hudiSplitFactory;
     private final AsyncQueue<ConnectorSplit> asyncQueue;
-    private final Deque<String> partitionQueue;
-    private final String commitTime;
+    private final Deque<HiveHudiPartitionInfo> partitionQueue;
+    private final HudiTableHandle tableHandle;
     private final boolean useIndex;
 
     private boolean isRunning;
 
     public HudiPartitionInfoLoader(
             HudiDirectoryLister hudiDirectoryLister,
-            String commitTime,
+            HudiTableHandle tableHandle,
             HudiSplitFactory hudiSplitFactory,
             AsyncQueue<ConnectorSplit> asyncQueue,
-            Deque<String> partitionQueue,
+            Deque<HiveHudiPartitionInfo> partitionQueue,
             boolean useIndex)
     {
         this.hudiDirectoryLister = hudiDirectoryLister;
-        this.commitTime = commitTime;
+        this.tableHandle = tableHandle;
         this.hudiSplitFactory = hudiSplitFactory;
         this.asyncQueue = asyncQueue;
         this.partitionQueue = partitionQueue;
@@ -60,27 +60,24 @@ public class HudiPartitionInfoLoader
     public void run()
     {
         while (isRunning || !partitionQueue.isEmpty()) {
-            String partitionName = partitionQueue.poll();
+            HiveHudiPartitionInfo hudiPartitionInfo = partitionQueue.poll();
 
-            if (partitionName != null) {
-                generateSplitsFromPartition(partitionName);
+            if (hudiPartitionInfo != null && hudiPartitionInfo.getHivePartitionName() != null) {
+                generateSplitsFromPartition(hudiPartitionInfo);
             }
         }
     }
 
-    private void generateSplitsFromPartition(String partitionName)
+    private void generateSplitsFromPartition(HiveHudiPartitionInfo hudiPartitionInfo)
     {
-        Optional<HudiPartitionInfo> partitionInfo = hudiDirectoryLister.getPartitionInfo(partitionName);
-        partitionInfo.ifPresent(hudiPartitionInfo -> {
-            if (hudiPartitionInfo.doesMatchPredicates() || partitionName.equals(NON_PARTITION)) {
-                List<HivePartitionKey> partitionKeys = hudiPartitionInfo.getHivePartitionKeys();
-                List<FileSlice> partitionFileSlices = hudiDirectoryLister.listStatus(hudiPartitionInfo, useIndex);
-                partitionFileSlices.stream()
-                        .flatMap(slice -> hudiSplitFactory.createSplits(partitionKeys, slice, commitTime).stream())
-                        .map(asyncQueue::offer)
-                        .forEachOrdered(MoreFutures::getFutureValue);
-            }
-        });
+        if (hudiPartitionInfo.doesMatchPredicates() || hudiPartitionInfo.getHivePartitionName().equals(NON_PARTITION)) {
+            List<HivePartitionKey> partitionKeys = hudiPartitionInfo.getHivePartitionKeys();
+            List<FileSlice> partitionFileSlices = hudiDirectoryLister.listStatus(hudiPartitionInfo, useIndex);
+            partitionFileSlices.stream()
+                    .flatMap(slice -> hudiSplitFactory.createSplits(partitionKeys, slice, tableHandle.getLatestCommitTime()).stream())
+                    .map(asyncQueue::offer)
+                    .forEachOrdered(MoreFutures::getFutureValue);
+        }
     }
 
     public void stopRunning()
