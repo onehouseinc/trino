@@ -334,6 +334,10 @@ public class ResourceHudiTablesInitializer
     {
         HUDI_NON_PART_COW(nonPartitionRegularColumns()),
         HUDI_TRIPS_COW_V8(tripsRegularColumns()),
+        HUDI_TABLE_WITH_SCHEMA_CAPS_COW(nonPartitionRegularColumnsWithCaps()),
+        HUDI_PART_TABLE_WITH_SCHEMA_CAPS_COW(nonPartitionRegularColumnsWithCaps(), partitionColumnsWithCaps(), hudiSchemaCapsPartitions(), false),
+        HUDI_MULTI_KEY_WITH_SCHEMA_CAPS_COW(nonPartitionRegularColumnsWithCaps()),
+        HUDI_TABLE_WITH_SCHEMA_CAPS_MOR(nonPartitionRegularColumnsWithCaps(), ImmutableList.of(), ImmutableMap.of(), true),
         HUDI_COW_PT_TBL(multiPartitionRegularColumns(), multiPartitionColumns(), multiPartitions(), false),
         STOCK_TICKS_COW(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions(), false),
         STOCK_TICKS_MOR(stockTicksRegularColumns(), stockTicksPartitionColumns(), stockTicksPartitions(), false),
@@ -435,6 +439,26 @@ public class ResourceHudiTablesInitializer
                     column("ts", HIVE_LONG),
                     column("dt", HIVE_STRING),
                     column("hh", HIVE_STRING));
+        }
+
+        private static List<Column> partitionColumnsWithCaps()
+        {
+            return ImmutableList.of(column("country", HIVE_STRING));
+        }
+
+        private static List<Column> nonPartitionRegularColumnsWithCaps()
+        {
+            return ImmutableList.of(
+                    column("id", HIVE_STRING),
+                    column("name", HIVE_STRING),
+                    column("age", HIVE_INT));
+        }
+
+        private static Map<String, String> hudiSchemaCapsPartitions()
+        {
+            return ImmutableMap.of(
+                    "country=IND", "IND",
+                    "country=US", "US");
         }
 
         private static List<Column> tripsRegularColumns()

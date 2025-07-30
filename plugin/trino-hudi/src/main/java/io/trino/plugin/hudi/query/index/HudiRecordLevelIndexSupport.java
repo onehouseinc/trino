@@ -17,10 +17,10 @@ import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.airlift.units.Duration;
 import io.trino.plugin.hive.HiveColumnHandle;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ConnectorSession;
-import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.model.FileSlice;
@@ -32,6 +32,7 @@ import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadataUtil;
 import org.apache.hudi.util.Lazy;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -61,9 +62,9 @@ public class HudiRecordLevelIndexSupport
     private final Duration recordIndexWaitTimeout;
     private final long futureStartTimeMs;
 
-    public HudiRecordLevelIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiRecordLevelIndexSupport(ConnectorSession session, HudiTableHandle hudiTableHandle, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        super(log, schemaTableName, lazyMetaClient);
+        super(log, hudiTableHandle, lazyMetaClient);
         this.recordIndexWaitTimeout = getRecordIndexWaitTimeout(session);
         if (regularColumnPredicates.isAll()) {
             log.debug("Predicates cover all data, skipping record level index lookup.");
@@ -199,7 +200,18 @@ public class HudiRecordLevelIndexSupport
 
         // Extract the domains matching the specified columns
         Map<String, Domain> allDomains = tupleDomain.getDomains().get();
-        Map<String, Domain> filteredDomains = allDomains.entrySet().stream().filter(entry -> columnFields.contains(entry.getKey())) // Ensure key is in the column set
+        // Filter the map to include only entries whose keys match (ignoring case) with any string in `columnFields`.
+        // Then, replace the map's key with the version from `columnFields` (to preserve the original schema from table).
+        Map<String, Domain> filteredDomains = allDomains.entrySet().stream()
+                .filter(entry -> columnFields.stream()
+                        .anyMatch(column -> column.equalsIgnoreCase(entry.getKey())))
+                .map(entry -> {
+                    String matchedKey = columnFields.stream()
+                            .filter(column -> column.equalsIgnoreCase(entry.getKey()))
+                            .findFirst()
+                            .orElse(entry.getKey());
+                    return new AbstractMap.SimpleEntry<>(matchedKey, entry.getValue());
+                })
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         // If no domains matched, but we had some columns to extract, return ALL

@@ -74,10 +74,13 @@ import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.Testing
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_PT_TBL;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_CUSTOM_KEYGEN_PT_V8_MOR;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_KEY_WITH_SCHEMA_CAPS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_PT_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_PART_TABLE_WITH_SCHEMA_CAPS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_MOR;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TABLE_WITH_SCHEMA_CAPS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TIMESTAMP_KEYGEN_PT_SCALAR_TO_YYYY_MM_DD_HH_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TRIPS_COW_V8;
@@ -664,6 +667,81 @@ public class TestHudiSmokeTest
     @ParameterizedTest
     @EnumSource(
             value = ResourceHudiTablesInitializer.TestingTable.class,
+            names = {"HUDI_TABLE_WITH_SCHEMA_CAPS_COW", "HUDI_TABLE_WITH_SCHEMA_CAPS_MOR"})
+    public void testFileSkippingWithSchemaMismatchDueToColumnCase(ResourceHudiTablesInitializer.TestingTable table)
+    {
+        Session session = SessionBuilder.from(getSession())
+                .withMdtEnabled(true)
+                .withColStatsIndexEnabled(true)
+                .withColumnStatsTimeout("1s")
+                .withRecordLevelIndexEnabled(false)
+                .withSecondaryIndexEnabled(false)
+                .withPartitionStatsIndexEnabled(false)
+                .build();
+        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + table);
+        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM  " + table + " WHERE name='Alice'");
+        int totalSplits = totalRes.getStatementStats().get().getTotalSplits();
+        int totalRows = totalRes.getRowCount();
+        int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
+        int prunedRows = prunedRes.getRowCount();
+        assertThat(prunedSplits).isLessThan(totalSplits);
+        // With colstats file skipping, only 1 split should be returned
+        assertThat(prunedSplits).isEqualTo(1);
+        assertThat(totalRows).isEqualTo(2);
+        assertThat(prunedRows).isEqualTo(1);
+    }
+
+    @Test
+    public void testRLIWithSchemaMismatchDueToColumnCase()
+    {
+        Session session = SessionBuilder.from(getSession())
+                .withMdtEnabled(true)
+                .withColStatsIndexEnabled(false)
+                .withRecordLevelIndexEnabled(true)
+                .withRecordIndexTimeout("1s")
+                .withSecondaryIndexEnabled(false)
+                .withPartitionStatsIndexEnabled(false)
+                .build();
+        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_TABLE_WITH_SCHEMA_CAPS_COW);
+        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM  " + HUDI_TABLE_WITH_SCHEMA_CAPS_COW + " WHERE id='1'");
+        int totalSplits = totalRes.getStatementStats().get().getTotalSplits();
+        int totalRows = totalRes.getRowCount();
+        int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
+        int prunedRows = prunedRes.getRowCount();
+        assertThat(prunedSplits).isLessThan(totalSplits);
+        // With record index file skipping, only 1 split should be returned
+        assertThat(prunedSplits).isEqualTo(1);
+        assertThat(totalRows).isEqualTo(2);
+        assertThat(prunedRows).isEqualTo(1);
+    }
+
+    @Test
+    public void testMultiKeyRLIWithSchemaMismatchDueToColumnCase()
+    {
+        Session session = SessionBuilder.from(getSession())
+                .withMdtEnabled(true)
+                .withColStatsIndexEnabled(false)
+                .withRecordLevelIndexEnabled(true)
+                .withRecordIndexTimeout("1s")
+                .withSecondaryIndexEnabled(false)
+                .withPartitionStatsIndexEnabled(false)
+                .build();
+        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_MULTI_KEY_WITH_SCHEMA_CAPS_COW);
+        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM  " + HUDI_MULTI_KEY_WITH_SCHEMA_CAPS_COW + " WHERE id='1' and age=30");
+        int totalSplits = totalRes.getStatementStats().get().getTotalSplits();
+        int totalRows = totalRes.getRowCount();
+        int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
+        int prunedRows = prunedRes.getRowCount();
+        assertThat(prunedSplits).isLessThan(totalSplits);
+        // With record index file skipping, only 1 split should be returned
+        assertThat(prunedSplits).isEqualTo(1);
+        assertThat(totalRows).isEqualTo(2);
+        assertThat(prunedRows).isEqualTo(1);
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = ResourceHudiTablesInitializer.TestingTable.class,
             names = {"HUDI_MULTI_FG_PT_V6_MOR", "HUDI_MULTI_FG_PT_V8_MOR"})
     public void testRecordLevelFileSkipping(ResourceHudiTablesInitializer.TestingTable table)
     {
@@ -741,6 +819,23 @@ public class TestHudiSmokeTest
         int expectedSplits = table.getHoodieTableVersion()
                 .greaterThanOrEquals(HoodieTableVersion.EIGHT) ? 2 : 4;
         assertThat(prunedSplits).isEqualTo(expectedSplits);
+    }
+
+    @Test
+    public void testPartitionStatsIndexPartitionPruningWithSchemaCaseMismatch()
+    {
+        Session session = SessionBuilder.from(getSession())
+                .withMdtEnabled(true)
+                .withColStatsIndexEnabled(false)
+                .withRecordLevelIndexEnabled(false)
+                .withSecondaryIndexEnabled(false)
+                .withPartitionStatsIndexEnabled(true)
+                .build();
+        MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_PART_TABLE_WITH_SCHEMA_CAPS_COW
+                + " WHERE country = 'US'");
+        int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
+
+        assertThat(prunedSplits).isEqualTo(2);
     }
 
     @ParameterizedTest

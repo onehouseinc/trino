@@ -16,9 +16,9 @@ package io.trino.plugin.hudi.query.index;
 import io.airlift.log.Logger;
 import io.airlift.units.Duration;
 import io.trino.plugin.hive.HiveColumnHandle;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.util.TupleDomainUtils;
 import io.trino.spi.connector.ConnectorSession;
-import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
 import org.apache.hudi.common.model.FileSlice;
 import org.apache.hudi.common.model.HoodieIndexDefinition;
@@ -51,9 +51,9 @@ public class HudiSecondaryIndexSupport
     private final Duration secondaryIndexWaitTimeout;
     private final long futureStartTimeMs;
 
-    public HudiSecondaryIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiSecondaryIndexSupport(ConnectorSession session, HudiTableHandle hudiTableHandle, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
     {
-        super(log, schemaTableName, lazyMetaClient);
+        super(log, hudiTableHandle, lazyMetaClient);
         this.secondaryIndexWaitTimeout = getSecondaryIndexWaitTimeout(session);
         TupleDomain<String> regularPredicatesTransformed = regularColumnPredicates.transformKeys(HiveColumnHandle::getName);
         this.relevantFileIdsFuture = CompletableFuture.supplyAsync(() -> {
