@@ -51,9 +51,11 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -64,11 +66,14 @@ import static io.trino.plugin.hive.util.SerdeConstants.LIST_COLUMN_TYPES;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_BAD_DATA;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_FILESYSTEM_ERROR;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_META_CLIENT_ERROR;
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_SCHEMA_ERROR;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_UNSUPPORTED_FILE_FORMAT;
 import static org.apache.hudi.common.model.HoodieRecord.HOODIE_META_COLUMNS;
 
 public final class HudiUtil
 {
+    private static final Map<Schema, Map<String, Schema.Field>> SCHEMA_FIELD_CACHE = new ConcurrentHashMap<>();
+
     private HudiUtil() {}
 
     public static HoodieFileFormat getHudiFileFormat(String path)
@@ -202,7 +207,9 @@ public final class HudiUtil
         SchemaBuilder.RecordBuilder<Schema> schemaBuilder = SchemaBuilder.record("baseRecord");
         SchemaBuilder.FieldAssembler<Schema> fieldBuilder = schemaBuilder.fields();
         for (String columnName : columnNames) {
-            Schema originalFieldSchema = dataSchema.getField(columnName).schema();
+            Schema.Field field = getFieldFromSchema(columnName, dataSchema);
+            Schema originalFieldSchema = field.schema();
+
             Schema typeForNewField;
 
             // Check if the original field schema is already nullable (i.e., a UNION containing NULL)
@@ -214,11 +221,48 @@ public final class HudiUtil
             }
 
             fieldBuilder = fieldBuilder
-                    .name(columnName)
+                    .name(field.name())
                     .type(typeForNewField)
                     .withDefault(null);
         }
         return fieldBuilder.endRecord();
+    }
+
+    private static Map<String, Schema.Field> buildFieldLookup(Schema schema)
+    {
+        return schema.getFields().stream()
+                .collect(Collectors.toMap(
+                        f -> f.name().toLowerCase(Locale.ROOT),
+                        f -> f));
+    }
+
+    /**
+     * Fetches a field from the given Avro schema by column name.
+     * <p>
+     * First, attempts an exact match. If not found, performs a case-insensitive match.
+     * </p>
+     *
+     * @param columnName Column name to look for.
+     * @param schema Avro {@link Schema} to search in.
+     * @return Matching {@link Schema.Field} from the schema.
+     * @throws TrinoException if no field matches the given column name.
+     */
+    public static Schema.Field getFieldFromSchema(String columnName, Schema schema)
+    {
+        Schema.Field field = schema.getField(columnName);
+        if (field != null) {
+            return field;
+        }
+
+        field = SCHEMA_FIELD_CACHE
+                .computeIfAbsent(schema, HudiUtil::buildFieldLookup)
+                .get(columnName.toLowerCase(Locale.ROOT));
+        if (field != null) {
+            return field;
+        }
+
+        throw new TrinoException(HUDI_SCHEMA_ERROR,
+                "Failed to get column " + columnName + " from table schema");
     }
 
     public static List<HiveColumnHandle> prependHudiMetaColumns(List<HiveColumnHandle> dataColumns)

@@ -64,6 +64,7 @@ public class HudiSessionProperties
     static final String QUERY_PARTITION_FILTER_REQUIRED = "query_partition_filter_required";
     private static final String IGNORE_ABSENT_PARTITIONS = "ignore_absent_partitions";
     static final String DYNAMIC_FILTERING_WAIT_TIMEOUT = "dynamic_filtering_wait_timeout";
+    static final String RECONCILE_COLUMN_CASE_ENABLED = "reconcile_column_case_enabled";
 
     // Internal configuration for debugging and testing
     static final String RECORD_LEVEL_INDEX_ENABLED = "record_level_index_enabled";
@@ -238,7 +239,12 @@ public class HudiSessionProperties
                         DYNAMIC_FILTERING_WAIT_TIMEOUT,
                         "Duration to wait for completion of dynamic filters during split generation",
                         hudiConfig.getDynamicFilteringWaitTimeout(),
-                        false));
+                        false),
+                booleanProperty(
+                        RECONCILE_COLUMN_CASE_ENABLED,
+                        "Enable reconcile column case",
+                        hudiConfig.isReconcileColumnCaseEnabled(),
+                        true));
     }
 
     @Override
@@ -371,6 +377,11 @@ public class HudiSessionProperties
     public static boolean isNoOpIndexEnabled(ConnectorSession session)
     {
         return !isRecordLevelIndexEnabled(session) && !isSecondaryIndexEnabled(session) && !isColumnStatsIndexEnabled(session);
+    }
+
+    public static boolean isReconcileColumnCaseEnabled(ConnectorSession session)
+    {
+        return session.getProperty(RECONCILE_COLUMN_CASE_ENABLED, Boolean.class);
     }
 
     public static Duration getDynamicFilteringWaitTimeout(ConnectorSession session)

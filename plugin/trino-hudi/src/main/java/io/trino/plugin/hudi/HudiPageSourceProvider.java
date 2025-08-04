@@ -221,20 +221,23 @@ public class HudiPageSourceProvider
         HoodieTableMetaClient metaClient = buildTableMetaClient(
                 fileSystemFactory.create(session), hudiTableHandle.getSchemaTableName().toString(), hudiTableHandle.getBasePath());
         String latestCommitTime = metaClient.getCommitsTimeline().lastInstant().get().requestedTime();
-        Schema dataSchema;
-        try {
-            dataSchema = new TableSchemaResolver(metaClient).getTableAvroSchema(latestCommitTime);
-        }
-        catch (Throwable e) {
-            // Unable to find table schema
-            throw new TrinoException(HUDI_FILESYSTEM_ERROR, e);
-        }
 
         HudiTrinoReaderContext readerContext = new HudiTrinoReaderContext(
                 dataPageSource,
                 dataColumnHandles,
                 hudiMetaAndDataColumnHandles,
                 synthesizedColumnHandler);
+        Schema dataSchema =
+                Optional.ofNullable(hudiTableHandle.getTableSchema())
+                        .orElseGet(() -> {
+                            try {
+                                return new TableSchemaResolver(metaClient)
+                                        .getTableAvroSchema(latestCommitTime);
+                            }
+                            catch (Throwable e) {
+                                throw new TrinoException(HUDI_FILESYSTEM_ERROR, e);
+                            }
+                        });
 
         // Construct an Avro schema for log file reader
         Schema requestedSchema = constructSchema(dataSchema, hudiMetaAndDataColumnHandles.stream().map(HiveColumnHandle::getName).toList());

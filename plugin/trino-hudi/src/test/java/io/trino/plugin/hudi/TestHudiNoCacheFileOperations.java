@@ -34,9 +34,11 @@ import static io.trino.filesystem.tracing.CacheFileSystemTraceUtils.isTrinoSchem
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_FG_PT_V8_MOR;
 import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.DATA;
 import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.INDEX_DEFINITION;
+import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.LOG;
 import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.METADATA_TABLE;
 import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.METADATA_TABLE_PROPERTIES;
 import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.TABLE_PROPERTIES;
+import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.TIMELINE;
 import static io.trino.testing.MultisetAssertions.assertMultisetsEqual;
 import static java.util.stream.Collectors.toCollection;
 
@@ -73,6 +75,8 @@ public class TestHudiNoCacheFileOperations
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.length", METADATA_TABLE), 3)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE), 5)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", INDEX_DEFINITION), 2)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TIMELINE), 2)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", LOG), 1)
                         .add(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES))
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 2)
                         .build());
@@ -85,6 +89,8 @@ public class TestHudiNoCacheFileOperations
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.length", METADATA_TABLE), 3)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", INDEX_DEFINITION), 2)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE), 5)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TIMELINE), 2)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", LOG), 1)
                         .add(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES))
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 2)
                         .build());
@@ -107,6 +113,8 @@ public class TestHudiNoCacheFileOperations
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE), 52)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES), 3)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 5)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TIMELINE), 4)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", LOG), 2)
                         .build());
 
         assertFileSystemAccesses(query,
@@ -118,6 +126,8 @@ public class TestHudiNoCacheFileOperations
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE), 38)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES), 2)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 4)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TIMELINE), 4)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", LOG), 2)
                         .build());
     }
 

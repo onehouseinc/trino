@@ -47,8 +47,10 @@ import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.statistics.Estimate;
 import io.trino.spi.statistics.TableStatistics;
 import io.trino.spi.type.TypeManager;
+import org.apache.avro.Schema;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
+import org.apache.hudi.common.table.TableSchemaResolver;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.versioning.v2.InstantComparatorV2;
 import org.apache.hudi.common.util.CollectionUtils;
@@ -81,9 +83,11 @@ import static io.trino.plugin.hive.util.HiveUtil.getPartitionKeyColumnHandles;
 import static io.trino.plugin.hive.util.HiveUtil.hiveColumnHandles;
 import static io.trino.plugin.hive.util.HiveUtil.isHiveSystemSchema;
 import static io.trino.plugin.hive.util.HiveUtil.isHudiTable;
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_FILESYSTEM_ERROR;
 import static io.trino.plugin.hudi.HudiSessionProperties.getColumnsToHide;
 import static io.trino.plugin.hudi.HudiSessionProperties.isHudiMetadataTableEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.isQueryPartitionFilterRequired;
+import static io.trino.plugin.hudi.HudiSessionProperties.isReconcileColumnCaseEnabled;
 import static io.trino.plugin.hudi.HudiSessionProperties.isTableStatisticsEnabled;
 import static io.trino.plugin.hudi.HudiTableProperties.LOCATION_PROPERTY;
 import static io.trino.plugin.hudi.HudiTableProperties.PARTITIONED_BY_PROPERTY;
@@ -158,10 +162,15 @@ public class HudiMetadata
         TrinoFileSystem fileSystem = fileSystemFactory.create(session);
         String inputFormat = table.getStorage().getStorageFormat().getInputFormat();
         HoodieTableType hoodieTableType = HudiTableTypeUtils.fromInputFormat(inputFormat);
+        Lazy<HoodieTableMetaClient> lazyMetaClient = Lazy.lazily(() -> buildTableMetaClient(fileSystem, tableName.toString(), basePath));
+        Optional<Lazy<Schema>> hudiTableSchema = Optional.empty();
+        if (isReconcileColumnCaseEnabled(session)) {
+            hudiTableSchema = Optional.of(Lazy.lazily(() -> getLatestTableSchema(lazyMetaClient.get())));
+        }
 
         return new HudiTableHandle(
                 Optional.of(table),
-                Optional.of(Lazy.lazily(() -> buildTableMetaClient(fileSystem, tableName.toString(), basePath))),
+                Optional.of(lazyMetaClient),
                 tableName.getSchemaName(),
                 tableName.getTableName(),
                 table.getStorage().getLocation(),
@@ -169,7 +178,22 @@ public class HudiMetadata
                 getPartitionKeyColumnHandles(table, typeManager),
                 ImmutableSet.of(),
                 TupleDomain.all(),
-                TupleDomain.all());
+                TupleDomain.all(),
+                hudiTableSchema);
+    }
+
+    private Schema getLatestTableSchema(HoodieTableMetaClient metaClient)
+    {
+        try {
+            HoodieTimer timer = HoodieTimer.start();
+            Schema schema = new TableSchemaResolver(metaClient).getTableAvroSchema();
+            log.info("Fetched latest table schema for table %s in %s ms", metaClient.getBasePath(), timer.endTimer());
+            return schema;
+        }
+        catch (Exception e) {
+            // failed to read schema
+            throw new TrinoException(HUDI_FILESYSTEM_ERROR, e);
+        }
     }
 
     @Override
