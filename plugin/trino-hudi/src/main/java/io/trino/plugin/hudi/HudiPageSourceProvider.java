@@ -56,7 +56,6 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
-import org.apache.hudi.common.table.TableSchemaResolver;
 import org.apache.hudi.common.table.read.HoodieFileGroupReader;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.ValidationUtils;
@@ -93,7 +92,6 @@ import static io.trino.plugin.hive.parquet.ParquetPageSourceFactory.getParquetTu
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_BAD_DATA;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_CANNOT_OPEN_SPLIT;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_CURSOR_ERROR;
-import static io.trino.plugin.hudi.HudiErrorCode.HUDI_FILESYSTEM_ERROR;
 import static io.trino.plugin.hudi.HudiSessionProperties.getParquetMaxReadBlockRowCount;
 import static io.trino.plugin.hudi.HudiSessionProperties.getParquetMaxReadBlockSize;
 import static io.trino.plugin.hudi.HudiSessionProperties.getParquetSmallFileThreshold;
@@ -221,14 +219,6 @@ public class HudiPageSourceProvider
         HoodieTableMetaClient metaClient = buildTableMetaClient(
                 fileSystemFactory.create(session), hudiTableHandle.getSchemaTableName().toString(), hudiTableHandle.getBasePath());
         String latestCommitTime = metaClient.getCommitsTimeline().lastInstant().get().requestedTime();
-        Schema dataSchema;
-        try {
-            dataSchema = new TableSchemaResolver(metaClient).getTableAvroSchema(latestCommitTime);
-        }
-        catch (Throwable e) {
-            // Unable to find table schema
-            throw new TrinoException(HUDI_FILESYSTEM_ERROR, e);
-        }
 
         HudiTrinoReaderContext readerContext = new HudiTrinoReaderContext(
                 dataPageSource,
@@ -237,7 +227,7 @@ public class HudiPageSourceProvider
                 synthesizedColumnHandler);
 
         // Construct an Avro schema for log file reader
-        Schema requestedSchema = constructSchema(dataSchema, hudiMetaAndDataColumnHandles.stream().map(HiveColumnHandle::getName).toList());
+        Schema requestedSchema = constructSchema(hudiTableHandle.getTableSchema(), hudiMetaAndDataColumnHandles.stream().map(HiveColumnHandle::getName).toList());
         HoodieFileGroupReader<IndexedRecord> fileGroupReader =
                 new HoodieFileGroupReader<>(
                         readerContext,
@@ -245,7 +235,7 @@ public class HudiPageSourceProvider
                         hudiTableHandle.getBasePath(),
                         latestCommitTime,
                         convertToFileSlice(hudiSplit, hudiTableHandle.getBasePath()),
-                        dataSchema,
+                        hudiTableHandle.getTableSchema(),
                         requestedSchema,
                         Option.empty(),
                         metaClient,

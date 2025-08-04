@@ -28,7 +28,6 @@ import io.trino.plugin.hudi.query.index.IndexSupportFactory;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.ConnectorSplit;
-import io.trino.spi.connector.SchemaTableName;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.util.Lazy;
 
@@ -87,9 +86,8 @@ public class HudiBackgroundSplitLoader
         this.enableMetadataTable = enableMetadataTable;
         this.executor = requireNonNull(executor, "executor is null");
         this.errorListener = requireNonNull(errorListener, "errorListener is null");
-        SchemaTableName schemaTableName = tableHandle.getSchemaTableName();
         this.partitionIndexSupportOpt = enableMetadataTable ?
-                IndexSupportFactory.createPartitionStatsIndexSupport(schemaTableName, Lazy.lazily(tableHandle::getMetaClient), lazyTableMetadata, tableHandle.getRegularPredicates(), session) : Optional.empty();
+                IndexSupportFactory.createPartitionStatsIndexSupport(tableHandle, Lazy.lazily(tableHandle::getMetaClient), lazyTableMetadata, tableHandle.getRegularPredicates(), session) : Optional.empty();
     }
 
     @Override
