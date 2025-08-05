@@ -87,9 +87,7 @@ public class HudiSplitFactory
             // IMPORTANT: These tables will have a COPY_ON_WRITE table type due to how `HudiTableTypeUtils#fromInputFormat`
             return createSplitsForBaseFile(hudiTableHandle, partitionKeys, fileSlice, commitTime, hudiSplitWeightProvider, targetSplitSize, cachingHostAddressProvider);
         }
-        else {
-            return createSplitForMergeOnRead(hudiTableHandle, partitionKeys, fileSlice, commitTime, hudiSplitWeightProvider, cachingHostAddressProvider);
-        }
+        return createSplitForMergeOnRead(hudiTableHandle, partitionKeys, fileSlice, commitTime, hudiSplitWeightProvider, cachingHostAddressProvider);
     }
 
     /**
