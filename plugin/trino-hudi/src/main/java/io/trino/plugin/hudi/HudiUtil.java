@@ -18,12 +18,16 @@ import com.google.common.collect.ImmutableMap;
 import io.trino.filesystem.FileIterator;
 import io.trino.filesystem.Location;
 import io.trino.filesystem.TrinoFileSystem;
+import io.trino.metastore.Column;
 import io.trino.metastore.HivePartition;
 import io.trino.metastore.HiveType;
+import io.trino.metastore.Partition;
+import io.trino.metastore.StorageFormat;
 import io.trino.plugin.hive.HiveColumnHandle;
 import io.trino.plugin.hive.HivePartitionKey;
 import io.trino.plugin.hive.HivePartitionManager;
 import io.trino.plugin.hive.avro.AvroHiveFileUtils;
+import io.trino.plugin.hudi.partition.HiveHudiPartitionInfo;
 import io.trino.plugin.hudi.storage.HudiTrinoStorage;
 import io.trino.plugin.hudi.storage.TrinoStorageConfiguration;
 import io.trino.spi.TrinoException;
@@ -40,11 +44,18 @@ import org.apache.hudi.common.model.HoodieBaseFile;
 import org.apache.hudi.common.model.HoodieFileFormat;
 import org.apache.hudi.common.model.HoodieFileGroupId;
 import org.apache.hudi.common.model.HoodieLogFile;
+import org.apache.hudi.common.table.HoodieTableConfig;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.view.HoodieTableFileSystemView;
+import org.apache.hudi.common.util.Option;
 import org.apache.hudi.exception.TableNotFoundException;
+import org.apache.hudi.hive.HiveStylePartitionValueExtractor;
+import org.apache.hudi.hive.MultiPartKeysValueExtractor;
+import org.apache.hudi.hive.NonPartitionedExtractor;
+import org.apache.hudi.hive.SinglePartPartitionValueExtractor;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.storage.StoragePath;
+import org.apache.hudi.sync.common.model.PartitionValueExtractor;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -63,6 +74,7 @@ import static io.trino.plugin.hive.util.SerdeConstants.LIST_COLUMNS;
 import static io.trino.plugin.hive.util.SerdeConstants.LIST_COLUMN_TYPES;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_BAD_DATA;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_FILESYSTEM_ERROR;
+import static io.trino.plugin.hudi.HudiErrorCode.HUDI_INVALID_PARTITION_VALUE;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_META_CLIENT_ERROR;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_UNSUPPORTED_FILE_FORMAT;
 import static org.apache.hudi.common.model.HoodieRecord.HOODIE_META_COLUMNS;
@@ -70,6 +82,10 @@ import static org.apache.hudi.common.model.HoodieRecord.HOODIE_META_COLUMNS;
 public final class HudiUtil
 {
     private HudiUtil() {}
+
+    public static final String TRUE_STR = "true";
+    public static final String DELIMITER_STR = "/";
+    public static final String EQUALS_STR = "=";
 
     public static HoodieFileFormat getHudiFileFormat(String path)
     {
@@ -282,5 +298,91 @@ public final class HudiUtil
     {
         return new HoodieTableFileSystemView(
                 tableMetadata, metaClient, metaClient.getActiveTimeline().getCommitsTimeline().filterCompletedInstants());
+    }
+
+    public static HiveHudiPartitionInfo buildHiveHudiPartitionInfo(HudiTableHandle tableHandle, String partitionName, Partition partition)
+    {
+        return new HiveHudiPartitionInfo(
+                tableHandle.getSchemaTableName(),
+                Location.of(tableHandle.getBasePath()),
+                partitionName,
+                partition,
+                tableHandle.getPartitionColumns(),
+                tableHandle.getPartitionPredicates());
+    }
+
+    public static Partition buildPartition(String partitionPath, List<Column> partitionColumns, HudiTableHandle tableHandle, PartitionValueExtractor partitionValueExtractor)
+    {
+        if (partitionPath == null || partitionPath.isEmpty()) {
+            return Partition.builder()
+                    .setDatabaseName(tableHandle.getSchemaName())
+                    .setTableName(tableHandle.getTableName())
+                    .withStorage(storageBuilder ->
+                            storageBuilder.setLocation(tableHandle.getBasePath())
+                                    .setStorageFormat(StorageFormat.NULL_STORAGE_FORMAT))
+                    .setColumns(ImmutableList.of())
+                    .setValues(ImmutableList.of())
+                    .build();
+        }
+        else {
+            List<String> values = partitionValueExtractor.extractPartitionValuesInPath(partitionPath);
+
+            if (partitionColumns.size() != values.size()) {
+                throw new TrinoException(HUDI_INVALID_PARTITION_VALUE, "Invalid partition path: " + partitionPath);
+            }
+
+            return Partition.builder()
+                    .setDatabaseName(tableHandle.getSchemaName())
+                    .setTableName(tableHandle.getTableName())
+                    .withStorage(storageBuilder ->
+                            storageBuilder.setLocation(getFullPath(tableHandle.getBasePath(), partitionPath))
+                                    // ToDo - set valid storage format
+                                    .setStorageFormat(StorageFormat.NULL_STORAGE_FORMAT))
+                    .setColumns(partitionColumns)
+                    .setValues(values)
+                    .build();
+        }
+    }
+
+    private static String getFullPath(String basePath, String relativePartitionPath)
+    {
+        return basePath.endsWith(DELIMITER_STR)
+                ? basePath + relativePartitionPath
+                : basePath + DELIMITER_STR + relativePartitionPath;
+    }
+
+    public static String getHivePartitionName(Partition partition)
+    {
+        List<Column> columns = partition.getColumns();
+        List<String> values = partition.getValues();
+
+        if (columns.size() != values.size()) {
+            throw new TrinoException(HUDI_INVALID_PARTITION_VALUE, "mismatch between column names and values, keys: " + columns.size() + " values: " + values.size());
+        }
+
+        return IntStream.range(0, columns.size())
+                .mapToObj(i -> columns.get(i).getName() + EQUALS_STR + values.get(i))
+                .collect(Collectors.joining(DELIMITER_STR));
+    }
+
+    public static PartitionValueExtractor getPartitionValueExtractor(HoodieTableConfig tableConfig)
+    {
+        Option<String[]> partitionFieldsOpt = tableConfig.getPartitionFields();
+
+        if (partitionFieldsOpt.isEmpty()) {
+            return new NonPartitionedExtractor();
+        }
+
+        String[] partitionFields = partitionFieldsOpt.get();
+        if (partitionFields.length == 1) {
+            boolean hiveStyleEnabled = TRUE_STR.equalsIgnoreCase(
+                    tableConfig.getHiveStylePartitioningEnable());
+
+            return hiveStyleEnabled
+                    ? new HiveStylePartitionValueExtractor()
+                    : new SinglePartPartitionValueExtractor();
+        }
+
+        return new MultiPartKeysValueExtractor();
     }
 }
