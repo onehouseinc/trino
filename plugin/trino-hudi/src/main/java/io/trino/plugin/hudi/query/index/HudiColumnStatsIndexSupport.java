@@ -48,6 +48,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -75,12 +76,12 @@ public class HudiColumnStatsIndexSupport
     private final Duration columnStatsWaitTimeout;
     private final long futureStartTimeMs;
 
-    public HudiColumnStatsIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiColumnStatsIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates, ExecutorService executor)
     {
-        this(log, session, schemaTableName, lazyMetaClient, lazyTableMetadata, regularColumnPredicates);
+        this(log, session, schemaTableName, lazyMetaClient, lazyTableMetadata, regularColumnPredicates, executor);
     }
 
-    public HudiColumnStatsIndexSupport(Logger log, ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates)
+    public HudiColumnStatsIndexSupport(Logger log, ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<HiveColumnHandle> regularColumnPredicates, ExecutorService executor)
     {
         super(log, schemaTableName, lazyMetaClient);
         this.columnStatsWaitTimeout = getColumnStatsWaitTimeout(session);
@@ -124,7 +125,7 @@ public class HudiColumnStatsIndexSupport
                 log.debug("Column stats lookup took %s ms and identified %d relevant file IDs.", timer.endTimer(), domainsWithStats.size());
 
                 return Optional.of(domainsWithStats);
-            });
+            }, executor);
         }
         this.futureStartTimeMs = System.currentTimeMillis();
     }
