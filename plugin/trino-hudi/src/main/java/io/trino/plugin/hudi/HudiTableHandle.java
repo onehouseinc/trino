@@ -23,6 +23,7 @@ import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.predicate.TupleDomain;
+import org.apache.avro.Schema;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
@@ -48,6 +49,7 @@ public class HudiTableHandle
     private final Set<HiveColumnHandle> constraintColumns;
     private final TupleDomain<HiveColumnHandle> partitionPredicates;
     private final TupleDomain<HiveColumnHandle> regularPredicates;
+    private final Lazy<Schema> hudiTableSchema;
     // Coordinator-only
     private final transient Optional<Table> table;
     private final transient Optional<Lazy<HoodieTableMetaClient>> lazyMetaClient;
@@ -61,9 +63,10 @@ public class HudiTableHandle
             @JsonProperty("tableType") HoodieTableType tableType,
             @JsonProperty("partitionColumns") List<HiveColumnHandle> partitionColumns,
             @JsonProperty("partitionPredicates") TupleDomain<HiveColumnHandle> partitionPredicates,
-            @JsonProperty("regularPredicates") TupleDomain<HiveColumnHandle> regularPredicates)
+            @JsonProperty("regularPredicates") TupleDomain<HiveColumnHandle> regularPredicates,
+            @JsonProperty("tableSchemaStr") String tableSchemaStr)
     {
-        this(Optional.empty(), Optional.empty(), schemaName, tableName, basePath, tableType, partitionColumns, ImmutableSet.of(), partitionPredicates, regularPredicates);
+        this(Optional.empty(), Optional.empty(), schemaName, tableName, basePath, tableType, partitionColumns, ImmutableSet.of(), partitionPredicates, regularPredicates, Lazy.lazily(() -> new Schema.Parser().parse(tableSchemaStr)));
     }
 
     public HudiTableHandle(
@@ -76,7 +79,8 @@ public class HudiTableHandle
             List<HiveColumnHandle> partitionColumns,
             Set<HiveColumnHandle> constraintColumns,
             TupleDomain<HiveColumnHandle> partitionPredicates,
-            TupleDomain<HiveColumnHandle> regularPredicates)
+            TupleDomain<HiveColumnHandle> regularPredicates,
+            Lazy<Schema> hudiTableSchema)
     {
         this.table = requireNonNull(table, "table is null");
         this.lazyMetaClient = requireNonNull(lazyMetaClient, "lazyMetaClient is null");
@@ -95,6 +99,7 @@ public class HudiTableHandle
         this.constraintColumns = requireNonNull(constraintColumns, "constraintColumns is null");
         this.partitionPredicates = requireNonNull(partitionPredicates, "partitionPredicates is null");
         this.regularPredicates = requireNonNull(regularPredicates, "regularPredicates is null");
+        this.hudiTableSchema = hudiTableSchema;
     }
 
     public Table getTable()
@@ -157,6 +162,18 @@ public class HudiTableHandle
         return partitionColumns;
     }
 
+    @JsonProperty
+    public String getTableSchemaStr()
+    {
+        return hudiTableSchema.get().toString();
+    }
+
+    @JsonIgnore
+    public Schema getTableSchema()
+    {
+        return hudiTableSchema.get();
+    }
+
     // do not serialize constraint columns as they are not needed on workers
     @JsonIgnore
     public Set<HiveColumnHandle> getConstraintColumns()
@@ -190,7 +207,8 @@ public class HudiTableHandle
                 partitionColumns,
                 constraintColumns,
                 partitionPredicates.intersect(partitionTupleDomain),
-                regularPredicates.intersect(regularTupleDomain));
+                regularPredicates.intersect(regularTupleDomain),
+                hudiTableSchema);
     }
 
     @Override

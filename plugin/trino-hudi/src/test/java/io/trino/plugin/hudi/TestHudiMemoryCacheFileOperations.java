@@ -35,9 +35,11 @@ import static io.trino.filesystem.tracing.CacheFileSystemTraceUtils.isTrinoSchem
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_FG_PT_V8_MOR;
 import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.DATA;
 import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.INDEX_DEFINITION;
+import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.LOG;
 import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.METADATA_TABLE;
 import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.METADATA_TABLE_PROPERTIES;
 import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.TABLE_PROPERTIES;
+import static io.trino.plugin.hudi.util.FileOperationUtils.FileType.TIMELINE;
 import static io.trino.testing.MultisetAssertions.assertMultisetsEqual;
 import static java.util.stream.Collectors.toCollection;
 
@@ -73,6 +75,8 @@ public class TestHudiMemoryCacheFileOperations
                         .addCopies(new FileOperation("FileSystemCache.cacheInput", DATA), 2)
                         .addCopies(new FileOperation("FileSystemCache.cacheLength", METADATA_TABLE), 3)
                         .addCopies(new FileOperation("FileSystemCache.cacheStream", METADATA_TABLE), 5)
+                        .addCopies(new FileOperation("FileSystemCache.cacheStream", TIMELINE), 2)
+                        .addCopies(new FileOperation("FileSystemCache.cacheStream", LOG), 1)
                         .addCopies(new FileOperation("InputFile.lastModified", METADATA_TABLE), 3)
                         .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 2)
                         .add(new FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES))
@@ -85,6 +89,8 @@ public class TestHudiMemoryCacheFileOperations
                         .addCopies(new FileOperation("FileSystemCache.cacheInput", DATA), 2)
                         .addCopies(new FileOperation("FileSystemCache.cacheLength", METADATA_TABLE), 3)
                         .addCopies(new FileOperation("FileSystemCache.cacheStream", METADATA_TABLE), 5)
+                        .addCopies(new FileOperation("FileSystemCache.cacheStream", TIMELINE), 2)
+                        .addCopies(new FileOperation("FileSystemCache.cacheStream", LOG), 1)
                         .addCopies(new FileOperation("InputFile.lastModified", METADATA_TABLE), 3)
                         .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 2)
                         .add(new FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES))
@@ -105,6 +111,8 @@ public class TestHudiMemoryCacheFileOperations
                         .addCopies(new FileOperation("FileSystemCache.cacheInput", DATA), 6)
                         .addCopies(new FileOperation("FileSystemCache.cacheLength", METADATA_TABLE), 37)
                         .addCopies(new FileOperation("FileSystemCache.cacheStream", METADATA_TABLE), 52)
+                        .addCopies(new FileOperation("FileSystemCache.cacheStream", TIMELINE), 4)
+                        .addCopies(new FileOperation("FileSystemCache.cacheStream", LOG), 2)
                         .addCopies(new FileOperation("InputFile.lastModified", METADATA_TABLE), 37)
                         .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 5)
                         .addCopies(new FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES), 3)
@@ -116,6 +124,8 @@ public class TestHudiMemoryCacheFileOperations
                         .addCopies(new FileOperation("FileSystemCache.cacheInput", DATA), 6)
                         .addCopies(new FileOperation("FileSystemCache.cacheLength", METADATA_TABLE), 27)
                         .addCopies(new FileOperation("FileSystemCache.cacheStream", METADATA_TABLE), 38)
+                        .addCopies(new FileOperation("FileSystemCache.cacheStream", TIMELINE), 4)
+                        .addCopies(new FileOperation("FileSystemCache.cacheStream", LOG), 2)
                         .addCopies(new FileOperation("InputFile.lastModified", METADATA_TABLE), 27)
                         .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 4)
                         .addCopies(new FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES), 2)
