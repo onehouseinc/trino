@@ -76,6 +76,7 @@ import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.Testing
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_CUSTOM_KEYGEN_PT_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_MULTI_PT_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_COW;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_NON_PART_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_STOCK_TICKS_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR;
@@ -659,6 +660,27 @@ public class TestHudiSmokeTest
         assertThat(prunedSplits).isLessThan(totalSplits);
         // With colstats file skipping, only 1 split should be returned
         assertThat(prunedSplits).isEqualTo(1);
+    }
+
+    @Test
+    public void testColStatsFileSkippingMORTable()
+    {
+        Session session = SessionBuilder.from(getSession())
+                .withMdtEnabled(true)
+                .withColStatsIndexEnabled(true)
+                .withColumnStatsTimeout("1s")
+                .withRecordLevelIndexEnabled(false)
+                .withSecondaryIndexEnabled(false)
+                .withPartitionStatsIndexEnabled(false)
+                .build();
+        assertQuery(
+                session,
+                "SELECT id, name FROM " + HUDI_NON_PART_MOR + " where name = 'Alice'",
+                "SELECT * FROM VALUES ('1', 'Alice')");
+        assertQuery(
+                session,
+                "SELECT id, name FROM " + HUDI_NON_PART_MOR + "_rt where name = 'Cathy'",
+                "SELECT * FROM VALUES ('1', 'Cathy')");
     }
 
     @ParameterizedTest
