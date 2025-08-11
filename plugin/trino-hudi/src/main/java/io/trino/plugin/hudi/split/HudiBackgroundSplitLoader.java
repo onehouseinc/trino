@@ -50,6 +50,7 @@ import org.apache.hudi.util.Lazy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -237,7 +238,7 @@ public class HudiBackgroundSplitLoader
         return new ConcurrentLinkedDeque<>(hiveHudiPartitionInfos);
     }
 
-    HiveHudiPartitionInfo buildHiveHudiPartitionInfo(HudiTableHandle tableHandle, String partitionName, Partition partition)
+    private HiveHudiPartitionInfo buildHiveHudiPartitionInfo(HudiTableHandle tableHandle, String partitionName, Partition partition)
     {
         return new HiveHudiPartitionInfo(
                 tableHandle.getSchemaTableName(),
@@ -248,7 +249,7 @@ public class HudiBackgroundSplitLoader
                 tableHandle.getPartitionPredicates());
     }
 
-    Partition buildPartition(String partitionPath, List<Column> partitionColumns, HudiTableHandle tableHandle, PartitionValueExtractor partitionValueExtractor)
+    private Partition buildPartition(String partitionPath, List<Column> partitionColumns, HudiTableHandle tableHandle, PartitionValueExtractor partitionValueExtractor)
     {
         if (partitionPath == null || partitionPath.isEmpty()) {
             return Partition.builder()
@@ -262,7 +263,7 @@ public class HudiBackgroundSplitLoader
                     .build();
         }
         else {
-            List<String> values = partitionValueExtractor.extractPartitionValuesInPath(partitionPath);
+            List<String> values = partitionValueExtractor.extractPartitionValuesInPath(partitionPath).stream().map(this::unescapePathName).toList();
 
             if (partitionColumns.size() != values.size()) {
                 throw new HoodieException("Cannot extract partition values from partition path: " + partitionPath);
@@ -298,7 +299,7 @@ public class HudiBackgroundSplitLoader
                 .collect(Collectors.joining(DELIMITER_STR));
     }
 
-    PartitionValueExtractor getPartitionValueExtractor(HoodieTableConfig tableConfig)
+    private PartitionValueExtractor getPartitionValueExtractor(HoodieTableConfig tableConfig)
     {
         Option<String[]> partitionFieldsOpt = tableConfig.getPartitionFields();
 
@@ -313,5 +314,43 @@ public class HudiBackgroundSplitLoader
         }
 
         return new MultiPartKeysValueExtractor();
+    }
+
+    private String unescapePathName(String path)
+    {
+        // fast path, no escaped characters and therefore no copying necessary
+        int escapedAtIndex = path.indexOf('%');
+        if (escapedAtIndex < 0 || escapedAtIndex + 2 >= path.length()) {
+            return path;
+        }
+
+        // slow path, unescape into a new string copy
+        StringBuilder sb = new StringBuilder();
+        int fromIndex = 0;
+        while (escapedAtIndex >= 0 && escapedAtIndex + 2 < path.length()) {
+            // preceding sequence without escaped characters
+            if (escapedAtIndex > fromIndex) {
+                sb.append(path, fromIndex, escapedAtIndex);
+            }
+            // try to parse the to digits after the percent sign as hex
+            try {
+                int code = HexFormat.fromHexDigits(path, escapedAtIndex + 1, escapedAtIndex + 3);
+                sb.append((char) code);
+                // advance past the percent sign and both hex digits
+                fromIndex = escapedAtIndex + 3;
+            }
+            catch (NumberFormatException e) {
+                // invalid escape sequence, only advance past the percent sign
+                sb.append('%');
+                fromIndex = escapedAtIndex + 1;
+            }
+            // find next escaped character
+            escapedAtIndex = path.indexOf('%', fromIndex);
+        }
+        // trailing sequence without escaped characters
+        if (fromIndex < path.length()) {
+            sb.append(path, fromIndex, path.length());
+        }
+        return sb.toString();
     }
 }
