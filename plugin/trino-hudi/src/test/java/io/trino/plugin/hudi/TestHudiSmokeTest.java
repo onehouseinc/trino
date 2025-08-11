@@ -81,6 +81,7 @@ import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.Testing
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TIMESTAMP_KEYGEN_PT_SCALAR_TO_YYYY_MM_DD_HH_V8_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_TRIPS_COW_V8;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_UNPARSABLE_PT_TBL;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.STOCK_TICKS_COW;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.STOCK_TICKS_MOR;
 import static io.trino.spi.type.TimestampType.createTimestampType;
@@ -129,6 +130,20 @@ public class TestHudiSmokeTest
         System.out.println(res);
         assertQuery("SELECT dt, count(1) FROM " + STOCK_TICKS_MOR + " GROUP BY dt",
                 "SELECT * FROM VALUES ('2018-08-31', '99')");
+    }
+
+    @Test
+    public void testReadUnparsablePartitionedCOWTable()
+    {
+        Session session = SessionBuilder.from(getSession())
+                .withMdtEnabled(true)
+                .build();
+        String res = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_UNPARSABLE_PT_TBL).toString();
+        System.out.println(res);
+        assertQuery(session, "SELECT name FROM " + HUDI_UNPARSABLE_PT_TBL + " where dt='2018-10-05'",
+                "SELECT * FROM VALUES ('Alice'), ('Bob')");
+        assertQuery(session, "SELECT name FROM " + HUDI_UNPARSABLE_PT_TBL + " where dt='2018-10-05' and hh='10'",
+                "SELECT * FROM VALUES ('Alice'), ('Bob')");
     }
 
     @Test
