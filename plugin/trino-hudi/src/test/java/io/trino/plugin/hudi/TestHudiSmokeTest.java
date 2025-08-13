@@ -673,14 +673,22 @@ public class TestHudiSmokeTest
                 .withSecondaryIndexEnabled(false)
                 .withPartitionStatsIndexEnabled(false)
                 .build();
-        assertQuery(
-                session,
-                "SELECT id, name FROM " + HUDI_NON_PART_MOR + " where name = 'Alice'",
-                "SELECT * FROM VALUES ('1', 'Alice')");
-        assertQuery(
-                session,
-                "SELECT id, name FROM " + HUDI_NON_PART_MOR + "_rt where name = 'Cathy'",
-                "SELECT * FROM VALUES ('1', 'Cathy')");
+        MaterializedResult roTableRes = getQueryRunner().execute(session, "SELECT id, name FROM " + HUDI_NON_PART_MOR + " where name = 'Alice'");
+        MaterializedResult rtTableRes = getQueryRunner().execute(session, "SELECT id, name FROM " + HUDI_NON_PART_MOR + "_rt where name = 'Cathy'");
+
+        // verify ro table returns results from base file
+        int roTableSplits = roTableRes.getStatementStats().get().getTotalSplits();
+        int roTableRows = roTableRes.getRowCount();
+        assertThat(roTableSplits).isEqualTo(1);
+        assertThat(roTableRows).isEqualTo(1);
+        assertThat(roTableRes.getMaterializedRows().getFirst().getField(1)).isEqualTo("Alice");
+
+        // verify rt table returns results from log file
+        int rtTableSplits = rtTableRes.getStatementStats().get().getTotalSplits();
+        int rtTableRows = rtTableRes.getRowCount();
+        assertThat(rtTableRows).isEqualTo(1);
+        assertThat(rtTableSplits).isEqualTo(1);
+        assertThat(rtTableRes.getMaterializedRows().getFirst().getField(1)).isEqualTo("Cathy");
     }
 
     @ParameterizedTest
