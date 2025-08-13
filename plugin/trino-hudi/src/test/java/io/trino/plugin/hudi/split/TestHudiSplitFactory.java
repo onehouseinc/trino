@@ -182,7 +182,8 @@ public class TestHudiSplitFactory
             HoodieTableType.MERGE_ON_READ,
             ImmutableList.of(),
             TupleDomain.all(),
-            TupleDomain.all());
+            TupleDomain.all(),
+                "");
     }
 
     private static FileSlice createFileSlice(DataSize baseFileSize, Option<DataSize> logFileSize)
