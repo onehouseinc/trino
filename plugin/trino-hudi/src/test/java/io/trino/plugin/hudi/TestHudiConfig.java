@@ -57,7 +57,8 @@ public class TestHudiConfig
                 .setColumnStatsWaitTimeout(Duration.valueOf("1s"))
                 .setRecordIndexWaitTimeout(Duration.valueOf("2s"))
                 .setSecondaryIndexWaitTimeout(Duration.valueOf("2s"))
-                .setMetadataCacheEnabled(true));
+                .setMetadataCacheEnabled(true)
+                .setReconcileColumnCaseEnabled(true));
     }
 
     @Test
@@ -90,6 +91,7 @@ public class TestHudiConfig
                 .put("hudi.index.record-index.wait-timeout", "1s")
                 .put("hudi.index.secondary-index.wait-timeout", "1s")
                 .put("hudi.metadata.cache.enabled", "false")
+                .put("hudi.table.reconcile-column-name.enabled", "false")
                 .buildOrThrow();
 
         HudiConfig expected = new HudiConfig()
@@ -118,7 +120,8 @@ public class TestHudiConfig
                 .setColumnStatsWaitTimeout(Duration.valueOf("2s"))
                 .setRecordIndexWaitTimeout(Duration.valueOf("1s"))
                 .setSecondaryIndexWaitTimeout(Duration.valueOf("1s"))
-                .setMetadataCacheEnabled(false);
+                .setMetadataCacheEnabled(false)
+                .setReconcileColumnCaseEnabled(false);
 
         assertFullMapping(properties, expected);
     }

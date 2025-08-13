@@ -55,6 +55,7 @@ public class HudiConfig
     private boolean queryPartitionFilterRequired;
     private boolean ignoreAbsentPartitions;
     private Duration dynamicFilteringWaitTimeout = new Duration(1, SECONDS);
+    private boolean reconcileColumnCaseEnabled = true;
 
     // Internal configuration for debugging and testing
     private boolean isRecordLevelIndexEnabled = true;
@@ -419,6 +420,19 @@ public class HudiConfig
     public HudiConfig setMetadataCacheEnabled(boolean metadataCacheEnabled)
     {
         this.metadataCacheEnabled = metadataCacheEnabled;
+        return this;
+    }
+
+    public boolean isReconcileColumnCaseEnabled()
+    {
+        return reconcileColumnCaseEnabled;
+    }
+
+    @Config("hudi.table.reconcile-column-name.enabled")
+    @ConfigDescription("Enables in-memory caching of Hudi metadata files on coordinator if fs.cache.enabled is set to false")
+    public HudiConfig setReconcileColumnCaseEnabled(boolean reconcileColumnCaseEnabled)
+    {
+        this.reconcileColumnCaseEnabled = reconcileColumnCaseEnabled;
         return this;
     }
 }
