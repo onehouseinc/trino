@@ -220,10 +220,9 @@ public class HudiPageSourceProvider
         // TODO: Move this into HudiTableHandle
         HoodieTableMetaClient metaClient = buildTableMetaClient(
                 fileSystemFactory.create(session), hudiTableHandle.getSchemaTableName().toString(), hudiTableHandle.getBasePath());
-        String latestCommitTime = metaClient.getCommitsTimeline().lastInstant().get().requestedTime();
         Schema dataSchema;
         try {
-            dataSchema = new TableSchemaResolver(metaClient).getTableAvroSchema(latestCommitTime);
+            dataSchema = new TableSchemaResolver(metaClient).getTableAvroSchema(hudiTableHandle.getLatestCommitTime());
         }
         catch (Throwable e) {
             // Unable to find table schema
@@ -243,7 +242,7 @@ public class HudiPageSourceProvider
                         readerContext,
                         new HudiTrinoStorage(fileSystemFactory.create(session), new TrinoStorageConfiguration()),
                         hudiTableHandle.getBasePath(),
-                        latestCommitTime,
+                        hudiTableHandle.getLatestCommitTime(),
                         convertToFileSlice(hudiSplit, hudiTableHandle.getBasePath()),
                         dataSchema,
                         requestedSchema,

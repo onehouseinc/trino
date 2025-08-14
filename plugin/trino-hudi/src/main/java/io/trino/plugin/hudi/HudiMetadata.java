@@ -160,8 +160,8 @@ public class HudiMetadata
         HoodieTableType hoodieTableType = HudiTableTypeUtils.fromInputFormat(inputFormat);
 
         return new HudiTableHandle(
-                Optional.of(table),
-                Optional.of(Lazy.lazily(() -> buildTableMetaClient(fileSystem, tableName.toString(), basePath))),
+                table,
+                Lazy.lazily(() -> buildTableMetaClient(fileSystem, tableName.toString(), basePath)),
                 tableName.getSchemaName(),
                 tableName.getTableName(),
                 table.getStorage().getLocation(),
