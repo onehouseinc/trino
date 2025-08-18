@@ -130,6 +130,7 @@ public class TestHudiNoCacheFileOperations
     {
         DistributedQueryRunner queryRunner = getDistributedQueryRunner();
         queryRunner.executeWithPlan(queryRunner.getDefaultSession(), query);
+        // Allow time for table stats computation to finish before validation.
         Thread.sleep(1000L);
         assertMultisetsEqual(getFileOperations(queryRunner), expectedCacheAccesses);
     }
