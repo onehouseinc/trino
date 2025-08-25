@@ -2,7 +2,7 @@
 
 ## Generating Hudi Resources
 
-Follow these steps to create the `hudi_non_part_mor` test table and utilize it for testing. `hudi_non_part_mor` resource is generated using `427` trino version.
+Follow these steps to create the `hudi_non_part_mor` test table and utilize it for testing.
 
 ### Download and install spark version 3.3 - 3.5
 ### Open spark scala shell
