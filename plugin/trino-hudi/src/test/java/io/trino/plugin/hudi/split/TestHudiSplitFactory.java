@@ -153,7 +153,7 @@ public class TestHudiSplitFactory
 
         List<HudiSplit> splits = HudiSplitFactory.createHudiSplits(
                 tableHandle, PARTITION_KEYS, fileSlice, COMMIT_TIME, weightProvider, targetSplitSize,
-            new DefaultCachingHostAddressProvider());
+            new DefaultCachingHostAddressProvider()).toList();
 
         assertThat(splits).hasSize(expectedSplitInfo.size());
 

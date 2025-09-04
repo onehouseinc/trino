@@ -86,7 +86,7 @@ public class HudiColumnStatsIndexSupport
         this.regularColumnPredicates = regularColumnPredicates;
         this.regularColumns = regularColumnPredicates.getDomains()
                 .map(domains -> new ArrayList<>(domains.keySet()))
-                .orElse(new ArrayList<>());
+                .orElseGet(ArrayList::new);
         if (regularColumnPredicates.isAll() || regularColumnPredicates.getDomains().isEmpty()) {
             this.domainsWithStatsFuture = CompletableFuture.completedFuture(Optional.empty());
         }

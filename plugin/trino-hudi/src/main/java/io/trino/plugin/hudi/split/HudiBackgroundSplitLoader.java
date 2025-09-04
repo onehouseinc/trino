@@ -35,7 +35,6 @@ import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.ConnectorSplit;
 import org.apache.hudi.common.table.HoodieTableConfig;
-import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.util.Option;
 import org.apache.hudi.exception.HoodieException;
 import org.apache.hudi.hive.HiveStylePartitionValueExtractor;
@@ -61,6 +60,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static io.airlift.concurrent.MoreFutures.addExceptionCallback;
@@ -90,7 +90,6 @@ public class HudiBackgroundSplitLoader
     private final Lazy<HoodieTableMetadata> lazyTableMetadata;
     private final Optional<HudiPartitionStatsIndexSupport> partitionIndexSupportOpt;
     private final boolean isMetadataPartitionListingEnabled;
-    private final Lazy<HoodieTableMetaClient> lazyMetaClient;
 
     public HudiBackgroundSplitLoader(
             ConnectorSession session,
@@ -115,7 +114,6 @@ public class HudiBackgroundSplitLoader
         this.executor = requireNonNull(executor, "executor is null");
         this.errorListener = requireNonNull(errorListener, "errorListener is null");
         this.lazyTableMetadata = lazyTableMetadata;
-        this.lazyMetaClient = Lazy.lazily(tableHandle::getMetaClient);
         this.partitionIndexSupportOpt = enableMetadataTable ?
                 IndexSupportFactory.createPartitionStatsIndexSupport(tableHandle, Lazy.lazily(tableHandle::getMetaClient), lazyTableMetadata, tableHandle.getRegularPredicates(), session) : Optional.empty();
         this.isMetadataPartitionListingEnabled = isMetadataPartitionListingEnabled(session);
@@ -155,7 +153,7 @@ public class HudiBackgroundSplitLoader
         Executor splitGeneratorExecutor = new BoundedExecutor(executor, splitGeneratorParallelism);
 
         for (int i = 0; i < splitGeneratorParallelism; i++) {
-            HudiPartitionInfoLoader generator = new HudiPartitionInfoLoader(hudiDirectoryLister, tableHandle.getLatestCommitTime(), hudiSplitFactory,
+            HudiPartitionInfoLoader generator = new HudiPartitionInfoLoader(tableHandle, hudiDirectoryLister, tableHandle.getLatestCommitTime(), hudiSplitFactory,
                     asyncQueue, partitionQueue, useIndex);
             splitGenerators.add(generator);
             ListenableFuture<Void> future = Futures.submit(generator, splitGeneratorExecutor);
@@ -186,7 +184,7 @@ public class HudiBackgroundSplitLoader
         Map<String, Partition> metadataPartitions;
         if (enableMetadataTable && isMetadataPartitionListingEnabled) {
             try {
-                PartitionValueExtractor partitionValueExtractor = getPartitionValueExtractor(lazyMetaClient.get().getTableConfig());
+                PartitionValueExtractor partitionValueExtractor = getPartitionValueExtractor(tableHandle.getMetaClient().getTableConfig());
                 List<HiveColumnHandle> hivePartitionColumns = tableHandle.getPartitionColumns();
 
                 List<Column> partitionColumns = hivePartitionColumns.stream()
@@ -221,19 +219,15 @@ public class HudiBackgroundSplitLoader
             metadataPartitions = lazyPartitionMap.get();
         }
 
-        List<String> allPartitions = new ArrayList<>(metadataPartitions.keySet());
-
-        List<String> effectivePartitions = Optional.ofNullable(useIndex && partitionIndexSupportOpt.isPresent()
-                ? partitionIndexSupportOpt.get().prunePartitions(allPartitions).orElse(null)
-                : null).orElse(allPartitions);
+        Stream<String> effectivePartitions = Optional.ofNullable(useIndex && partitionIndexSupportOpt.isPresent()
+                ? partitionIndexSupportOpt.get().prunePartitions(metadataPartitions.keySet()).orElse(null)
+                : null).orElse(metadataPartitions.keySet().stream());
 
         Map<String, Partition> finalMetadataPartitions = metadataPartitions;
-        List<HiveHudiPartitionInfo> hiveHudiPartitionInfos = effectivePartitions.stream()
+        return effectivePartitions
                 .map(partitionName -> buildHiveHudiPartitionInfo(tableHandle, partitionName, finalMetadataPartitions.get(partitionName)))
                 .filter(hudiPartitionInfo -> hudiPartitionInfo.doesMatchPredicates() || hudiPartitionInfo.getHivePartitionName().equals(NON_PARTITION))
-                .toList();
-
-        return new ConcurrentLinkedDeque<>(hiveHudiPartitionInfos);
+                .collect(Collectors.toCollection(ConcurrentLinkedDeque::new));
     }
 
     private HiveHudiPartitionInfo buildHiveHudiPartitionInfo(HudiTableHandle tableHandle, String partitionName, Partition partition)

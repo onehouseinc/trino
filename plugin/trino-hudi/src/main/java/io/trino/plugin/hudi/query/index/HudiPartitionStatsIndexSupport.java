@@ -30,10 +30,12 @@ import org.apache.hudi.metadata.HoodieTableMetadataUtil;
 import org.apache.hudi.util.Lazy;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.trino.plugin.hudi.util.TupleDomainUtils.hasSimpleNullCheck;
 
@@ -49,8 +51,8 @@ public class HudiPartitionStatsIndexSupport
         this.lazyMetadataTable = lazyTableMetadata;
     }
 
-    public Optional<List<String>> prunePartitions(
-            List<String> allPartitions)
+    public Optional<Stream<String>> prunePartitions(
+            Collection<String> allPartitions)
     {
         HoodieTimer timer = HoodieTimer.start();
 
@@ -88,7 +90,7 @@ public class HudiPartitionStatsIndexSupport
                                 stats -> getDomainFromColumnStats(stats.getColumnName(), columnTypes.get(stats.getColumnName()), stats))));
 
         // For each partition, determine if it should be kept based on stats availability and predicate evaluation
-        List<String> prunedPartitions = allPartitions.stream()
+        Stream<String> prunedPartitions = allPartitions.stream()
                 .filter(partition -> {
                     // Check if stats exist for this partition
                     Map<String, Domain> partitionDomainsWithStats = domainsWithStats.get(partition);
@@ -104,8 +106,7 @@ public class HudiPartitionStatsIndexSupport
                         // i.e. to not prune
                         return evaluateStatisticPredicate(filteredRegularPredicates, partitionDomainsWithStats, regularColumns);
                     }
-                })
-                .collect(Collectors.toList());
+                });
 
         log.info("Took %s ms to prune partitions using Partition Stats Index for table %s", timer.endTimer(), schemaTableName);
         return Optional.of(prunedPartitions);

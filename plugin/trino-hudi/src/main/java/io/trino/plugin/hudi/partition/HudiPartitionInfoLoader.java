@@ -14,19 +14,25 @@
 package io.trino.plugin.hudi.partition;
 
 import io.airlift.concurrent.MoreFutures;
+import io.airlift.log.Logger;
 import io.trino.plugin.hive.HivePartitionKey;
 import io.trino.plugin.hive.util.AsyncQueue;
+import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.query.HudiDirectoryLister;
 import io.trino.plugin.hudi.split.HudiSplitFactory;
 import io.trino.spi.connector.ConnectorSplit;
 import org.apache.hudi.common.model.FileSlice;
+import org.apache.hudi.common.util.HoodieTimer;
 
 import java.util.Deque;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class HudiPartitionInfoLoader
         implements Runnable
 {
+    private static final Logger log = Logger.get(HudiPartitionInfoLoader.class);
+    private final HudiTableHandle tableHandle;
     private final HudiDirectoryLister hudiDirectoryLister;
     private final HudiSplitFactory hudiSplitFactory;
     private final AsyncQueue<ConnectorSplit> asyncQueue;
@@ -37,6 +43,7 @@ public class HudiPartitionInfoLoader
     private boolean isRunning;
 
     public HudiPartitionInfoLoader(
+            HudiTableHandle tableHandle,
             HudiDirectoryLister hudiDirectoryLister,
             String commitTime,
             HudiSplitFactory hudiSplitFactory,
@@ -44,6 +51,7 @@ public class HudiPartitionInfoLoader
             Deque<HiveHudiPartitionInfo> partitionQueue,
             boolean useIndex)
     {
+        this.tableHandle = tableHandle;
         this.hudiDirectoryLister = hudiDirectoryLister;
         this.commitTime = commitTime;
         this.hudiSplitFactory = hudiSplitFactory;
@@ -67,12 +75,15 @@ public class HudiPartitionInfoLoader
 
     private void generateSplitsFromPartition(HiveHudiPartitionInfo hudiPartitionInfo)
     {
+        HoodieTimer timer = HoodieTimer.start();
         List<HivePartitionKey> partitionKeys = hudiPartitionInfo.getHivePartitionKeys();
-        List<FileSlice> partitionFileSlices = hudiDirectoryLister.listStatus(hudiPartitionInfo, useIndex);
-        partitionFileSlices.stream()
-                .flatMap(slice -> hudiSplitFactory.createSplits(partitionKeys, slice, this.commitTime).stream())
+        Stream<FileSlice> partitionFileSlices = hudiDirectoryLister.listStatus(hudiPartitionInfo, useIndex);
+        partitionFileSlices
+                .flatMap(slice -> hudiSplitFactory.createSplits(partitionKeys, slice, this.commitTime))
                 .map(asyncQueue::offer)
                 .forEachOrdered(MoreFutures::getFutureValue);
+        log.debug("Generated splits for partition [%s] on table %s.%s in %s ms",
+                hudiPartitionInfo.getHivePartitionName(), tableHandle.getSchemaName(), tableHandle.getTableName(), timer.endTimer());
     }
 
     public void stopRunning()
