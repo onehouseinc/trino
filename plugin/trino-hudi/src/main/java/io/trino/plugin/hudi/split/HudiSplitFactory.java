@@ -30,6 +30,8 @@ import org.apache.hudi.common.util.Option;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.trino.plugin.hudi.HudiErrorCode.HUDI_FILESYSTEM_ERROR;
@@ -57,7 +59,7 @@ public class HudiSplitFactory
         this.cachingHostAddressProvider = requireNonNull(cachingHostAddressProvider, "cachingHostAddressProvider is null");
     }
 
-    public List<HudiSplit> createSplits(List<HivePartitionKey> partitionKeys, FileSlice fileSlice, String commitTime)
+    public Stream<HudiSplit> createSplits(List<HivePartitionKey> partitionKeys, FileSlice fileSlice, String commitTime)
     {
         return createHudiSplits(hudiTableHandle, partitionKeys, fileSlice, commitTime, hudiSplitWeightProvider, targetSplitSize, cachingHostAddressProvider);
     }
@@ -69,7 +71,7 @@ public class HudiSplitFactory
      * <p>
      * For regular MOR tables, a single split is created for the combination of the base file and its log files.
      */
-    public static List<HudiSplit> createHudiSplits(
+    public static Stream<HudiSplit> createHudiSplits(
             HudiTableHandle hudiTableHandle,
             List<HivePartitionKey> partitionKeys,
             FileSlice fileSlice,
@@ -102,7 +104,7 @@ public class HudiSplitFactory
     /**
      * Creates splits for a base file, potentially breaking it into multiple smaller splits.
      */
-    private static List<HudiSplit> createSplitsForBaseFile(
+    private static Stream<HudiSplit> createSplitsForBaseFile(
             HudiTableHandle hudiTableHandle,
             List<HivePartitionKey> partitionKeys,
             FileSlice fileSlice,
@@ -128,42 +130,44 @@ public class HudiSplitFactory
                     partitionKeys,
                     hudiSplitWeightProvider.calculateSplitWeight(0),
                     addresses);
-            return ImmutableList.of(split);
+            return ImmutableList.of(split).stream();
         }
 
-        ImmutableList.Builder<HudiSplit> splits = ImmutableList.builder();
         long targetSplitSizeInBytes = Math.max(targetSplitSize.toBytes(), baseFile.getPathInfo().getBlockSize());
 
-        long bytesRemaining = fileSize;
-        while (((double) bytesRemaining) / targetSplitSizeInBytes > SPLIT_SLOP) {
-            splits.add(new HudiSplit(
-                    HudiBaseFile.of(baseFile, fileSize - bytesRemaining, targetSplitSizeInBytes),
-                    Collections.emptyList(),
-                    commitTime,
-                    hudiTableHandle.getRegularPredicates(),
-                    partitionKeys,
-                    hudiSplitWeightProvider.calculateSplitWeight(targetSplitSizeInBytes),
-                    addresses));
-            bytesRemaining -= targetSplitSizeInBytes;
-        }
-        if (bytesRemaining > 0) {
-            splits.add(new HudiSplit(
-                    HudiBaseFile.of(baseFile, fileSize - bytesRemaining, bytesRemaining),
-                    Collections.emptyList(),
-                    commitTime,
-                    hudiTableHandle.getRegularPredicates(),
-                    partitionKeys,
-                    hudiSplitWeightProvider.calculateSplitWeight(bytesRemaining),
-                    addresses));
-        }
+        // Number of full-size splits while (bytesRemaining / splitSize) > SPLIT_SLOP
+        final long fullSplits = Math.max(0L, (long) Math.ceil(fileSize / (double) targetSplitSizeInBytes - SPLIT_SLOP));
 
-        return splits.build();
+        Stream<HudiSplit> full = LongStream.range(0, fullSplits)
+                .mapToObj(i -> new HudiSplit(
+                        HudiBaseFile.of(baseFile, i * targetSplitSizeInBytes, targetSplitSizeInBytes),
+                        Collections.emptyList(),
+                        commitTime,
+                        hudiTableHandle.getRegularPredicates(),
+                        partitionKeys,
+                        hudiSplitWeightProvider.calculateSplitWeight(targetSplitSizeInBytes),
+                        addresses));
+
+        final long bytesRemaining = fileSize - fullSplits * targetSplitSizeInBytes;
+
+        Stream<HudiSplit> tail = (bytesRemaining > 0)
+                ? Stream.of(new HudiSplit(
+                HudiBaseFile.of(baseFile, fileSize - bytesRemaining, bytesRemaining),
+                Collections.emptyList(),
+                commitTime,
+                hudiTableHandle.getRegularPredicates(),
+                partitionKeys,
+                hudiSplitWeightProvider.calculateSplitWeight(bytesRemaining),
+                addresses))
+                : Stream.empty();
+
+        return Stream.concat(full, tail);
     }
 
     /**
      * Creates a single split for a Merge-On-Read file slice, including the base file and log files.
      */
-    private static List<HudiSplit> createSplitForMergeOnRead(
+    private static Stream<HudiSplit> createSplitForMergeOnRead(
             HudiTableHandle hudiTableHandle,
             List<HivePartitionKey> partitionKeys,
             FileSlice fileSlice,
@@ -186,6 +190,6 @@ public class HudiSplitFactory
                 hudiSplitWeightProvider.calculateSplitWeight(fileSlice.getTotalFileSize()),
                 addresses);
 
-        return ImmutableList.of(split);
+        return ImmutableList.of(split).stream();
     }
 }

@@ -13,7 +13,6 @@
  */
 package io.trino.plugin.hudi.query;
 
-import com.google.common.collect.ImmutableList;
 import io.airlift.log.Logger;
 import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.partition.HudiPartitionInfo;
@@ -28,11 +27,9 @@ import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.util.Lazy;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static io.trino.plugin.hudi.HudiUtil.getFileSystemView;
 
 public class HudiSnapshotDirectoryLister
@@ -68,26 +65,21 @@ public class HudiSnapshotDirectoryLister
     }
 
     @Override
-    public List<FileSlice> listStatus(HudiPartitionInfo partitionInfo, boolean useIndex)
+    public Stream<FileSlice> listStatus(HudiPartitionInfo partitionInfo, boolean useIndex)
     {
-        HoodieTimer timer = HoodieTimer.start();
         Stream<FileSlice> slices = lazyFileSystemView.get().getLatestFileSlicesBeforeOrOn(
                 partitionInfo.getRelativePartitionPath(),
                 tableHandle.getLatestCommitTime(),
                 false);
 
         if (!useIndex) {
-            return slices.collect(toImmutableList());
+            return slices;
         }
 
-        ImmutableList<FileSlice> collect = slices
+        return slices
                 .filter(slice -> indexSupportOpt
                         .map(indexSupport -> !indexSupport.shouldSkipFileSlice(slice))
-                        .orElse(true))
-                .collect(toImmutableList());
-        log.info("Listed partition [%s] on table %s.%s in %s ms",
-                partitionInfo, tableHandle.getSchemaName(), tableHandle.getTableName(), timer.endTimer());
-        return collect;
+                        .orElse(true));
     }
 
     @Override
