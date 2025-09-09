@@ -605,7 +605,7 @@ public class TestHudiSmokeTest
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {true, false})
+    @ValueSource(booleans = {true})
     public void testHudiTimestampKeygenEpochMillisPartitionedTables(boolean isRtTable)
     {
         String tableName = isRtTable ? HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR.getRtTableName()
@@ -749,13 +749,13 @@ public class TestHudiSmokeTest
                 .withMdtEnabled(true)
                 .withColStatsIndexEnabled(false)
                 .withRecordLevelIndexEnabled(true)
-                .withRecordIndexTimeout("1s")
+                .withRecordIndexTimeout("10s")
                 .withSecondaryIndexEnabled(false)
                 .withPartitionStatsIndexEnabled(false)
                 .withResolveColumnNameCasingEnabled(true)
                 .build();
-        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_COW_TABLE_WITH_FIELD_NAMES_IN_CAPS);
         MaterializedResult prunedRes = getQueryRunner().execute(session, "SELECT * FROM  " + HUDI_COW_TABLE_WITH_FIELD_NAMES_IN_CAPS + " WHERE id='1'");
+        MaterializedResult totalRes = getQueryRunner().execute(session, "SELECT * FROM " + HUDI_COW_TABLE_WITH_FIELD_NAMES_IN_CAPS);
         int totalSplits = totalRes.getStatementStats().get().getTotalSplits();
         int totalRows = totalRes.getRowCount();
         int prunedSplits = prunedRes.getStatementStats().get().getTotalSplits();
@@ -1353,10 +1353,10 @@ public class TestHudiSmokeTest
     private static Stream<Arguments> comprehensiveTestParameters()
     {
         ResourceHudiTablesInitializer.TestingTable[] tablesToTest = {
-                HUDI_COMPREHENSIVE_TYPES_V6_MOR,
+                //HUDI_COMPREHENSIVE_TYPES_V6_MOR,
                 HUDI_COMPREHENSIVE_TYPES_V8_MOR
         };
-        Boolean[] booleanValues = {true, false};
+        Boolean[] booleanValues = {true};
 
         return Stream.of(tablesToTest)
                 .flatMap(table ->

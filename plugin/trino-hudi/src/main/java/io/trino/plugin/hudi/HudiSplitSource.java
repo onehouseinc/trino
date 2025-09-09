@@ -47,6 +47,7 @@ import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.metadata.FileSystemBackedTableMetadata;
 import org.apache.hudi.metadata.HoodieBackedTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadata;
+import org.apache.hudi.metadata.MetadataPartitionType;
 import org.apache.hudi.util.Lazy;
 
 import java.util.HashMap;
@@ -106,7 +107,7 @@ public class HudiSplitSource
             HoodieTableMetaClient metaClient = tableHandle.getMetaClient();
             HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
 
-            HoodieTableMetadata tableMetadata = enableMetadataTable ?
+            HoodieTableMetadata tableMetadata = enableMetadataTable && tableHandle.getMetaClient().getTableConfig().getMetadataPartitions().contains(MetadataPartitionType.FILES.getPartitionPath()) ?
                     new HoodieBackedTableMetadata(engineContext, tableHandle.getMetaClient().getStorage(), metadataConfig, metaClient.getBasePath().toString(), true) :
                     new FileSystemBackedTableMetadata(engineContext, tableHandle.getMetaClient().getStorage(), metaClient.getBasePath().toString());
             log.info("Loaded table metadata for table: %s in %s ms", tableHandle.getSchemaTableName(), timer.endTimer());
