@@ -16,7 +16,7 @@
     <properties>
         <air.compiler.fail-warnings>true</air.compiler.fail-warnings>
         <air.main.basedir>${project.parent.basedir}</air.main.basedir>
-        <dep.hudi.version>1.0.2</dep.hudi.version>
+        <dep.hudi.version>1.1.0</dep.hudi.version>
     </properties>
 
     <dependencies>
@@ -168,6 +168,7 @@
             <groupId>org.apache.hudi</groupId>
             <artifactId>hudi-io</artifactId>
             <version>${dep.hudi.version}</version>
+            <classifier>shaded</classifier>
             <exclusions>
                 <exclusion>
                     <groupId>com.google.protobuf</groupId>
@@ -468,7 +469,13 @@
                         <!-- org.apache.hudi:hudi-client-common and org.apache.hudi:hudi-java-client log4j.properties duplicates -->
                         <ignoredResourcePattern>log4j.properties</ignoredResourcePattern>
                         <ignoredResourcePattern>log4j-surefire.properties</ignoredResourcePattern>
+                        <ignoredResource>google/protobuf/.*</ignoredResource>
                     </ignoredResourcePatterns>
+                    <ignoredClassPatterns>
+                        <!-- org.apache.hudi:hudi-hadoop-common bundles parquet classes that conflict with org.apache.parquet:parquet-common -->
+                        <!-- ParquetConfiguration class is shaded/bundled inside the hudi-hadoop-common JAR, not a transitive dependency, so Maven exclusions won't work -->
+                        <ignoredClassPattern>org.apache.parquet.conf.ParquetConfiguration</ignoredClassPattern>
+                    </ignoredClassPatterns>
                 </configuration>
             </plugin>
             <plugin>
