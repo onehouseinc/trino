@@ -153,7 +153,7 @@ public class HudiBackgroundSplitLoader
         Executor splitGeneratorExecutor = new BoundedExecutor(executor, splitGeneratorParallelism);
 
         for (int i = 0; i < splitGeneratorParallelism; i++) {
-            HudiPartitionInfoLoader generator = new HudiPartitionInfoLoader(tableHandle, hudiDirectoryLister, tableHandle.getLatestCommitTime(), hudiSplitFactory,
+            HudiPartitionInfoLoader generator = new HudiPartitionInfoLoader(tableHandle.getSchemaName(), tableHandle.getTableName(), hudiDirectoryLister, tableHandle.getLatestCommitTime(), hudiSplitFactory,
                     asyncQueue, partitionQueue, useIndex);
             splitGenerators.add(generator);
             ListenableFuture<Void> future = Futures.submit(generator, splitGeneratorExecutor);

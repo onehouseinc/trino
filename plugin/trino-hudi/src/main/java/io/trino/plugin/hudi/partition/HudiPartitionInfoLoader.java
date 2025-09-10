@@ -17,7 +17,6 @@ import io.airlift.concurrent.MoreFutures;
 import io.airlift.log.Logger;
 import io.trino.plugin.hive.HivePartitionKey;
 import io.trino.plugin.hive.util.AsyncQueue;
-import io.trino.plugin.hudi.HudiTableHandle;
 import io.trino.plugin.hudi.query.HudiDirectoryLister;
 import io.trino.plugin.hudi.split.HudiSplitFactory;
 import io.trino.spi.connector.ConnectorSplit;
@@ -32,7 +31,8 @@ public class HudiPartitionInfoLoader
         implements Runnable
 {
     private static final Logger log = Logger.get(HudiPartitionInfoLoader.class);
-    private final HudiTableHandle tableHandle;
+    private final String schemaName;
+    private final String tableName;
     private final HudiDirectoryLister hudiDirectoryLister;
     private final HudiSplitFactory hudiSplitFactory;
     private final AsyncQueue<ConnectorSplit> asyncQueue;
@@ -43,7 +43,8 @@ public class HudiPartitionInfoLoader
     private boolean isRunning;
 
     public HudiPartitionInfoLoader(
-            HudiTableHandle tableHandle,
+            String schemaName,
+            String tableName,
             HudiDirectoryLister hudiDirectoryLister,
             String commitTime,
             HudiSplitFactory hudiSplitFactory,
@@ -51,7 +52,8 @@ public class HudiPartitionInfoLoader
             Deque<HiveHudiPartitionInfo> partitionQueue,
             boolean useIndex)
     {
-        this.tableHandle = tableHandle;
+        this.schemaName = schemaName;
+        this.tableName = tableName;
         this.hudiDirectoryLister = hudiDirectoryLister;
         this.commitTime = commitTime;
         this.hudiSplitFactory = hudiSplitFactory;
@@ -83,7 +85,7 @@ public class HudiPartitionInfoLoader
                 .map(asyncQueue::offer)
                 .forEachOrdered(MoreFutures::getFutureValue);
         log.debug("Generated splits for partition [%s] on table %s.%s in %s ms",
-                hudiPartitionInfo.getHivePartitionName(), tableHandle.getSchemaName(), tableHandle.getTableName(), timer.endTimer());
+                hudiPartitionInfo.getHivePartitionName(), schemaName, tableName, timer.endTimer());
     }
 
     public void stopRunning()
