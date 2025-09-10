@@ -17,10 +17,10 @@ import io.trino.plugin.hudi.partition.HudiPartitionInfo;
 import org.apache.hudi.common.model.FileSlice;
 
 import java.io.Closeable;
-import java.util.List;
+import java.util.stream.Stream;
 
 public interface HudiDirectoryLister
         extends Closeable
 {
-    List<FileSlice> listStatus(HudiPartitionInfo partitionInfo, boolean useIndex);
+    Stream<FileSlice> listStatus(HudiPartitionInfo partitionInfo, boolean useIndex);
 }
