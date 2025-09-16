@@ -75,9 +75,9 @@ public class TestHudiNoCacheFileOperations
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.lastModified", METADATA_TABLE), 4)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.length", METADATA_TABLE), 4)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE), 6)
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", INDEX_DEFINITION), 2)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", INDEX_DEFINITION), 4)
                         .add(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES))
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 2)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 4)
                         .build());
 
         assertFileSystemAccesses(
@@ -86,10 +86,10 @@ public class TestHudiNoCacheFileOperations
                         .addCopies(new FileOperationUtils.FileOperation("Input.readTail", DATA), 2)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.lastModified", METADATA_TABLE), 4)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.length", METADATA_TABLE), 4)
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", INDEX_DEFINITION), 2)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", INDEX_DEFINITION), 4)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE), 6)
                         .add(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES))
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 2)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 4)
                         .build());
     }
 
@@ -105,23 +105,23 @@ public class TestHudiNoCacheFileOperations
         assertFileSystemAccesses(query,
                 ImmutableMultiset.<FileOperationUtils.FileOperation>builder()
                         .addCopies(new FileOperationUtils.FileOperation("Input.readTail", DATA), 6)
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.lastModified", METADATA_TABLE), 39)
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.length", METADATA_TABLE), 39)
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", INDEX_DEFINITION), 5)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.lastModified", METADATA_TABLE), 30)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.length", METADATA_TABLE), 30)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", INDEX_DEFINITION), 11)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE), 54)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES), 3)
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 5)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 11)
                         .build());
 
         assertFileSystemAccesses(query,
                 ImmutableMultiset.<FileOperationUtils.FileOperation>builder()
                         .addCopies(new FileOperationUtils.FileOperation("Input.readTail", DATA), 6)
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.lastModified", METADATA_TABLE), 29)
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.length", METADATA_TABLE), 29)
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", INDEX_DEFINITION), 4)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.lastModified", METADATA_TABLE), 22)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.length", METADATA_TABLE), 22)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", INDEX_DEFINITION), 10)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE), 40)
                         .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES), 2)
-                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 4)
+                        .addCopies(new FileOperationUtils.FileOperation("InputFile.newStream", TABLE_PROPERTIES), 10)
                         .build());
     }
 
