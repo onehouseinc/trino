@@ -605,7 +605,7 @@ public class TestHudiSmokeTest
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {true})
+    @ValueSource(booleans = {true, false})
     public void testHudiTimestampKeygenEpochMillisPartitionedTables(boolean isRtTable)
     {
         String tableName = isRtTable ? HUDI_TIMESTAMP_KEYGEN_PT_EPOCH_TO_YYYY_MM_DD_HH_V8_MOR.getRtTableName()
@@ -1353,10 +1353,10 @@ public class TestHudiSmokeTest
     private static Stream<Arguments> comprehensiveTestParameters()
     {
         ResourceHudiTablesInitializer.TestingTable[] tablesToTest = {
-                //HUDI_COMPREHENSIVE_TYPES_V6_MOR,
+                HUDI_COMPREHENSIVE_TYPES_V6_MOR,
                 HUDI_COMPREHENSIVE_TYPES_V8_MOR
         };
-        Boolean[] booleanValues = {true};
+        Boolean[] booleanValues = {true, false};
 
         return Stream.of(tablesToTest)
                 .flatMap(table ->

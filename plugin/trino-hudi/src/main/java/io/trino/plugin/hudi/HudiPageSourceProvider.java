@@ -38,8 +38,6 @@ import io.trino.plugin.hive.ReaderColumns;
 import io.trino.plugin.hive.parquet.ParquetReaderConfig;
 import io.trino.plugin.hudi.file.HudiBaseFile;
 import io.trino.plugin.hudi.reader.HudiTrinoReaderContext;
-import io.trino.plugin.hudi.storage.HudiTrinoStorage;
-import io.trino.plugin.hudi.storage.TrinoStorageConfiguration;
 import io.trino.plugin.hudi.util.SynthesizedColumnHandler;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ColumnHandle;
@@ -57,9 +55,6 @@ import org.apache.avro.generic.IndexedRecord;
 import org.apache.hudi.common.model.HoodieTableType;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.read.HoodieFileGroupReader;
-import org.apache.hudi.common.table.timeline.HoodieInstant;
-import org.apache.hudi.common.table.timeline.HoodieInstantTimeGenerator;
-import org.apache.hudi.common.util.Option;
 import org.apache.hudi.common.util.ValidationUtils;
 import org.apache.hudi.storage.StoragePath;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -106,7 +101,7 @@ import static io.trino.plugin.hudi.HudiUtil.buildTableMetaClient;
 import static io.trino.plugin.hudi.HudiUtil.constructSchema;
 import static io.trino.plugin.hudi.HudiUtil.convertToFileSlice;
 import static io.trino.plugin.hudi.HudiUtil.getLatestTableSchema;
-import static io.trino.plugin.hudi.HudiUtil.prependHudiMetaColumns;
+import static io.trino.plugin.hudi.HudiUtil.prependHudiMetaAndOrderingColumns;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toUnmodifiableList;
@@ -186,7 +181,11 @@ public class HudiPageSourceProvider
         // The `columns` list could be empty when count(*) is issued,
         // prepending hoodie meta columns for Hudi split with log files
         // to allow a non-empty dataPageSource to be returned
-        List<HiveColumnHandle> hudiMetaAndDataColumnHandles = prependHudiMetaColumns(dataColumnHandles);
+        List<HiveColumnHandle> hudiMetaAndDataColumnHandles = prependHudiMetaAndOrderingColumns(hudiTableHandle, dataColumnHandles);
+
+        // TODO: Move this into HudiTableHandle
+        HoodieTableMetaClient metaClient = buildTableMetaClient(
+                fileSystemFactory.create(session), hudiTableHandle.getSchemaTableName().toString(), hudiTableHandle.getBasePath());
 
         TrinoFileSystem fileSystem = fileSystemFactory.create(session);
         ConnectorPageSource dataPageSource = createPageSource(
@@ -217,10 +216,6 @@ public class HudiPageSourceProvider
                     dataColumnHandles,
                     synthesizedColumnHandler);
         }
-
-        // TODO: Move this into HudiTableHandle
-        HoodieTableMetaClient metaClient = buildTableMetaClient(
-                fileSystemFactory.create(session), hudiTableHandle.getSchemaTableName().toString(), hudiTableHandle.getBasePath());
 
         HudiTrinoReaderContext readerContext = new HudiTrinoReaderContext(
                 metaClient.getStorageConf(),

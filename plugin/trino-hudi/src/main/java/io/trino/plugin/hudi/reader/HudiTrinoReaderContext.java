@@ -20,6 +20,7 @@ import io.trino.spi.Page;
 import io.trino.spi.connector.ConnectorPageSource;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.IndexedRecord;
+import org.apache.hudi.avro.AvroRecordContext;
 import org.apache.hudi.common.config.RecordMergeMode;
 import org.apache.hudi.common.engine.HoodieReaderContext;
 import org.apache.hudi.common.model.HoodieAvroRecordMerger;
@@ -54,7 +55,7 @@ public class HudiTrinoReaderContext
             List<HiveColumnHandle> columnHandles,
             SynthesizedColumnHandler synthesizedColumnHandler)
     {
-        super(storageConfiguration, tableConfig, Option.empty(), Option.empty(), new TrinoReaderContext(tableConfig));
+        super(storageConfiguration, tableConfig, Option.empty(), Option.empty(), new AvroRecordContext(tableConfig, tableConfig.getPayloadClass()));
         this.pageSource = pageSource;
         this.avroSerializer = new HudiAvroSerializer(columnHandles, synthesizedColumnHandler);
         this.dataHandles = dataHandles;

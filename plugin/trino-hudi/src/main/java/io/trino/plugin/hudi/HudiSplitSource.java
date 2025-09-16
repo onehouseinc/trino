@@ -107,7 +107,7 @@ public class HudiSplitSource
             HoodieTableMetaClient metaClient = tableHandle.getMetaClient();
             HoodieEngineContext engineContext = new HoodieLocalEngineContext(metaClient.getStorage().getConf());
 
-            HoodieTableMetadata tableMetadata = enableMetadataTable && tableHandle.getMetaClient().getTableConfig().getMetadataPartitions().contains(MetadataPartitionType.FILES.getPartitionPath()) ?
+            HoodieTableMetadata tableMetadata = enableMetadataTable && tableHandle.getMetaClient().getTableConfig().isMetadataTableAvailable() ?
                     new HoodieBackedTableMetadata(engineContext, tableHandle.getMetaClient().getStorage(), metadataConfig, metaClient.getBasePath().toString(), true) :
                     new FileSystemBackedTableMetadata(engineContext, tableHandle.getMetaClient().getStorage(), metaClient.getBasePath().toString());
             log.info("Loaded table metadata for table: %s in %s ms", tableHandle.getSchemaTableName(), timer.endTimer());

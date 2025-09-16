@@ -54,8 +54,7 @@ public class HudiSnapshotDirectoryLister
         this.lazyFileSystemView = Lazy.lazily(() -> {
             HoodieTimer timer = HoodieTimer.start();
             HoodieTableMetaClient metaClient = tableHandle.getMetaClient();
-            HoodieTableMetadata tableMetadata = lazyTableMetadata.get();
-            HoodieTableFileSystemView fileSystemView = getFileSystemView(tableMetadata, metaClient);
+            HoodieTableFileSystemView fileSystemView = getFileSystemView(lazyTableMetadata.get(), metaClient);
             if (enableMetadataTable) {
                 fileSystemView.loadAllPartitions();
             }
