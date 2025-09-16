@@ -25,7 +25,6 @@ import org.apache.hudi.common.data.HoodieListData;
 import org.apache.hudi.common.model.HoodieIndexDefinition;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.util.HoodieTimer;
-import org.apache.hudi.common.util.hash.ColumnIndexID;
 import org.apache.hudi.metadata.ColumnStatsIndexPrefixRawKey;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadataUtil;

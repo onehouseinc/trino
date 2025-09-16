@@ -47,7 +47,6 @@ import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.metadata.FileSystemBackedTableMetadata;
 import org.apache.hudi.metadata.HoodieBackedTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadata;
-import org.apache.hudi.metadata.MetadataPartitionType;
 import org.apache.hudi.util.Lazy;
 
 import java.util.HashMap;

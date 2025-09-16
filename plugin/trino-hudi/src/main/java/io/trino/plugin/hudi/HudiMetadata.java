@@ -49,7 +49,6 @@ import io.trino.spi.statistics.TableStatistics;
 import io.trino.spi.type.TypeManager;
 import org.apache.avro.Schema;
 import org.apache.hudi.common.model.HoodieTableType;
-import org.apache.hudi.common.table.HoodieTableConfig;
 import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.timeline.HoodieInstant;
 import org.apache.hudi.common.table.timeline.versioning.v2.InstantComparatorV2;

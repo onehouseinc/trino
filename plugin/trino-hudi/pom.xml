@@ -168,6 +168,7 @@
             <groupId>org.apache.hudi</groupId>
             <artifactId>hudi-io</artifactId>
             <version>${dep.hudi.version}</version>
+            <classifier>shaded</classifier>
             <exclusions>
                 <exclusion>
                     <groupId>com.google.protobuf</groupId>
@@ -468,6 +469,7 @@
                         <!-- org.apache.hudi:hudi-client-common and org.apache.hudi:hudi-java-client log4j.properties duplicates -->
                         <ignoredResourcePattern>log4j.properties</ignoredResourcePattern>
                         <ignoredResourcePattern>log4j-surefire.properties</ignoredResourcePattern>
+                        <ignoredResource>google/protobuf/.*</ignoredResource>
                     </ignoredResourcePatterns>
                 </configuration>
             </plugin>

@@ -17,18 +17,9 @@ import org.apache.hudi.avro.model.HoodieMetadataColumnStats;
 import org.apache.hudi.common.config.HoodieMetadataConfig;
 import org.apache.hudi.common.engine.HoodieEngineContext;
 import org.apache.hudi.common.model.HoodieColumnRangeMetadata;
-import org.apache.hudi.common.model.HoodieRecord;
-import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.common.util.collection.Pair;
-import org.apache.hudi.common.util.hash.ColumnIndexID;
-import org.apache.hudi.common.util.hash.FileIndexID;
-import org.apache.hudi.common.util.hash.PartitionIndexID;
 import org.apache.hudi.exception.HoodieMetadataException;
 import org.apache.hudi.metadata.HoodieBackedTableMetadata;
-import org.apache.hudi.metadata.HoodieMetadataMetrics;
-import org.apache.hudi.metadata.HoodieMetadataPayload;
-import org.apache.hudi.metadata.HoodieTableMetadataUtil;
-import org.apache.hudi.metadata.MetadataPartitionType;
 import org.apache.hudi.storage.HoodieStorage;
 
 import java.util.Collection;

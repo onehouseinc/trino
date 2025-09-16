@@ -85,9 +85,9 @@ public class TestHudiAlluxioCacheFileOperations
                         .addCopies(new FileOperation("Alluxio.readCached", METADATA_TABLE), 27)
                         .addCopies(new FileOperation("InputFile.lastModified", METADATA_TABLE), 4)
                         .addCopies(new FileOperation("InputFile.length", METADATA_TABLE), 10)
-                        .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 2)
+                        .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 4)
                         .add(new FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES))
-                        .addCopies(new FileOperation("InputFile.newStream", TABLE_PROPERTIES), 2)
+                        .addCopies(new FileOperation("InputFile.newStream", TABLE_PROPERTIES), 4)
                         .build());
 
         assertFileSystemAccesses(
@@ -97,9 +97,9 @@ public class TestHudiAlluxioCacheFileOperations
                         .addCopies(new FileOperation("Alluxio.readCached", METADATA_TABLE), 27)
                         .addCopies(new FileOperation("InputFile.lastModified", METADATA_TABLE), 4)
                         .addCopies(new FileOperation("InputFile.length", METADATA_TABLE), 10)
-                        .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 2)
+                        .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 4)
                         .add(new FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES))
-                        .addCopies(new FileOperation("InputFile.newStream", TABLE_PROPERTIES), 2)
+                        .addCopies(new FileOperation("InputFile.newStream", TABLE_PROPERTIES), 4)
                         .build());
     }
 
@@ -115,23 +115,23 @@ public class TestHudiAlluxioCacheFileOperations
         assertFileSystemAccesses(query,
                 ImmutableMultiset.<FileOperation>builder()
                         .addCopies(new FileOperation("Alluxio.readCached", DATA), 6)
-                        .addCopies(new FileOperation("Alluxio.readCached", METADATA_TABLE), 288)
-                        .addCopies(new FileOperation("InputFile.lastModified", METADATA_TABLE), 39)
-                        .addCopies(new FileOperation("InputFile.length", METADATA_TABLE), 93)
-                        .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 5)
+                        .addCopies(new FileOperation("Alluxio.readCached", METADATA_TABLE), 270)
+                        .addCopies(new FileOperation("InputFile.lastModified", METADATA_TABLE), 30)
+                        .addCopies(new FileOperation("InputFile.length", METADATA_TABLE), 84)
+                        .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 11)
                         .addCopies(new FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES), 3)
-                        .addCopies(new FileOperation("InputFile.newStream", TABLE_PROPERTIES), 5)
+                        .addCopies(new FileOperation("InputFile.newStream", TABLE_PROPERTIES), 11)
                         .build());
 
         assertFileSystemAccesses(query,
                 ImmutableMultiset.<FileOperation>builder()
                         .addCopies(new FileOperation("Alluxio.readCached", DATA), 6)
-                        .addCopies(new FileOperation("Alluxio.readCached", METADATA_TABLE), 215)
-                        .addCopies(new FileOperation("InputFile.lastModified", METADATA_TABLE), 29)
-                        .addCopies(new FileOperation("InputFile.length", METADATA_TABLE), 69)
-                        .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 4)
+                        .addCopies(new FileOperation("Alluxio.readCached", METADATA_TABLE), 201)
+                        .addCopies(new FileOperation("InputFile.lastModified", METADATA_TABLE), 22)
+                        .addCopies(new FileOperation("InputFile.length", METADATA_TABLE), 62)
+                        .addCopies(new FileOperation("InputFile.newStream", INDEX_DEFINITION), 10)
                         .addCopies(new FileOperation("InputFile.newStream", METADATA_TABLE_PROPERTIES), 2)
-                        .addCopies(new FileOperation("InputFile.newStream", TABLE_PROPERTIES), 4)
+                        .addCopies(new FileOperation("InputFile.newStream", TABLE_PROPERTIES), 10)
                         .build());
     }
 

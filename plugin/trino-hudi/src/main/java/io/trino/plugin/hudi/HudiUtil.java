@@ -99,7 +99,6 @@ import static org.apache.hudi.common.model.HoodieRecord.RECORD_KEY_METADATA_FIEL
 
 public final class HudiUtil
 {
-
     public static final List<String> HOODIE_META_COLUMNS =
             CollectionUtils.createImmutableList(RECORD_KEY_METADATA_FIELD, PARTITION_PATH_METADATA_FIELD);
 
@@ -455,14 +454,14 @@ public final class HudiUtil
      * @param <V> the type of mapped values
      * @return a {@link Map} containing all key-value pairs from the input data
      */
-    public static <K, V> Map<K, V> collectAsMap(HoodiePairData<K, V> pairData) {
+    public static <K, V> Map<K, V> collectAsMap(HoodiePairData<K, V> pairData)
+    {
         // Map each pair to (Option<Pair.key>, V) to handle null keys uniformly
         // If there are multiple entries sharing the same key, use the incoming one
         return pairData.mapToPair(pair ->
                         Pair.of(
                                 Option.ofNullable(pair.getKey()),
-                                pair.getValue()
-                        ))
+                                pair.getValue()))
                 .collectAsList()
                 .stream()
                 .collect(HashMap::new,
