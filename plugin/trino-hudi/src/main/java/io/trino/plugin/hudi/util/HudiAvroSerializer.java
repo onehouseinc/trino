@@ -59,7 +59,9 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Verify.verify;
 import static io.airlift.slice.Slices.utf8Slice;
 import static io.trino.plugin.hudi.HudiUtil.constructSchema;
@@ -107,19 +109,31 @@ public class HudiAvroSerializer
     };
 
     private static final AvroDecimalConverter DECIMAL_CONVERTER = new AvroDecimalConverter();
-    private final SynthesizedColumnHandler synthesizedColumnHandler;
+    private final Optional<SynthesizedColumnHandler> synthesizedColumnHandler;
 
     private final List<HiveColumnHandle> columnHandles;
     private final List<Type> columnTypes;
     private final Schema schema;
 
-    public HudiAvroSerializer(List<HiveColumnHandle> columnHandles, SynthesizedColumnHandler synthesizedColumnHandler)
+    public HudiAvroSerializer(List<HiveColumnHandle> columnHandles, Optional<SynthesizedColumnHandler> synthesizedColumnHandler)
     {
         this.columnHandles = columnHandles;
         this.columnTypes = columnHandles.stream().map(HiveColumnHandle::getType).toList();
-        // Fetches projected schema
+        // Fetches projected schema by inferring
         this.schema = constructSchema(columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getName).toList(),
                 columnHandles.stream().filter(ch -> !ch.isHidden()).map(HiveColumnHandle::getHiveType).toList());
+        this.synthesizedColumnHandler = synthesizedColumnHandler;
+    }
+
+    /**
+     * Constructor that uses the provided schema instead of constructing one.
+     * This is useful when you want to preserve the original schema from the source (e.g., Parquet file).
+     */
+    public HudiAvroSerializer(List<HiveColumnHandle> columnHandles, Schema schema, Optional<SynthesizedColumnHandler> synthesizedColumnHandler)
+    {
+        this.columnHandles = columnHandles;
+        this.columnTypes = columnHandles.stream().map(HiveColumnHandle::getType).toList();
+        this.schema = schema;
         this.synthesizedColumnHandler = synthesizedColumnHandler;
     }
 
@@ -140,13 +154,14 @@ public class HudiAvroSerializer
 
     public void buildRecordInPage(PageBuilder pageBuilder, IndexedRecord record)
     {
+        checkState(synthesizedColumnHandler.isPresent(), "buildRecordInPage() is not supported when HudiAvroSerializer is created without SynthesizedColumnHandler");
         pageBuilder.declarePosition();
         int blockSeq = 0;
         for (int channel = 0; channel < columnTypes.size(); channel++, blockSeq++) {
             BlockBuilder output = pageBuilder.getBlockBuilder(blockSeq);
             HiveColumnHandle columnHandle = columnHandles.get(channel);
-            if (synthesizedColumnHandler.isSynthesizedColumn(columnHandle)) {
-                synthesizedColumnHandler.getColumnStrategy(columnHandle).appendToBlock(output, columnTypes.get(channel));
+            if (synthesizedColumnHandler.get().isSynthesizedColumn(columnHandle)) {
+                synthesizedColumnHandler.get().getColumnStrategy(columnHandle).appendToBlock(output, columnTypes.get(channel));
             }
             else {
                 // Record may not be projected, get index from it

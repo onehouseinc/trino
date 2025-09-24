@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.UnaryOperator;
 
 public class HudiTrinoReaderContext
@@ -59,7 +60,7 @@ public class HudiTrinoReaderContext
             SynthesizedColumnHandler synthesizedColumnHandler)
     {
         this.pageSource = pageSource;
-        this.avroSerializer = new HudiAvroSerializer(columnHandles, synthesizedColumnHandler);
+        this.avroSerializer = new HudiAvroSerializer(columnHandles, Optional.of(synthesizedColumnHandler));
         this.dataHandles = dataHandles;
         this.columnHandles = columnHandles;
         this.colToPosMap = new HashMap<>();

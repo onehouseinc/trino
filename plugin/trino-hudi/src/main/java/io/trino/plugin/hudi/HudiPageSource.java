@@ -26,6 +26,7 @@ import org.apache.hudi.common.table.read.HoodieFileGroupReader;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 
@@ -55,7 +56,7 @@ public class HudiPageSource
         this.readerContext = readerContext;
         this.columnHandles = columnHandles;
         this.pageBuilder = new PageBuilder(columnHandles.stream().map(HiveColumnHandle::getType).toList());
-        this.avroSerializer = new HudiAvroSerializer(columnHandles, synthesizedColumnHandler);
+        this.avroSerializer = new HudiAvroSerializer(columnHandles, Optional.of(synthesizedColumnHandler));
     }
 
     @Override

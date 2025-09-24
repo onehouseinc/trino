@@ -224,6 +224,14 @@ public final class HudiUtil
         }
     }
 
+    /**
+     * Construct avro schema using colum names and types provided by Hive. Avro schema will be inferred via determined mappings, and does not preserve the original field
+     * characteristics (required vs optional, default values, type annotations).
+     *
+     * @param columnNames the column names
+     * @param columnTypes the Hive column types
+     * @return the inferred Avro schema
+     */
     public static Schema constructSchema(List<String> columnNames, List<HiveType> columnTypes)
     {
         // Convert lists into the format expected by the utility class

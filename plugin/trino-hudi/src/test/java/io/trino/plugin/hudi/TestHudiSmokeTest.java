@@ -72,6 +72,7 @@ import static io.trino.plugin.hive.HiveColumnHandle.createBaseColumn;
 import static io.trino.plugin.hudi.HudiPageSourceProvider.createPageSource;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_V6_MOR;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COMPREHENSIVE_TYPES_V8_MOR;
+import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_ARCHIVED_TIMELINE;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_PT_TABLE_WITH_FIELD_NAMES_IN_CAPS;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_PT_TBL;
 import static io.trino.plugin.hudi.testing.ResourceHudiTablesInitializer.TestingTable.HUDI_COW_TABLE_WITH_FIELD_NAMES_IN_CAPS;
@@ -1278,6 +1279,26 @@ public class TestHudiSmokeTest
                 "('electronics', 2023, DATE '2023-03-10', 10000000002, false), " +
                 "('electronics', 2023, DATE '2023-03-10', 10000000002, true) ";
         assertQuery(session, actualQuery, expectedQuery);
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = ResourceHudiTablesInitializer.TestingTable.class,
+            names = {"HUDI_COW_ARCHIVED_TIMELINE", "HUDI_MOR_ARCHIVED_TIMELINE"})
+    public void testHudiReadTableWithArchivedTimeline(ResourceHudiTablesInitializer.TestingTable table)
+    {
+        Session session = getSession();
+        @Language("SQL") String actualQuery = "SELECT id, name, price, ts FROM " + table;
+        String expected;
+        if (table.getTableName().equals(HUDI_COW_ARCHIVED_TIMELINE.getTableName())) {
+            expected = "VALUES (1, 'alice', 110.0, 1000), (2, 'robert', 200.0, 2000), (4, 'david', 400.0, 4000), (5, 'eve', 550.0, 5000), (6, 'frank', 660.0, 6000), " +
+                    "(7, 'grace', 700.0, 7000)";
+        }
+        else {
+            // Reading from RO table
+            expected = "VALUES (1, 'user1', 10.0, 1000), (2, 'user2', 20.0, 2000), (3, 'user3', 30.0, 3000), (4, 'user4', 40.0, 4000), (5, 'user5', 50.0, 5000)";
+        }
+        assertQuery(session, actualQuery, expected);
     }
 
     private void testTimestampMicros(HiveTimestampPrecision timestampPrecision, LocalDateTime expected)
