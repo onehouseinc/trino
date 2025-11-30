@@ -311,7 +311,6 @@ public final class HudiUtil
      *   <li>First, attempts an exact match on the column name.</li>
      *   <li>If not found, falls back to a case-insensitive match using a cached lookup table</li>
      * </ul>
-     * <p>
      *
      * @param columnName Column name to search for.
      * @param schema Avro {@link Schema} in which to search.
