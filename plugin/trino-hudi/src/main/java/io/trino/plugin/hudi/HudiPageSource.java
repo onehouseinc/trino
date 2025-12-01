@@ -61,6 +61,19 @@ public class HudiPageSource
             this.recordIterator = fileGroupReader.getClosableIterator();
         }
         catch (IOException e) {
+            // Clean up resources on initialization failure
+            try {
+                fileGroupReader.close();
+            }
+            catch (IOException closeException) {
+                e.addSuppressed(closeException);
+            }
+            try {
+                pageSource.close();
+            }
+            catch (IOException closeException) {
+                e.addSuppressed(closeException);
+            }
             throw new RuntimeException("Failed to initialize file group reader!", e);
         }
     }
@@ -112,8 +125,32 @@ public class HudiPageSource
     public void close()
             throws IOException
     {
-        fileGroupReader.close();
-        pageSource.close();
+        IOException closeException = null;
+
+        recordIterator.close();
+
+        try {
+            fileGroupReader.close();
+        }
+        catch (IOException e) {
+            closeException = e;
+        }
+
+        try {
+            pageSource.close();
+        }
+        catch (IOException e) {
+            if (closeException == null) {
+                closeException = e;
+            }
+            else {
+                closeException.addSuppressed(e);
+            }
+        }
+
+        if (closeException != null) {
+            throw closeException;
+        }
     }
 
     @Override

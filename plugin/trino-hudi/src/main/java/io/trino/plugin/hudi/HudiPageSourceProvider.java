@@ -183,10 +183,6 @@ public class HudiPageSourceProvider
         // to allow a non-empty dataPageSource to be returned
         List<HiveColumnHandle> hudiMetaAndDataColumnHandles = prependHudiMetaAndOrderingColumns(hudiTableHandle, dataColumnHandles);
 
-        // TODO: Move this into HudiTableHandle
-        HoodieTableMetaClient metaClient = buildTableMetaClient(
-                fileSystemFactory.create(session), hudiTableHandle.getSchemaTableName().toString(), hudiTableHandle.getBasePath());
-
         TrinoFileSystem fileSystem = fileSystemFactory.create(session);
         ConnectorPageSource dataPageSource = createPageSource(
                 session,
@@ -217,6 +213,9 @@ public class HudiPageSourceProvider
                     synthesizedColumnHandler);
         }
 
+        // TODO: Move this into HudiTableHandle
+        HoodieTableMetaClient metaClient = buildTableMetaClient(
+                fileSystemFactory.create(session), hudiTableHandle.getSchemaTableName().toString(), hudiTableHandle.getBasePath());
         HudiTrinoReaderContext readerContext = new HudiTrinoReaderContext(
                 metaClient.getStorageConf(),
                 metaClient.getTableConfig(),
