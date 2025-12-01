@@ -21,7 +21,9 @@
 
     <dependencies>
         <dependency>
-            <!--Used to test execution in task executor after de-serializing-->
+            <!-- Required for compilation: HoodieRecord implements KryoSerializable,
+                 so the compiler needs Kryo on classpath to verify the class hierarchy
+                 when loading HoodieRecord for static imports -->
             <groupId>com.esotericsoftware</groupId>
             <artifactId>kryo</artifactId>
             <version>4.0.2</version>
@@ -484,6 +486,18 @@
                 <configuration>
                     <source>8</source>
                     <target>8</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <ignoredUnusedDeclaredDependencies>
+                        <!-- Kryo is not directly used but required for compilation:
+                             HoodieRecord implements KryoSerializable, so the compiler
+                             needs Kryo to verify the class hierarchy -->
+                        <ignoredUnusedDeclaredDependency>com.esotericsoftware:kryo</ignoredUnusedDeclaredDependency>
+                    </ignoredUnusedDeclaredDependencies>
                 </configuration>
             </plugin>
         </plugins>
