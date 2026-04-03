@@ -36,7 +36,12 @@ public class HudiTrinoFileReaderFactory
     @Override
     protected HoodieFileReader newParquetFileReader(StoragePath path)
     {
-        throw new UnsupportedOperationException("HudiTrinoFileReaderFactory does not support Parquet file reader");
+        try {
+            return new TrinoParquetFileReader(storage, path);
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
