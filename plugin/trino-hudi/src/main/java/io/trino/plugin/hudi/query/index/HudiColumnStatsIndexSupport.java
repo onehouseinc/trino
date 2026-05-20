@@ -13,7 +13,9 @@
  */
 package io.trino.plugin.hudi.query.index;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
@@ -37,6 +39,7 @@ import org.apache.hudi.common.table.HoodieTableMetaClient;
 import org.apache.hudi.common.table.HoodieTableVersion;
 import org.apache.hudi.common.util.HoodieTimer;
 import org.apache.hudi.common.util.hash.ColumnIndexID;
+import org.apache.hudi.common.util.hash.PartitionIndexID;
 import org.apache.hudi.metadata.HoodieTableMetadata;
 import org.apache.hudi.metadata.HoodieTableMetadataUtil;
 import org.apache.hudi.util.Lazy;
@@ -51,8 +54,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static io.trino.parquet.predicate.PredicateUtils.isStatisticsOverflow;
 import static io.trino.plugin.hudi.HudiSessionProperties.getColumnStatsWaitTimeout;
+import static io.trino.plugin.hudi.HudiSessionProperties.isScopeColumnStatsToPrunedPartitions;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
 import static io.trino.spi.type.DateType.DATE;
@@ -68,11 +74,16 @@ public class HudiColumnStatsIndexSupport
 {
     private static final Logger log = Logger.get(HudiColumnStatsIndexSupport.class);
     // file name -> column name -> domain with column stats
-    private final CompletableFuture<Optional<Map<String, Map<String, Domain>>>> domainsWithStatsFuture;
+    // volatile because the future may be created lazily from a different thread when scoped
+    // lookups are enabled (see setPrunedPartitionPaths).
+    private volatile CompletableFuture<Optional<Map<String, Map<String, Domain>>>> domainsWithStatsFuture;
     protected final TupleDomain<String> regularColumnPredicates;
     private final List<String> regularColumns;
+    private final Map<String, Type> columnTypes;
+    private final Lazy<HoodieTableMetadata> lazyTableMetadata;
     private final Duration columnStatsWaitTimeout;
-    private final long futureStartTimeMs;
+    private final boolean scopeColumnStatsToPrunedPartitions;
+    private volatile long futureStartTimeMs;
 
     public HudiColumnStatsIndexSupport(ConnectorSession session, SchemaTableName schemaTableName, Lazy<HoodieTableMetaClient> lazyMetaClient, Lazy<HoodieTableMetadata> lazyTableMetadata, TupleDomain<String> regularColumnPredicates)
     {
@@ -83,57 +94,117 @@ public class HudiColumnStatsIndexSupport
     {
         super(log, schemaTableName, lazyMetaClient);
         this.columnStatsWaitTimeout = getColumnStatsWaitTimeout(session);
+        this.scopeColumnStatsToPrunedPartitions = isScopeColumnStatsToPrunedPartitions(session);
         this.regularColumnPredicates = regularColumnPredicates;
         this.regularColumns = regularColumnPredicates.getDomains()
-                .map(domains -> new ArrayList<>(domains.keySet()))
-                .orElseGet(ArrayList::new);
+                .map(domains -> ImmutableList.copyOf(domains.keySet()))
+                .orElseGet(ImmutableList::of);
+        this.columnTypes = regularColumnPredicates.getDomains()
+                .map(domains -> domains.entrySet().stream()
+                        .collect(toImmutableMap(Map.Entry::getKey, entry -> entry.getValue().getType())))
+                .orElseGet(ImmutableMap::of);
+        this.lazyTableMetadata = lazyTableMetadata;
+
         if (regularColumnPredicates.isAll() || regularColumnPredicates.getDomains().isEmpty()) {
             this.domainsWithStatsFuture = CompletableFuture.completedFuture(Optional.empty());
+            this.futureStartTimeMs = System.currentTimeMillis();
+        }
+        else if (scopeColumnStatsToPrunedPartitions) {
+            // Defer the lookup until pruned partition paths are provided via
+            // setPrunedPartitionPaths(). shouldSkipFileSlice() falls back to no-skip if that
+            // never happens.
+            this.domainsWithStatsFuture = null;
+            this.futureStartTimeMs = 0L;
         }
         else {
-            // Get filter columns
-            List<String> encodedTargetColumnNames = regularColumns
-                    .stream()
-                    .map(col -> new ColumnIndexID(col).asBase64EncodedString()).collect(Collectors.toList());
-
-            Map<String, Type> columnTypes = regularColumnPredicates.getDomains().get().entrySet().stream()
-                    .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().getType()));
-
-            domainsWithStatsFuture = CompletableFuture.supplyAsync(() -> {
-                HoodieTimer timer = HoodieTimer.start();
-                if (!lazyMetaClient.get().getTableConfig().getMetadataPartitions()
-                        .contains(HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS)) {
-                    return Optional.empty();
-                }
-
-                Map<String, Map<String, Domain>> domainsWithStats =
-                        lazyTableMetadata.get().getRecordsByKeyPrefixes(encodedTargetColumnNames,
-                                        HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS, true)
-                                .collectAsList()
-                                .stream()
-                                .filter(f -> f.getData().getColumnStatMetadata().isPresent())
-                                .map(f -> f.getData().getColumnStatMetadata().get())
-                                .collect(Collectors.groupingBy(
-                                        HoodieMetadataColumnStats::getFileName,
-                                        Collectors.toMap(
-                                                HoodieMetadataColumnStats::getColumnName,
-                                                // Pre-compute the Domain object for each HoodieMetadataColumnStats
-                                                stats -> getDomainFromColumnStats(stats.getColumnName(), columnTypes.get(stats.getColumnName()), stats))));
-
-                log.debug("Column stats lookup took %s ms and identified %d relevant file IDs.", timer.endTimer(), domainsWithStats.size());
-
-                return Optional.of(domainsWithStats);
-            });
+            // Existing behaviour: fire a column-only prefix lookup eagerly and let it run
+            // concurrently with file system view loading.
+            this.domainsWithStatsFuture = startLookup(buildColumnOnlyPrefixKeys());
+            this.futureStartTimeMs = System.currentTimeMillis();
         }
+    }
+
+    @Override
+    public void setPrunedPartitionPaths(List<String> relativePartitionPaths)
+    {
+        if (!scopeColumnStatsToPrunedPartitions || domainsWithStatsFuture != null) {
+            return;
+        }
+        if (regularColumnPredicates.isAll() || regularColumnPredicates.getDomains().isEmpty()) {
+            return;
+        }
+        List<String> rawKeys = buildColumnPartitionPrefixKeys(relativePartitionPaths);
         this.futureStartTimeMs = System.currentTimeMillis();
+        this.domainsWithStatsFuture = startLookup(rawKeys);
+    }
+
+    private List<String> buildColumnOnlyPrefixKeys()
+    {
+        return regularColumns.stream()
+                .map(col -> new ColumnIndexID(col).asBase64EncodedString())
+                .collect(toImmutableList());
+    }
+
+    @VisibleForTesting
+    List<String> buildColumnPartitionPrefixKeys(List<String> relativePartitionPaths)
+    {
+        ImmutableList.Builder<String> builder = ImmutableList.builder();
+        for (String column : regularColumns) {
+            String columnPart = new ColumnIndexID(column).asBase64EncodedString();
+            for (String partition : relativePartitionPaths) {
+                String partitionPart = new PartitionIndexID(
+                        HoodieTableMetadataUtil.getColumnStatsIndexPartitionIdentifier(partition))
+                        .asBase64EncodedString();
+                builder.add(columnPart + partitionPart);
+            }
+        }
+        return builder.build();
+    }
+
+    private CompletableFuture<Optional<Map<String, Map<String, Domain>>>> startLookup(List<String> rawKeys)
+    {
+        if (rawKeys.isEmpty()) {
+            return CompletableFuture.completedFuture(Optional.empty());
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            HoodieTimer timer = HoodieTimer.start();
+            if (!lazyMetaClient.get().getTableConfig().getMetadataPartitions()
+                    .contains(HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS)) {
+                return Optional.empty();
+            }
+
+            Map<String, Map<String, Domain>> domainsWithStats =
+                    lazyTableMetadata.get().getRecordsByKeyPrefixes(rawKeys,
+                                    HoodieTableMetadataUtil.PARTITION_NAME_COLUMN_STATS, true)
+                            .collectAsList()
+                            .stream()
+                            .filter(f -> f.getData().getColumnStatMetadata().isPresent())
+                            .map(f -> f.getData().getColumnStatMetadata().get())
+                            .collect(Collectors.groupingBy(
+                                    HoodieMetadataColumnStats::getFileName,
+                                    Collectors.toMap(
+                                            HoodieMetadataColumnStats::getColumnName,
+                                            stats -> getDomainFromColumnStats(stats.getColumnName(), columnTypes.get(stats.getColumnName()), stats))));
+
+            log.debug("Column stats lookup took %s ms over %d prefix keys and identified %d relevant file IDs.",
+                    timer.endTimer(), rawKeys.size(), domainsWithStats.size());
+
+            return Optional.of(domainsWithStats);
+        });
     }
 
     @Override
     public boolean shouldSkipFileSlice(FileSlice slice)
     {
+        CompletableFuture<Optional<Map<String, Map<String, Domain>>>> future = domainsWithStatsFuture;
+        if (future == null) {
+            // Scoped lookup was enabled but pruned partition paths were never published.
+            // Fall back to no-skip rather than blocking forever or throwing.
+            return false;
+        }
         try {
-            if (domainsWithStatsFuture.isDone()) {
-                Optional<Map<String, Map<String, Domain>>> domainsWithStatsOpt = domainsWithStatsFuture.get();
+            if (future.isDone()) {
+                Optional<Map<String, Map<String, Domain>>> domainsWithStatsOpt = future.get();
                 return domainsWithStatsOpt
                         .map(domainsWithStats -> shouldSkipFileSlice(slice, domainsWithStats, regularColumnPredicates, regularColumns))
                         .orElse(false);
@@ -148,7 +219,7 @@ public class HudiColumnStatsIndexSupport
             // If still within the timeout window, wait up to the remaining time
             long remainingMs = Math.max(0, columnStatsWaitTimeout.toMillis() - elapsedMs);
             Optional<Map<String, Map<String, Domain>>> statsOpt =
-                    domainsWithStatsFuture.get(remainingMs, TimeUnit.MILLISECONDS);
+                    future.get(remainingMs, TimeUnit.MILLISECONDS);
 
             return statsOpt
                     .map(stats -> shouldSkipFileSlice(slice, stats, regularColumnPredicates, regularColumns))
@@ -213,7 +284,7 @@ public class HudiColumnStatsIndexSupport
         }
 
         // if any log or base file in the file slice matches the predicate, all files in the file slice needs to be read
-        return filesToLookUp.stream().allMatch(fileName -> {
+        boolean skip = filesToLookUp.stream().allMatch(fileName -> {
             // If no stats exist for this specific file, we cannot prune it.
             if (!domainsWithStats.containsKey(fileName)) {
                 return false;
@@ -221,6 +292,9 @@ public class HudiColumnStatsIndexSupport
             Map<String, Domain> fileDomainsWithStats = domainsWithStats.get(fileName);
             return !evaluateStatisticPredicate(regularColumnPredicates, fileDomainsWithStats, regularColumns);
         });
+        String fileName = fileSlice.getBaseFile().map(BaseFile::getFileName).orElse("<no-base-file>");
+        log.debug("File slice [%s] %s by column stats index", fileName, skip ? "skipped" : "processed");
+        return skip;
     }
 
     protected static boolean evaluateStatisticPredicate(
